@@ -1,6 +1,23 @@
+---
+id: WFT-ROADMAP-001
+title: Weftora Roadmap
+type: roadmap
+doc_version: 0.5.1
+status: proposed
+implementation: not_started
+created: 2026-09-29
+updated: 2026-10-08
+last_reviewed: null
+owner: Weftora Maintainers
+scope: windows-first
+product_release: unreleased
+related_pr: 1
+supersedes: null
+---
+
 # Roadmap — Rust-Native Weftora
 
-**Status:** v0.5 proposal. **Goal:** Weftora — standalone creator-friendly Ren'Py/Yarn alternative. Prebuilt player runs external Story packages; Rust crates internal, not creator framework. **Windows x64 only until Phase 6 exit gate; other OS ports later.** No feature marked done until its acceptance gate passes.
+**Goal:** Weftora — standalone creator-friendly Ren'Py/Yarn alternative. Prebuilt player runs external Story packages; Rust crates internal, not creator framework. **Windows x64 only until Phase 6 exit gate; other OS ports later.** No feature marked done until its acceptance gate passes.
 
 **Scope lock:** Phases 0–6 target native Windows x64 (`x86_64-pc-windows-msvc`), including CLI, player, sample games, save/load, packaging and regression. Preserve generic cross-platform interfaces now; **no macOS/Linux/Android/iOS/Web builds, debugging, CI or release work** before Windows foundation succeeds. See [platform plan](./docs/platforms.md).
 
@@ -120,3 +137,9 @@
 - **Do not spend first milestones building GUI editor/custom story language**; prove runtime + creator loop.
 
 See [docs/architecture.md](./docs/architecture.md) for boundaries, runtime proposal and research gates.
+
+## Change History
+
+| Date | Version | Change | Reference |
+| --- | --- | --- | --- |
+| 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

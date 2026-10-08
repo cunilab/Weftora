@@ -1,6 +1,22 @@
+---
+id: WFT-PRD-001
+title: Weftora Product Requirements
+type: product_requirements
+doc_version: 0.4.1
+status: proposed
+implementation: not_started
+created: 2026-09-29
+updated: 2026-10-08
+last_reviewed: null
+owner: Weftora Maintainers
+scope: windows-first
+product_release: unreleased
+related_pr: 1
+supersedes: null
+---
+
 # Product Requirements — Weftora
 
-**Status:** Draft v0.4 — Rust-native architecture proposal; no runtime implementation.  
 **Repo:** `cunilab/Weftora`  
 **Architecture:** [docs/architecture.md](./docs/architecture.md)  
 **Roadmap:** [ROADMAP.md](./ROADMAP.md)  
@@ -158,3 +174,9 @@ When unclear: if gameplay behavior changes between game genres, default to Story
 - Stable API/Story/save versioning and migration policy.
 
 Use [architecture](./docs/architecture.md) for rationale, [roadmap](./ROADMAP.md) for ordered execution, and [success criteria](./docs/success-criteria.md) for mandatory executable PASS gates. Claims here are requirements, not implemented features.
+
+## Change History
+
+| Date | Version | Change | Reference |
+| --- | --- | --- | --- |
+| 2026-10-08 | 0.4.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

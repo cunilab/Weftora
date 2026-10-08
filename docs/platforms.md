@@ -1,6 +1,22 @@
+---
+id: WFT-PLAT-001
+title: Weftora Platform Plan
+type: platform_plan
+doc_version: 0.1.1
+status: proposed
+implementation: not_started
+created: 2026-10-08
+updated: 2026-10-08
+last_reviewed: null
+owner: Weftora Maintainers
+scope: multiplatform-planning
+product_release: unreleased
+related_pr: 1
+supersedes: null
+---
+
 # Weftora Platform Support Plan
 
-**Status:** proposed v0.1; documentation only, no verified platform builds.  
 **Policy:** **Windows x64 first → full engine/story/authoring/export workflow → other OS.**  
 Source of execution order: [ROADMAP.md](../ROADMAP.md). Core separation: [architecture](./architecture.md). Mandatory per-platform P7 validation: [success criteria](./success-criteria.md).
 
@@ -108,3 +124,9 @@ All required before implementation:
 - Do review code for OS assumptions and place Windows specifics behind backends. Avoid hardcoding OS logic in headless core or Story schema.
 - Porting work cannot block Windows MVP. Any requested non-Windows build while P0 incomplete becomes future backlog item.
 - Track new platform req changes here and in roadmap; PRD owns product acceptance; architecture owns module boundaries.
+
+## Change History
+
+| Date | Version | Change | Reference |
+| --- | --- | --- | --- |
+| 2026-10-08 | 0.1.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

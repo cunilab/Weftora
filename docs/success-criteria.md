@@ -1,6 +1,23 @@
+---
+id: WFT-ACCEPT-001
+title: Weftora Roadmap Success Criteria
+type: acceptance_criteria
+doc_version: 0.1.1
+status: proposed
+implementation: not_started
+created: 2026-10-08
+updated: 2026-10-08
+last_reviewed: null
+owner: Weftora Maintainers
+scope: windows-first
+product_release: unreleased
+related_pr: 1
+supersedes: null
+---
+
 # Weftora — Roadmap Success Criteria
 
-**Status:** proposed, docs-only. **Authoritative roadmap:** [ROADMAP.md](../ROADMAP.md). **Initial target:** Windows x64 (`x86_64-pc-windows-msvc`). **Future targets:** [platforms.md](./platforms.md).
+**Authoritative roadmap:** [ROADMAP.md](../ROADMAP.md). **Initial target:** Windows x64 (`x86_64-pc-windows-msvc`). **Future targets:** [platforms.md](./platforms.md).
 
 ## Acceptance rules
 
@@ -152,3 +169,9 @@ evidence: "<CI artifact / log / screenshots / issue / test file>"
 ~~~
 
 **No criteria should be marked PASS from docs-only work.** Implement tests, capture artifacts and record outcomes during development.
+
+## Change History
+
+| Date | Version | Change | Reference |
+| --- | --- | --- | --- |
+| 2026-10-08 | 0.1.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

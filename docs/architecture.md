@@ -1,6 +1,23 @@
+---
+id: WFT-ARCH-001
+title: Weftora Architecture
+type: architecture
+doc_version: 0.5.1
+status: proposed
+implementation: not_started
+created: 2026-10-08
+updated: 2026-10-08
+last_reviewed: null
+owner: Weftora Maintainers
+scope: windows-first
+product_release: unreleased
+related_pr: 1
+supersedes: null
+---
+
 # Architecture — Rust-Native Weftora
 
-**Status:** proposed v0.5, docs-only; no code implemented. **Product name:** Weftora. Repo: `cunilab/Weftora`. **First supported target:** Windows x64; cross-platform expansion gated.  
+**Product name:** Weftora. Repo: `cunilab/Weftora`. **First supported target:** Windows x64; cross-platform expansion gated.  
 **Goal:** independent, creator-friendly alternative to Ren'Py-style narrative engines: **self-contained player/executable + separate Story packages**, built with generic Rust runtime and optional internal rendering/dialogue adapters.
 
 ## 1. Product identity and limits
@@ -347,3 +364,9 @@ Sample CIs above are **planned**, not present/ran. Compile-time checks do not va
 - [Rhai](https://rhai.rs/) — optional embedded scripting candidate.
 
 No Rust code, tools, executable binaries, or tests are claimed by this proposal.
+
+## Change History
+
+| Date | Version | Change | Reference |
+| --- | --- | --- | --- |
+| 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
