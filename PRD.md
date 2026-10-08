@@ -1,20 +1,20 @@
-# Product Requirements — Visual Game Engine
+# Product Requirements — Weftora
 
-**Status:** Draft v0.3 — Rust-native architecture proposal; no runtime implementation.  
+**Status:** Draft v0.4 — Rust-native architecture proposal; no runtime implementation.  
 **Repo:** `cunilab/visual-game-engine`  
 **Architecture:** [docs/architecture.md](./docs/architecture.md)  
 **Roadmap:** [ROADMAP.md](./ROADMAP.md)
 
 ## 1. Product vision
 
-Build a **standalone Rust-native visual game engine + creator toolchain** that makes narrative and 2D story-heavy games quick to author and change. Inspiration: Ren'Py's end-to-end storytelling workflow and Yarn's approachable dialogue scripting. This project is an **alternative engine**, not a Unity extension and not merely a Yarn renderer.
+Build **Weftora, a standalone Rust-native visual game engine with its own player and creator tools** that makes narrative and 2D story-heavy games quick to author and change. Inspiration: Ren'Py's end-to-end storytelling workflow and Yarn's approachable dialogue scripting. This project is an **alternative engine**, not a Unity extension, Yarn renderer, or Rust/Bevy framework developers must embed in their own game code.
 
-Contract: **Engine provides stable generic runtime mechanisms; Story package provides gameplay behavior, rules, flow, UI definitions, dialogue, state schema, content and assets.** Most changes in a game must not require Engine rebuild. Native capabilities require explicit Engine/backend extensions.
+Contract: **Engine ships as compiled game player + creator tools; Story package supplies gameplay behavior, rules, flow, UI definitions, dialogue, state schema, content and assets.** Most changes in a game must not require Engine rebuild. Native capabilities require explicit Engine/backend extensions.
 
 ## 2. Users and use cases
 
-- **Author:** write Yarn dialogue, describe scenes, actions, rules and screens as data; preview quickly; get actionable errors.
-- **Game developer:** compose Story-specific modules/rules using Engine API without altering renderer/kernel.
+- **Author:** install prebuilt Weftora tools; write Yarn dialogue, describe scenes, actions, rules and screens as data; preview without Rust/Cargo/Bevy project; get actionable errors.
+- **Game developer:** compose Story-specific rules, events and screens through content/scripts using supported Engine APIs; Rust only for native Engine extensions.
 - **Player:** load a packaged game and experience reliable choices, visuals/audio and save/load.
 - **Engine maintainer/AI agent:** change core safely under mechanical architecture and regression gates.
 
@@ -22,8 +22,8 @@ Priority: desktop visual novels first; prove same runtime with second life-sim-l
 
 ## 3. Goals / success criteria
 
-1. **Reusable engine:** one compiled VGE player/revision runs two distinct Story packages without Engine source changes.
-2. **Replaceable Story:** author can change data, dialogue, event rules, themes, screens and assets, then validate/run without recompiling core.
+1. **Standalone reusable engine:** one compiled Weftora player/revision runs two distinct Story packages without Engine source changes and without custom Rust game binaries.
+2. **Replaceable Story:** author can change data, dialogue, event rules, themes, screens and assets, then validate/run using prebuilt Engine without Rust compiler/Cargo or recompiling player.
 3. **Renderer independence:** headless API/state/flow/save crates do not depend on Bevy, Yarn or example Story.
 4. **Simple content authoring:** text-based content formats, stable IDs, schema-backed diagnostics, CLI preview and tooling.
 5. **Reliable narratives:** Yarn choices + Story commands + generic flow/events + coordinated single gameplay state.
@@ -52,7 +52,7 @@ Priority: desktop visual novels first; prove same runtime with second life-sim-l
 
 ### R2. Lifecycle and runtime boundaries
 - Provide boot/load/ready/play/pause/shutdown lifecycle and ordered init/teardown with errors.
-- Engine API types independent of rendering and narrative backends; compile `vge-core` without Bevy/Yarn.
+- Engine API types independent of rendering and narrative backends; compile `weftora-core` without Bevy/Yarn.
 - No Story-specific names, assets, types or gameplay assumptions in Engine core.
 
 ### R3. Typed state
@@ -101,11 +101,18 @@ Priority: desktop visual novels first; prove same runtime with second life-sim-l
 - Script host, if approved, exposes allowlisted Engine services with bounded resources and error reporting.
 
 ### R12. Creator experience
-- `vge-cli` can scaffold Story, validate, build/pack and launch preview.
+- Standalone `weftora` CLI (implemented by `weftora-cli`) scaffolds, validates, previews and exports supported Story packages.
+- Install prebuilt tools → author Story → run game → export standalone distribution; Story author does not write or compile Rust.
 - Source-located errors for missing IDs, invalid actions, broken Yarn, incompatible manifests and unsupported widgets.
 - Development reload/preview initially restart-based; true hot reload later when state rules permit.
 
-### R13. Tests and architecture enforcement
+### R13. Engine distribution vs framework dependency
+- `weftora-player` standalone executable loads external Story folder/package selected at launch; no game-specific compiled Rust needed.
+- `weftora export` bundles target-specific prebuilt player with validated Story content into playable distribution on supported platforms. Player binaries are built by Engine maintainers; cross-platform binaries not assumed available until tested.
+- Story source is never a Cargo crate or mandatory Rust/Bevy project. Editor optional; CLI/content source first-class.
+- Same compiled player runs Story A and Story B; change Story files without player rebuild. Native extensions require explicit Engine capability/release.
+
+### R14. Tests and architecture enforcement
 - CI fmt/clippy/tests and dependency-direction check; `#![forbid(unsafe_code)]` for headless crates where appropriate.
 - Golden headless narrative/flow tests, manifest/schema fixture tests, safe save roundtrip and compatibility negatives.
 - Two independent sample Story packages must pass on same built Engine/player.
@@ -123,10 +130,10 @@ When unclear: if gameplay behavior changes between game genres, default to Story
 
 ## 7. Acceptance / release definition
 
-- **Story A:** playable VN: dialogue + branches, choice-driven state, background/character/CG, audio, menu, safe save/relaunch.
-- **Story B:** distinct life-sim-like rules, events, navigation and custom screens. Same Engine binary/revision runs A and B without Rust core edits.
+- **Story A:** playable via stand-alone Weftora player: VN: dialogue + branches, choice-driven state, background/character/CG, audio, menu, safe save/relaunch.
+- **Story B:** distinct life-sim-like rules, events, navigation and custom screens. Same **player binary** runs A and B without new Rust game crate or Engine edits.
 - **Isolation:** deleting all Story packages still leaves Engine workspace compiling/tests passing; core's dependency graph contains no Story/Bevy/Yarn.
-- **Authoring:** modify Story behavior/UI/assets, validate/relaunch successfully without a core code rebuild.
+- **Authoring:** install prebuilt tools, modify Story behavior/UI/assets, validate/run/export without writing Rust, setting up a Bevy app or rebuilding compiled Engine.
 - **Failure:** missing asset/node, duplicate IDs, invalid version/schema, unsupported UI and corrupt save give actionable errors; no silent partial load.
 - **Quality:** test suite, package validator and supported player build all pass; no unverified guarantee of scripting sandbox or rollback.
 

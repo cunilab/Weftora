@@ -1,12 +1,13 @@
-# Roadmap — Rust-Native Visual Game Engine
+# Roadmap — Rust-Native Weftora
 
-**Status:** v0.3 proposal. **Goal:** creator-friendly Ren'Py/Yarn alternative with headless Rust Engine and replaceable Story packages. No feature marked done until its acceptance gate passes.
+**Status:** v0.4 proposal. **Goal:** Weftora — standalone creator-friendly Ren'Py/Yarn alternative. Prebuilt player runs external Story packages; Rust crates internal, not creator framework. No feature marked done until its acceptance gate passes.
 
 ## Phase 0 — Contract + Rust workspace
 
 - [ ] Choose desktop target platforms and project license; record dependency/license policy.
 - [ ] Create Cargo workspace; pin tested Rust toolchain and `Cargo.lock`.
-- [ ] Create `vge-api`, `vge-core`, `vge-story`, CLI/player stubs; design dependency firewall.
+- [ ] Create `weftora-api`, `weftora-core`, `weftora-story`, CLI/player stubs; design dependency firewall.
+- [ ] Specify user-facing standalone `weftora` CLI + `weftora-player` release artifacts; Stories remain non-Cargo source folders.
 - [ ] Define manifest v1, schema/API compatibility, stable IDs and capability checks.
 - [ ] Create `stories/sample-vn/` manifest and invalid fixtures; write ADRs.
 - [ ] CI: fmt, clippy, tests, headless forbidden dependencies/unsafe assertions.
@@ -20,7 +21,7 @@
 - [ ] Typed command registry, errors, cancellation and async sequencing.
 - [ ] Signal bus ordering, cleanup and recursion protection.
 - [ ] Content catalog loader; missing/duplicate ID diagnostics.
-- [ ] CLI: `new`, `check`, `run` (headless), basic logging/trace.
+- [ ] CLI skeleton: `new`, `check`, `run` (headless initially), basic logging/trace; no Rust required for Story author.
 - [ ] Headless golden tests for deterministic sequence/state.
 
 **Gate:** external Story manifest registers actions and events; replayed headless inputs produce stable outputs with clear errors.
@@ -44,8 +45,9 @@
 - [ ] Single source of truth for Yarn↔Engine variable state.
 - [ ] Save container, safe checkpoints, version checks, corruption handling.
 - [ ] Sample VN with one branching interaction, character/CG, custom menu and persisted choice.
+- [ ] Prebuilt player loads external Story A path; edit dialogue/screens/assets and run without recompiling player.
 
-**Gate:** Story A playable/restartable; content, UI and dialogue edits need no Engine Rust changes/recompile.
+**Gate:** Story A playable/restartable using prebuilt Weftora player; author needs no Cargo/Bevy game project; Story content/UI edits need no Engine recompile.
 
 ## Phase 4 — Story flow + configurable gameplay
 
@@ -61,7 +63,7 @@
 ## Phase 5 — Second Story proves reuse
 
 - [ ] Sample life-sim-like Story B with locations, schedules, arbitrary stats, events and custom screens.
-- [ ] Run Story A and B using **identical compiled player revision**.
+- [ ] Run Story A and B using **identical compiled player binary**; two standalone external packages, no game-specific Rust compilation.
 - [ ] Verify Engine compiles after deleting either Story.
 - [ ] Invalid package, missing ID, incompatible schema/save version and command misuse negative tests.
 - [ ] Test startup failure rollback and save migration/refusal behavior.
@@ -70,7 +72,7 @@
 
 ## Phase 6 — Creator workflow + release
 
-- [ ] `vge-cli` scaffold, validate, build/pack, run/preview and diagnostics.
+- [ ] User-facing `weftora` CLI scaffold, validate, run/preview, export; validate standalone player + Story distribution on supported targets.
 - [ ] Fast Story edit-preview (restart/reload) and source-located validation errors.
 - [ ] State, commands, signals, event traces, Yarn node inspect/debug UI.
 - [ ] Localization/content pipeline and package version/compatibility checks.
@@ -78,11 +80,11 @@
 - [ ] API/how-to docs, sample games, regression suite and first release tag.
 - [ ] GUI editor only when core authoring UX and runtime are stable.
 
-**Gate:** third-party creator can build/preview/package Story without changing Engine source.
+**Gate:** third-party creator installs prebuilt Weftora tools, builds/previews/exports Story without writing Rust, installing Cargo or editing Engine source.
 
 ## Guardrails
 
-- **No Unity**; Rust-native foundation, Bevy candidate backend, Yarn dialogue adapter.
+- **Engine product, not Rust/Bevy framework**; no mandatory per-game Rust project. Internal Rust-native foundation, Bevy candidate backend, Yarn dialogue adapter.
 - **Headless core** must not depend on Bevy/Yarn/Rhai or Story packages.
 - **No native hot-loaded Rust code** in ordinary Story packages.
 - **No genre-specific systems in Engine**; use generic state/actions/views.

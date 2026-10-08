@@ -1,18 +1,34 @@
-# Architecture — Rust-Native Visual Game Engine
+# Architecture — Rust-Native Weftora
 
-**Status:** proposed v0.3, docs-only; no code implemented.  
-**Goal:** independent, creator-friendly alternative to Ren'Py-style narrative engines: generic compiled Rust runtime + dynamic, replaceable Story packages.
+**Status:** proposed v0.4, docs-only; no code implemented. **Product name:** Weftora; existing GitHub repo path remains unchanged pending separate rename.  
+**Goal:** independent, creator-friendly alternative to Ren'Py-style narrative engines: **self-contained player/executable + separate Story packages**, built with generic Rust runtime and optional internal rendering/dialogue adapters.
 
 ## 1. Product identity and limits
 
-Visual Game Engine (VGE) is a **game engine and authoring platform**, not a game, a Unity extension, or a collection of hard-coded life-sim features. Design priorities:
+Weftora is a **game engine and authoring platform**, not a game, a Unity extension, or a collection of hard-coded life-sim features. Design priorities:
 
-1. **Story iteration without recompiling Rust:** change dialogue, data, supported gameplay rules, declarative UI, flow and assets; validate and relaunch/preview.
+1. **Story iteration without recompiling Rust:** change dialogue, data, supported gameplay rules, declarative UI, flow and assets; validate and relaunch/preview using prebuilt Engine tools. Creators do not write Rust.
 2. **One stable Engine supports many games:** VN and non-VN narrative simulations share runtime/API.
 3. **Rust core with enforceable boundaries:** typed contracts, explicit error handling, automated validation; no assumption compiler catches behavioral/spec drift.
-4. **Practical authoring UX:** plain editable source, clear errors, quick preview, packaging and localization; editor follows working CLI and player.
+4. **Practical authoring UX:** plain editable source, clear errors, quick preview, packaging and localization; editor follows working CLI and player. Game authors launch games directly; they do not embed a Rust library in game projects.
 
 **Boundary of “Story can change anything”:** only behavior supported by current Engine API, data/flow language, script host and widgets. A new native renderer, shader integration, low-level input device, OS service or widget primitive requires a compiled adapter/Engine change. No arbitrary Rust code loading into release player.
+
+### Standalone engine, not developer framework
+
+**Product interface = apps**, not crates. Weftora owns its runtime, content pipeline, player, UX, and export process. Rust crates are internal implementation modules. End users should install Weftora, author Story folders, run/check them, and distribute runnable games **without** writing Rust, wiring Bevy systems, creating a Cargo app, or recompiling core.
+
+**Deliverables (separate):**
+1. **`weftora-player`:** compiled player/runtime loads **external, version-compatible Story package(s)** and runs game. No genre-specific source import or hardcoded Story file paths. Runtime can run independently with chosen Story path; initial MVP supports one active Story.
+2. **`weftora` CLI:** proposed `new`, `check`, `run`, `export` commands; author and validate Story, launch same player, package for supported targets. CLI must not impose Rust/Cargo on Story authors; tooling may use Cargo internally for building Engine releases.
+3. **`weftora-editor` (later):** visual authoring/preview for same Story schema/Engine runner. Editor is optional; text+CLI remains first-class.
+4. **Story source/package:** human-editable Yarn/data/events/screens/assets; package manifest/capability contract. No `Cargo.toml`, Rust crate, `main.rs`, Bevy app or native DLL necessary for supported gameplay.
+
+**Two runtime modes:** `weftora run path/to/story` plays development Story using prebuilt player; `weftora export path/to/story` validates/packs Story and copies target-specific prebuilt player + supported assets into independent distribution. Commands and details are proposed, not currently implemented. Player may load directories in dev and verified package archives in production; packaging format TBD.
+
+**Key distinction:** Bevy is implementation backend for rendering/input/assets, **not** a user-facing dependency or author programming model. Yarn provides authored dialogue, **not** full game engine. Author interacts with Weftora's stable content schemas + Story APIs.
+
+**Dynamic boundary:** changing ordinary Story rules/dialogue/screens/assets should not rebuild player. New native capabilities or unimplemented widget/renderer features require an Engine release; never promise unlimited mods or native code loading.
 
 ### Extension tiers
 
@@ -30,28 +46,28 @@ Visual Game Engine (VGE) is a **game engine and authoring platform**, not a game
                      Story Package(s)
      manifest | data | Yarn | flow | screen defs | assets
                             |
-                        vge-api
+                        weftora-api
                             |
  +--------------------------+---------------------------+
  |               Rust runtime, headless                |
- | vge-core: lifecycle/state/commands/signals          |
- | vge-story: manifest/catalog/compat/loader           |
- | vge-flow: predicates/triggers/sequence scheduler    |
- | vge-save: persistence/checkpoints/migrations        |
+ | weftora-core: lifecycle/state/commands/signals          |
+ | weftora-story: manifest/catalog/compat/loader           |
+ | weftora-flow: predicates/triggers/sequence scheduler    |
+ | weftora-save: persistence/checkpoints/migrations        |
  +--------------------------+---------------------------+
                             |
  +--------------------------+---------------------------+
  |            Optional backend/adapters                |
- | vge-yarn | vge-script (future) | vge-render-bevy     |
- | vge-ui-bevy | audio/input/asset adapters             |
+ | weftora-yarn | weftora-script (future) | weftora-render-bevy     |
+ | weftora-ui-bevy | audio/input/asset adapters             |
  +--------------------------+---------------------------+
                             |
-              vge-player (composes crates)
+              weftora-player (composes crates)
                             |
                           OS / GPU
 ```
 
-**Strict rule:** `vge-api` and headless core must not depend on `bevy`, `yarnspinner`, `rhai`, a Story package, or frontend apps. Renderer/dialogue/script crates depend inward. `vge-player` composes everything. A future different renderer must not force changes to state/flow/save semantics.
+**Strict rule:** `weftora-api` and headless core must not depend on `bevy`, `yarnspinner`, `rhai`, a Story package, or frontend apps. Renderer/dialogue/script crates depend inward. `weftora-player` composes everything. A future different renderer must not force changes to state/flow/save semantics.
 
 Bevy is recommended rendering/asset/input platform **candidate**; not project identity. Yarn is preferred dialogue authoring **candidate**; not universal scripting or state owner.
 
@@ -63,19 +79,19 @@ visual-game-engine/
 ├── Cargo.lock
 ├── rust-toolchain.toml
 ├── crates/
-│   ├── vge-api/               # stable IDs, values, commands, traits
-│   ├── vge-core/              # headless kernel, lifecycle, state/signals
-│   ├── vge-story/             # manifest, catalogs, loader/validation
-│   ├── vge-flow/              # events/conditions/action scheduling
-│   ├── vge-save/              # slots, checkpoints, version/migrations
-│   ├── vge-yarn/              # optional Yarn compiler/runtime adapter
-│   ├── vge-script/            # optional interpreter (decision pending)
-│   ├── vge-render-bevy/      # visuals, assets, audio, input bridge
-│   └── vge-ui-bevy/          # generic UI widget renderer
+│   ├── weftora-api/               # stable IDs, values, commands, traits
+│   ├── weftora-core/              # headless kernel, lifecycle, state/signals
+│   ├── weftora-story/             # manifest, catalogs, loader/validation
+│   ├── weftora-flow/              # events/conditions/action scheduling
+│   ├── weftora-save/              # slots, checkpoints, version/migrations
+│   ├── weftora-yarn/              # optional Yarn compiler/runtime adapter
+│   ├── weftora-script/            # optional interpreter (decision pending)
+│   ├── weftora-render-bevy/      # visuals, assets, audio, input bridge
+│   └── weftora-ui-bevy/          # generic UI widget renderer
 ├── apps/
-│   ├── vge-player/            # distributable game/player
-│   ├── vge-cli/               # new, check, build, run, pack
-│   └── vge-editor/            # later graphical editor
+│   ├── weftora-player/            # standalone executable loads Story package
+│   ├── weftora-cli/               # author-facing 'weftora' CLI
+│   └── weftora-editor/            # later, optional visual editor
 ├── stories/
 │   ├── sample-vn/
 │   └── sample-life-sim/
@@ -84,21 +100,21 @@ visual-game-engine/
     └── architecture.md
 ```
 
-Names are proposed. Avoid proliferating crates before coherent APIs exist. Start with `vge-api`, `vge-core`, `vge-story`, `vge-player` and a minimal Bevy adapter; split only on real dependency boundaries. Cargo workspace directories for Stories are examples; published Story content must not become compile-time dependencies of core.
+Names are proposed. Weftora executable/CLI is what creators use; crates exist for Engine maintainers. Avoid proliferating crates before coherent APIs exist. Start with `weftora-api`, `weftora-core`, `weftora-story`, `weftora-player` and a minimal Bevy adapter; split only on real dependency boundaries. Cargo workspace directories for Stories are examples; **Story folders are content, not Cargo workspace members**. Published Story content must never become compile-time dependencies of core.
 
 ### Dependency direction
 
 ```text
-Story files ──> vge-api schema (serialized ABI/contract)
+Story files ──> weftora-api schema (serialized data/API contract)
                          ^
-vge-core / vge-story / vge-flow / vge-save
+weftora-core / weftora-story / weftora-flow / weftora-save
                          ^
-vge-yarn / vge-script / vge-render-bevy / vge-ui-bevy
+weftora-yarn / weftora-script / weftora-render-bevy / weftora-ui-bevy
                          ^
-                    vge-player
+                    weftora-player
 ```
 
-This shows logical dependencies; individual runtime crates may depend on `vge-core` and/or `vge-api` as needed. No reverse imports from headless crates into adapters, player, or example stories.
+This shows logical dependencies; individual runtime crates may depend on `weftora-core` and/or `weftora-api` as needed. No reverse imports from headless crates into adapters, player, or example stories.
 
 ## 4. Runtime responsibility split
 
@@ -211,11 +227,11 @@ event first_purchase -> when flag false -> dialogue.start(first_purchase)
 Yarn choice -> update mapped state -> view.show(character.happy)
 ```
 
-Commands like `story.buy_coffee` belong to Story, never `vge-core`.
+Commands like `story.buy_coffee` belong to Story, never `weftora-core`.
 
 ## 8. Declarative UI and presentation
 
-Story defines *layout, widgets, bindings, actions and theme*, not Rust GUI code per screen. Engine provides generic primitives: panel, text, image, button, list, overlay, screen, focus, animation, input routing. Schema validated during `vge-cli check`.
+Story defines *layout, widgets, bindings, actions and theme*, not Rust GUI code per screen. Engine provides generic primitives: panel, text, image, button, list, overlay, screen, focus, animation, input routing. Schema validated during `weftora-cli check`.
 
 Example proposal:
 
@@ -240,7 +256,7 @@ Binding design must define updates, validation, layout constraints, accessibilit
 
 ## 9. Dialogue and script adapters
 
-**Yarn:** test `yarnspinner` (standalone compiler/runtime) and optionally `bevy_yarnspinner` as Bevy integration. Vendor/wrap no Yarn types in public `vge-api`. Yarn Spinner for Rust project currently labels itself *work in progress / no official support*; compatibility, compiling Yarn, running choices, custom commands, variable mapping, localization and save semantics require a gated spike. If unsupported, adapter replacement must not break Story package architecture.
+**Yarn:** test `yarnspinner` (standalone compiler/runtime) and optionally `bevy_yarnspinner` as Bevy integration. Vendor/wrap no Yarn types in public `weftora-api`. Yarn Spinner for Rust project currently labels itself *work in progress / no official support*; compatibility, compiling Yarn, running choices, custom commands, variable mapping, localization and save semantics require a gated spike. If unsupported, adapter replacement must not break Story package architecture.
 
 **Scripting:** declarative Story events and commands first. Later prototype **Rhai** as optional interpreter for arithmetic/rules/functions only, not replacement for Yarn or flow scheduler. Do not promise sandboxed modding:
 - allowlist host calls; no unrestricted file/network/OS access or reflection;
@@ -277,7 +293,7 @@ Rust provides strong *compile-time* memory/type safety, but neither proves corre
 
 - `#![forbid(unsafe_code)]` in headless/domain crates; any unavoidable unsafe in adapters requires a documented, reviewed exception and tests.
 - Cargo workspace with pinned `rust-toolchain.toml`, committed `Cargo.lock`, dependency policy and optional license/advisory checks.
-- CI dependency graph assertion: `vge-core`, `vge-api`, `vge-story`, `vge-flow`, `vge-save` contain no Bevy/Yarn/Rhai/Story dependency.
+- CI dependency graph assertion: `weftora-core`, `weftora-api`, `weftora-story`, `weftora-flow`, `weftora-save` contain no Bevy/Yarn/Rhai/Story dependency.
 - Validate manifest/JSON schemas from Rust-owned types where practical; revisioned schemas and fixtures.
 - Headless golden tests (same Story input → same ordered events/state/requests); error-case tests (duplicate IDs, malformed commands, recursion cycles, invalid save).
 - Property-based tests for serialization/idempotence where useful; integration tests with Story A/B on same player; snapshot/API compatibility diff review.
@@ -290,13 +306,13 @@ Sample CIs above are **planned**, not present/ran. Compile-time checks do not va
 
 **Gate 0: architecture/bootstrap.** Cargo builds, zero reverse imports, Story manifest validates/rejects errors; initial example package.
 
-**Gate 1: playable narrative slice.** Single external Story with Yarn choices, two screens, image/CG, audio, persistent state; player runs without Engine source edits.
+**Gate 1: playable narrative slice.** Via prebuilt player/CLI (no author Rust/Cargo), single external Story with Yarn choices, two screens, image/CG, audio, persistent state; player runs without Engine source edits.
 
 **Gate 2: dynamic rules.** Declarative Story conditions/actions and custom themed UI; changing rules/assets does not recompile Engine; optional scripting gated by spike.
 
-**Gate 3: two distinct games.** VN package and life-sim-like package run against identical compiled player build/revision. Delete either package: Engine still compiles and other game runs.
+**Gate 3: two distinct games.** VN package and life-sim-like package run against identical compiled player binary/revision; no Rust/Bevy game project per Story. Delete either package: Engine still compiles and other game runs.
 
-**Gate 4: creator UX.** CLI generates, validates, runs and packages a Story; preview/reload during development; useful source-located errors and debugger.
+**Gate 4: creator UX.** CLI generates, validates, runs and exports player+Story for supported targets without author Rust/Cargo; preview/reload during development; useful source-located errors and debugger.
 
 **Gate 5: release safety.** Target-platform build, clean licenses/deps, save mismatch/corruption coverage, runtime error recovery and architecture CI.
 

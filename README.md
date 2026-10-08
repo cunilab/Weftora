@@ -1,43 +1,54 @@
-# Visual Game Engine
+# Weftora
 
-**Rust-native, story-driven game engine** for visual novels, narrative games, and life simulations. Goal: alternative authoring/runtime experience inspired by Ren'Py and Yarn Spinner—not a Unity project or a wrapper around a single game.
+**Standalone Rust-native story game engine.** Ren'Py-like creation workflow, Yarn-style dialogue, replaceable game packages. **Not framework** requiring game authors to write Rust or integrate Bevy.
 
-**Engine = stable, reusable Rust technology. Story = replaceable content, gameplay rules, dialogue, UI, events, data, and assets.**
+**Engine = compiled reusable player/runtime. Story = external game data, dialogue, rules, flow, UI, themes, assets.**
 
-## Architecture
+## How creators use it
+
+~~~text
+Author edits Story files (Yarn, JSON, sprites/audio)
+                      |
+                 weftora check
+                      |
+                weftora run
+                      |
+         Prebuilt Weftora Engine/player
+                      |
+                Game playable
+                      |
+               weftora export
+                      |
+     Standalone distribution: player + Story
+~~~
+
+CLI commands above = **planned interface**, not implemented. Creators should not need Cargo/Rust toolchain or Engine recompilation to build supported Story content. Editor/visual preview later sit atop same player and package contract.
+
+## Engine / Story boundary
+
+- **Engine:** typed state, generic commands/signals, flow scheduler, asset loading, rendering/UI primitives, input/audio, save/load, validation, packaging.
+- **Story:** data, gameplay logic, characters, dialogue, events, choices, screens/themes, asset catalogs, localization.
+- **Adapters:** internal Bevy renderer + optional Yarn runtime + future scripted-rule adapter. Story authors need not depend on Bevy, Yarn Rust APIs, or Rust crates.
+- **Native extension:** genuinely new low-level capability needs Engine/adapter code and release; ordinary Story changes must not.
+- **Distribution:** one compatible compiled Engine/player can launch different Story packages; export bundles existing target player with Story files. Supported target builds must exist; no arbitrary platform support promised.
+
+## Rust workspace (proposed)
 
 ```text
-Story source (Yarn, JSON, assets, optional rules)
-                 |
-            validate / build
-                 |
-            Story package
-                 |
-          Public Story API
-                 |
-  Rust core: state, flow, save, assets,
-    commands, signals, UI contract
-                 |
-    Adapters: Bevy / Yarn / scripts
-                 |
-          Native game player
+crates/       # Weftora Engine core, contracts, adapters
+apps/         # player, CLI, future editor
+stories/      # sample Stories; never compiled into Engine core
+docs/         # architecture and decisions
 ```
 
-- **Core:** renderer-agnostic Rust crates; no Bevy, Yarn, or Story package dependency.
-- **Runtime:** loads compatible Story packages; Engine never imports game-specific behavior.
-- **Rendering:** Bevy adapter is preferred candidate, not a dependency of core.
-- **Dialogue:** Yarn Spinner for Rust behind adapter; early compatibility spike required.
-- **Rules:** declarative flow first; Rhai is optional, subject to security/platform tests.
-- **Tools:** Rust CLI for validation/packing/testing, then creator-oriented preview/editor.
+Rust = implementation language for **engine maintainers**. Story = separate authoring format; no game-specific Rust compile step.
 
-Target: ship **the same compiled Engine/player revision with two distinctly different Story packages**, without editing Engine source. New native primitives may still require compiled extensions.
+## Docs
 
-## Documents
-
-- [Architecture](./docs/architecture.md) — boundaries, modules, contracts, packaging, runtime design.
-- [PRD](./PRD.md) — product requirements and testable success criteria.
-- [Roadmap](./ROADMAP.md) — implementation order and acceptance gates.
+- [Architecture](./docs/architecture.md) — standalone engine vs framework, runtime/player and Story package contracts.
+- [PRD](./PRD.md) — product reqs and acceptance.
+- [Roadmap](./ROADMAP.md) — testable development phases.
 
 ## Status
 
-Architecture proposal only. No Cargo workspace, compiled engine, or runtime tests committed yet. Exact Rust, Bevy, Yarn and scripting versions/target platforms must be verified and pinned in Phase 0.
+**Docs-only proposal.** No Rust workspace, playable engine, CLI, exporter or tests committed yet. Repo GitHub path remains `cunilab/visual-game-engine`; product name proposed as **Weftora**.
