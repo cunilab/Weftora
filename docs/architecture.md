@@ -313,6 +313,8 @@ Rust provides strong *compile-time* memory/type safety, but neither proves corre
 
 Sample CIs above are **planned**, not present/ran. Compile-time checks do not validate author-visible behavior.
 
+**Measured completion:** mandatory P0–P7 test IDs, evidence and PASS/BLOCKED rules: [success criteria](./success-criteria.md). Descriptive architecture alone never satisfies release gate.
+
 ## 12. Rollout and acceptance gates
 
 **Gate 0: architecture/bootstrap.** Cargo builds, zero reverse imports, Story manifest validates/rejects errors; initial example package.

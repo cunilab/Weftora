@@ -2,7 +2,7 @@
 
 **Status:** proposed v0.1; documentation only, no verified platform builds.  
 **Policy:** **Windows x64 first → full engine/story/authoring/export workflow → other OS.**  
-Source of execution order: [ROADMAP.md](../ROADMAP.md). Core separation: [architecture](./architecture.md).
+Source of execution order: [ROADMAP.md](../ROADMAP.md). Core separation: [architecture](./architecture.md). Mandatory per-platform P7 validation: [success criteria](./success-criteria.md).
 
 ## 1. Target priority / support state
 

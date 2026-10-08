@@ -1,10 +1,11 @@
 # Product Requirements — Weftora
 
 **Status:** Draft v0.4 — Rust-native architecture proposal; no runtime implementation.  
-**Repo:** `cunilab/visual-game-engine`  
+**Repo:** `cunilab/Weftora`  
 **Architecture:** [docs/architecture.md](./docs/architecture.md)  
 **Roadmap:** [ROADMAP.md](./ROADMAP.md)  
-**Platforms:** [docs/platforms.md](./docs/platforms.md)
+**Platforms:** [docs/platforms.md](./docs/platforms.md)  
+**Phase gates:** [docs/success-criteria.md](./docs/success-criteria.md)
 
 ## 1. Product vision
 
@@ -156,4 +157,4 @@ When unclear: if gameplay behavior changes between game genres, default to Story
 - Yarn state bridge and safe checkpoint/continuation behavior.
 - Stable API/Story/save versioning and migration policy.
 
-Use [architecture](./docs/architecture.md) for rationale and [roadmap](./ROADMAP.md) for ordered execution. Claims here are requirements, not implemented features.
+Use [architecture](./docs/architecture.md) for rationale, [roadmap](./ROADMAP.md) for ordered execution, and [success criteria](./docs/success-criteria.md) for mandatory executable PASS gates. Claims here are requirements, not implemented features.

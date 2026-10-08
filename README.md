@@ -50,6 +50,7 @@ Rust = implementation language for **engine maintainers**. Story = separate auth
 - [Architecture](./docs/architecture.md) — standalone engine vs framework, runtime/player and Story package contracts.
 - [PRD](./PRD.md) — product reqs and acceptance.
 - [Roadmap](./ROADMAP.md) — Windows-first implementation phases and later port gates.
+- [Success criteria](./docs/success-criteria.md) — measurable PASS/FAIL gates for every phase.
 - [Platform plan](./docs/platforms.md) — Windows baseline, deferred Linux/macOS/Android/iOS/Web, platform boundaries and tests.
 
 ## Status

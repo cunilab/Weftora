@@ -4,6 +4,8 @@
 
 **Scope lock:** Phases 0–6 target native Windows x64 (`x86_64-pc-windows-msvc`), including CLI, player, sample games, save/load, packaging and regression. Preserve generic cross-platform interfaces now; **no macOS/Linux/Android/iOS/Web builds, debugging, CI or release work** before Windows foundation succeeds. See [platform plan](./docs/platforms.md).
 
+**Completion policy:** every phase must pass **all** required test IDs in [Success Criteria](./docs/success-criteria.md). Each PASS includes CI/manual repro evidence, source commit, toolchain/Windows details and expected vs actual result. `[x]` alone ≠ success. Phase 7 remains locked until all Windows Phase 6 criteria pass.
+
 ## Phase 0 — Contract + Rust workspace
 
 - [ ] Fix first target: Windows x64 (`x86_64-pc-windows-msvc`); pick minimum supported Windows version through testing; choose project license/dependency policy.
@@ -14,7 +16,7 @@
 - [ ] Create `stories/sample-vn/` manifest and invalid fixtures; write ADRs.
 - [ ] CI: fmt, clippy, tests, headless forbidden dependencies/unsafe assertions.
 
-**Gate:** headless core compiles with no Bevy/Yarn/Story deps; valid manifest accepted, malformed/duplicate/incompatible ones rejected.
+**Success:** P0-01..P0-05 — locked Windows build, enforced dependency firewall, versioned manifest positive/negative tests, documented targets/licenses, green CI. [Evidence/tests](./docs/success-criteria.md#phase-0--contract--rust-workspace).
 
 ## Phase 1 — Headless engine kernel
 
@@ -26,7 +28,7 @@
 - [ ] CLI skeleton: `new`, `check`, `run` (headless initially), basic logging/trace; no Rust required for Story author.
 - [ ] Headless golden tests for deterministic sequence/state.
 
-**Gate:** external Story manifest registers actions and events; replayed headless inputs produce stable outputs with clear errors.
+**Success:** P1-01..P1-06 — lifecycle cleanup, typed state, command cancellation, signal ordering/loop guards, Story catalog loading, 10/10 deterministic headless runs. Full Story event scheduler belongs Phase 4. [Evidence/tests](./docs/success-criteria.md#phase-1--headless-kernel).
 
 ## Phase 2 — Bevy + Yarn feasibility spikes
 
@@ -37,7 +39,7 @@
 - [ ] Pick minimal UI primitives and Story-backed asset resolver design.
 - [ ] Record findings; lock compatible versions **only after tests**.
 
-**Gate:** window displays background/dialogue/choices; Story Yarn command changes typed Engine state. Failing Yarn spike triggers adapter reassessment, not core redesign.
+**Success:** P2-01..P2-06 — actual Windows renderer/input/audio, Yarn branches + errors, canonical state bridge, adapter isolation, pinned compatibility; unsupported Yarn port must be replaced with adapter satisfying same tests. [Evidence/tests](./docs/success-criteria.md#phase-2--windows-bevy--yarn-adapter-feasibility).
 
 ## Phase 3 — First complete playable VN
 
@@ -49,7 +51,7 @@
 - [ ] Sample VN with one branching interaction, character/CG, custom menu and persisted choice.
 - [ ] Prebuilt player loads external Story A path; edit dialogue/screens/assets and run without recompiling player.
 
-**Gate:** Story A playable/restartable on real Windows x64 using prebuilt Weftora player; author needs no Cargo/Bevy game project; Story content/UI edits need no Engine recompile.
+**Success:** P3-01..P3-06 — playable branching VN, prebuilt Windows player, unchanged SHA-256 after Story edits, UI/input/audio, Yarn state bridge, save/relaunch + corrupted-save handling. [Evidence/tests](./docs/success-criteria.md#phase-3--first-playable-vn--safe-persistence).
 
 ## Phase 4 — Story flow + configurable gameplay
 
@@ -60,7 +62,7 @@
 - [ ] Prototype Rhai only if declarative rules insufficient; evaluate host API, constraints, hostile scripts and profiling.
 - [ ] Document adoption/rejection of optional interpreter with ADR.
 
-**Gate:** Story defines gameplay logic/events and different screens without editing Engine core. Optional scripts not assumed secure.
+**Success:** P4-01..P4-05 — every condition op tested, ordered/cancellable flow, two Story-only gameplay actions, custom screens and validated scripting ADR. Player SHA unchanged. [Evidence/tests](./docs/success-criteria.md#phase-4--story-defined-gameplay-rules--configurable-ui).
 
 ## Phase 5 — Second Story proves reuse
 
@@ -70,7 +72,7 @@
 - [ ] Invalid package, missing ID, incompatible schema/save version and command misuse negative tests.
 - [ ] Test startup failure rollback and save migration/refusal behavior.
 
-**Gate:** Story A and Story B run on **identical Windows x64 player binary**; zero game-specific core changes.
+**Success:** P5-01..P5-05 — independently authored life-sim Story B, binary SHA match across A/B, Engine build without Stories, invalid package/save negative tests, no partial state corruption. [Evidence/tests](./docs/success-criteria.md#phase-5--second-story-demonstrates-reuse).
 
 ## Phase 6 — Complete Windows foundation + release
 
@@ -92,7 +94,7 @@
 - [ ] Invalid manifest/IDs/Yarn/assets fail with useful diagnostics; tests + Windows smoke/regressions pass.
 - [ ] External creator can scaffold, preview and export game without editing Engine/Rust or installing Cargo.
 
-**Exit:** only after all checked, tag Windows foundation release and unlock Phase 7. Failed gate → fix Windows first.
+**Success:** P6-01..P6-09 — all Windows CLI/export/player, clean-machine creator UX, A/B same binary, save/validation, regression CI, docs/licensing/release artifacts pass. **Tag release only after full PASS**; any failure blocks Phase 7. [Evidence/tests](./docs/success-criteria.md#phase-6--windows-foundation-release-hard-blocker).
 
 ## Phase 7 — Multi-platform expansion (BLOCKED until Windows exit)
 
@@ -105,7 +107,7 @@
 - [ ] **WebAssembly:** browser-compatible loader/assets, WebGL2/WebGPU decision, JS glue, audio gesture unlock, persistence and memory limits.
 - [ ] Optional later: Steam Deck/Linux handheld validation, Windows ARM64, Android TV; consoles require restricted SDKs/platform approval.
 
-**Each target gate:** same Story package schema and headless golden fixtures; real-device input/render/audio/saves; export validated for target; no game-specific Engine rewrite. Declare platform supported only after tests, not on Rust/Bevy target lists alone.
+**Per-target success:** P7-01..P7-07 — **after** Windows foundation PASS, one selected target runs both Stories and existing golden tests, real-device I/O/save, validated export, Windows regression preserved. Each OS marked supported separately. [Evidence/tests](./docs/success-criteria.md#phase-7--per-platform-port-locked-until-p6-pass).
 
 ## Guardrails
 
