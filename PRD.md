@@ -1,12 +1,20 @@
 # Product Requirements Document — Visual Game Engine
 
-**Repository:** `Vellixia/visual-game-engine`  
-**Status:** Foundation / Draft v0.1  
+**Repository:** `cunilab/visual-game-engine`  
+**Status:** Architecture proposal / Draft v0.2  
 **Primary runtime:** Unity 6 LTS  
 **Dialogue system:** Yarn Spinner (free / open source)  
 **Purpose:** Define the boundary between a reusable technical engine and a replaceable, data-driven story/game package.
 
 ---
+
+## 0. Scope Clarification (v0.2)
+
+This project aims for a **Ren'Py-like reusable authoring/runtime platform on Unity**, not only a library of VN UI services. Engine is compiled generic runtime; Story packages provide replaceable rules, flow, UI definitions, dialogue, assets and data. See [ARCHITECTURE.md](./ARCHITECTURE.md) for authoritative proposed runtime/package boundaries and [ROADMAP.md](./ROADMAP.md) for current phase sequence.
+
+**Dynamic does not mean unlimited:** Story may change behavior supported by public Engine APIs, data, declarative UI/actions and a future evaluated interpreted script adapter. Native Unity capabilities, engine extensions and new widget primitives may still require compiled code.
+
+**MVP:** One full playable VN Story, then second fundamentally different Story using same Engine revision. Package contract, shared State↔Yarn mapping and safe save checkpoints precede advanced scripting/editor features.
 
 ## 1. Product Vision
 
@@ -501,7 +509,7 @@ The Engine does not decide which song belongs to which story scene.
 
 Yarn Spinner is the default dialogue system.
 
-The Engine shall provide an adapter between Yarn and engine primitives.
+The Engine shall provide an adapter between Yarn and engine primitives. State shared with Yarn must have a single source of truth, explicit type mapping, and a defined persistence lifecycle.
 
 Responsibilities:
 
@@ -530,7 +538,7 @@ Alice: Want to go out?
 
 ### 5.13 Persistence Infrastructure
 
-The Engine owns save-file technology.
+The Engine owns save-file technology. The first delivery supports explicit safe checkpoints; exact in-flight Yarn/async/animation continuation and rollback remain out of scope until proved.
 
 The Story owns the meaning of saved state.
 
@@ -816,6 +824,8 @@ Engine owns only reusable UI hosting and technical primitives.
 
 ## 7. Recommended Repository Structure
 
+Folder layout below is **authoring-time Unity project structure**, not shipping Story package contract. Runtime Story package content must be logically separate from compiled Engine, with manifest/catalogs defined in §8 and ARCHITECTURE.md. Avoid assuming arbitrary runtime C# assemblies are hot-loadable.
+
 Initial target:
 
 ```text
@@ -882,28 +892,17 @@ The reverse dependency is prohibited.
 
 ## 8. Story Package Contract
 
-A Story package should eventually expose a manifest.
+Story loads by manifest, not through Engine hardcoding. Proposed first fields: schemaVersion, id, version, requiredEngineApi, entrypoint, contentCatalogs, dialogueCatalogs, screenCatalogs, eventCatalogs, assetCatalogs, modules. Full sample and constraints: [ARCHITECTURE.md](./ARCHITECTURE.md#3-package-layout-proposed).
 
-Conceptually:
+Minimum behavior:
+- validate Story/Engine schema and API compatibility, stable IDs, unique references and entrypoint before gameplay;
+- load one active Story and namespace identifiers to prevent silent collisions;
+- treat Story data/UI/Yarn/assets as replaceable, with optional interpreted rule scripts behind an evaluated adapter;
+- expose Story-specific commands through registration; keep gameplay meaning out of Engine;
+- never assume native C# hot-reload works on production platforms;
+- keep asset packaging tech a separate technical decision.
 
-```text
-StoryManifest
-├── id
-├── version
-├── displayName
-├── requiredEngineVersion
-├── startupModule
-├── modules[]
-├── yarnProjects[]
-├── contentCatalogs[]
-└── assetCatalogs[]
-```
-
-The exact format is intentionally undecided in v0.1.
-
-Initial implementation may use ScriptableObjects. External JSON/YAML should only be added when there is a concrete authoring or modding requirement.
-
----
+First authored sample may live in Unity project, but contract must not require modification of Engine assemblies. Do not promise runtime bundle swapping until proven.
 
 ## 9. Dependency Policy
 
@@ -928,107 +927,17 @@ Do not add a package merely because it may be useful later.
 
 ## 10. Foundation Milestones
 
-### Milestone 0 — Repository Foundation
+[ROADMAP.md](./ROADMAP.md) defines current authoritative order:
 
-- Unity project created.
-- Engine and Story assemblies created.
-- Yarn Spinner installed.
-- Basic coding conventions documented.
-- Git LFS configured for large binary assets if needed.
+0. Repo, pinned deps, Engine/Story assembly boundary, manifest contract.
+1. Kernel, IDs, registration and Story loader.
+2. Playable VN with declarative UI, Yarn and visual/audio primitives.
+3. Safe-checkpoint persistence and generic Story flow/event execution.
+4. Story-defined custom UI/rules; evaluate optional Lua adapter.
+5. Second distinct Story, same Engine source/binary, integration tests.
+6. Creator tools, validation, docs and release hardening.
 
-### Milestone 1 — Kernel
-
-Implement:
-
-- lifecycle/bootstrap;
-- service/module registration;
-- state store;
-- signal bus;
-- command bus;
-- basic logging.
-
-Acceptance:
-
-- Story assembly can register a module;
-- Story can set/get state;
-- Story can execute a registered command;
-- Story can emit/receive a signal.
-
-### Milestone 2 — Content and Presentation
-
-Implement:
-
-- content registry;
-- asset resolver;
-- generic image/view host;
-- basic UI host;
-- audio service.
-
-Acceptance:
-
-- Story registers an asset/content ID;
-- Story requests it by ID;
-- Engine displays it without story-specific code.
-
-### Milestone 3 — Yarn Integration
-
-Implement:
-
-- Yarn adapter;
-- Yarn → Engine generic command bridge;
-- Story-defined Yarn command registration;
-- dialogue lifecycle signals.
-
-Acceptance:
-
-- Yarn dialogue runs;
-- Yarn reads/writes Story state;
-- Yarn invokes a Story-defined command;
-- dialogue can show/hide a generic visual.
-
-### Milestone 4 — Persistence
-
-Implement:
-
-- save container;
-- save slots;
-- state serialization;
-- Story module persistence hooks;
-- save versioning.
-
-Acceptance:
-
-- quit/relaunch restores identical Story state;
-- unknown Story keys do not require Engine source changes.
-
-### Milestone 5 — Conditions and Story Flow
-
-Implement:
-
-- generic condition evaluation;
-- reusable Story-side flow/event module as the first reference Story module.
-
-Acceptance:
-
-- Story event triggers using only Story data + generic Engine APIs;
-- Engine contains no game-specific trigger logic.
-
-### Milestone 6 — Tooling
-
-Implement:
-
-- state inspector;
-- command runner;
-- content registry inspector;
-- validation;
-- useful logging.
-
-Acceptance:
-
-- content mistakes are visible without stepping through source code;
-- developers can manipulate state quickly during testing.
-
----
+Each milestone has runnable acceptance gates. No feature is complete solely because its interface has been documented.
 
 ## 11. Reference Story / Vertical Slice
 
@@ -1208,26 +1117,23 @@ Examples:
 
 ---
 
-## 15. Open Questions
+## 15. Open Decisions
 
-These should be answered during implementation rather than guessed upfront:
+Resolve via prototypes and record decisions, rather than guessing package or library behavior:
 
-1. How much of the generic state store should be strongly typed?
-2. Should Story content initially use ScriptableObjects exclusively or mix in JSON?
-3. How should Story modules register Yarn commands automatically?
-4. How should asynchronous commands be represented?
-5. What is the minimum expression syntax needed before a parser becomes justified?
-6. Should the content registry and asset registry be one system or separate systems?
-7. Which presentation primitives belong in the initial kernel?
-8. How much runtime Story hot-reload is worth supporting?
-9. Should Story modules own their own save payloads or primarily use the central State Store?
-10. When should Addressables be introduced?
+1. Exact Unity 6 LTS, Yarn and third-party dependency versions/licenses/target platforms.
+2. Authoring-to-runtime package pipeline: serialized Unity assets, catalog and bundles/Addressables.
+3. Declarative UI schema and binding/update semantics.
+4. Canonical Engine state store ↔ Yarn variable types and lifecycle.
+5. Save safe-point and Yarn continuation support; future rollback semantics.
+6. Optional interpreted scripting: language/runtime, sandbox limits, IL2CPP, profiling.
+7. Story version migration compatibility, dev reload and native plugin packaging.
 
----
+See [ARCHITECTURE.md](./ARCHITECTURE.md#9-deferred-design-decisions).
 
 ## 16. Definition of Foundation Complete
 
-The first engine foundation is complete when a replacement Story package can:
+The first engine foundation is complete when two meaningfully different replacement Story packages run with the same Engine revision and a replacement Story package can:
 
 1. register its own modules;
 2. define arbitrary state keys;

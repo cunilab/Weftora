@@ -1,280 +1,83 @@
-# Roadmap
+# Roadmap — Reusable Engine + Dynamic Story
 
-This roadmap covers the reusable **Engine foundation** first. Game-specific systems stay in the Story layer.
+**Status:** v0.2 proposal. Each phase produces a runnable/testable contract. Story rules/UI/data remain replaceable; Engine remains generic.
 
-## Phase 0 — Repository Foundation
+## Phase 0 — Repo + contracts
 
-Goal: establish the Unity project and hard Engine/Story boundary.
+- [ ] Create Unity 6 LTS project, pin exact editor and package versions.
+- [ ] Install pinned Yarn Spinner; create Engine.Core, Unity runtime and optional Yarn adapter assemblies.
+- [ ] Story assembly references Engine API; Engine assemblies never reference Story.
+- [ ] Define Story manifest schema v1, stable ID rules, API compatibility policy, package loading errors.
+- [ ] Choose repo license and dependency license inventory; Git ignore/LFS, CI and test assemblies.
+- [ ] Add minimal Story example and architecture decision records.
 
-- [ ] Create Unity 6 LTS project
-- [ ] Add Yarn Spinner
-- [ ] Create `VisualGameEngine.Runtime.asmdef`
-- [ ] Create `VisualGameEngine.Story.asmdef`
-- [ ] Enforce Story → Engine dependency only
-- [ ] Create initial folder structure
-- [ ] Add Git ignore rules
-- [ ] Configure Git LFS for large assets if needed
-- [ ] Add basic coding conventions
+**Gate:** clean compile, automated dependency-direction check, Engine compiles after deleting Story, invalid manifest rejected.
 
-**Done when:** both assemblies compile and Story can reference Engine while Engine has no Story dependency.
+## Phase 1 — Kernel + loading
 
----
+- [ ] Bootstrap/service lifecycle; module registry/dependency order.
+- [ ] Typed state store + namespaced keys + change events.
+- [ ] Command registry with typed validation, result/error, async cancellation.
+- [ ] Signal bus with cleanup, ordering and loop protection.
+- [ ] Content ID/catalog registry + duplicate/missing ID validation.
+- [ ] Load single Story manifest and launch entrypoint; diagnostics.
 
-## Phase 1 — Kernel
+**Gate:** load Story A, register Story command/module, mutate state, emit signal, reject malformed package.
 
-Goal: create the smallest reusable runtime core.
+## Phase 2 — First playable VN
 
-### Lifecycle
+- [ ] Asset resolver (direct refs or ScriptableObjects first; stable ID API).
+- [ ] Generic layers: background, characters, CG, UI; show/hide/position/fade.
+- [ ] UI host with small declarative widget/action schema; basic input.
+- [ ] Audio channels BGM/SFX/voice.
+- [ ] Yarn adapter, node/choice runner, command bridge, single mapped state source.
+- [ ] Sample Story A: intro, branching conversation, choice, CG and menu.
 
-- [ ] Game bootstrap
-- [ ] Initialization order
-- [ ] Shutdown lifecycle
-- [ ] Service registration
+**Gate:** fully playable VN slice, only Story-defined content/rules, Engine unchanged.
 
-### State
+## Phase 3 — Save/load + flow
 
-- [ ] Generic typed state store
-- [ ] `Get`
-- [ ] `Set`
-- [ ] `Add`
-- [ ] `Remove`
-- [ ] State-change notifications
+- [ ] Atomic versioned save container, Story identity/version, schema checks.
+- [ ] Safe checkpoint contract; reconstruct UI/visual state at safe points.
+- [ ] Module persistence hooks/migrations; corruption and mismatch errors.
+- [ ] Declarative condition evaluator, event trigger registry, priority + action sequences.
+- [ ] Explicit signal/event execution ordering and failure handling.
+- [ ] One Story A conditional event and save/relaunch test.
 
-### Communication
+**Gate:** deterministic Story state restore; no claim of mid-command/animation rollback.
 
-- [ ] Command registry
-- [ ] Command execution
-- [ ] Async command support
-- [ ] Signal/message bus
-- [ ] Subscribe/unsubscribe
-- [ ] Signal payload support
+## Phase 4 — Dynamic rules + custom screens
 
-### Modules
+- [ ] Story-defined screens, layouts, bindings, themes, navigation and validation.
+- [ ] Story-defined custom commands/functions through public Engine API.
+- [ ] Prototype Lua interpreter against target Unity/IL2CPP, compatibility and security.
+- [ ] If prototype passes: optional script adapter, allowlisted API, errors, execution budget, script/state binding.
+- [ ] If prototype fails: retain declarative commands/conditions and document missing capabilities.
+- [ ] Editor command to validate Story catalogs, Yarn references, UI IDs/commands.
 
-- [ ] `IGameModule`
-- [ ] Module registration
-- [ ] Module initialization
-- [ ] Module shutdown
-- [ ] Dependency/error reporting
+**Gate:** game-specific rules/screens change with Story only; no C# Engine edits.
 
-### Diagnostics
+## Phase 5 — Second independent Story
 
-- [ ] Structured logger
-- [ ] Engine/Story log categories
+- [ ] Story B with custom life-sim-like UI, locations, schedules, events, economy variables.
+- [ ] Swap Story A → B without rebuilding/changing Engine code (within supported content/script pipeline).
+- [ ] Assert Engine source/assemblies contain no Story IDs and Story A deletion does not break Engine compile.
+- [ ] Reject duplicate IDs, invalid API versions, missing content and bad save migration.
+- [ ] Integration/playmode tests across both Story packages.
 
-**Done when:** a Story module can initialize, change state, register a command, and communicate through signals without custom Engine changes.
+**Gate:** same Engine revision/binary runs two meaningfully different games.
 
----
+## Phase 6 — Creator workflow + release hardening
 
-## Phase 2 — Content and Assets
+- [ ] Story package validator + diagnostic report and fast edit-preview-reload cycle.
+- [ ] Basic authoring docs, sample projects, API docs and debug/state/event inspector.
+- [ ] Test target platforms/IL2CPP, asset import/load/cache and memory behavior.
+- [ ] Error recovery, save backups, licensing review, package compatibility tests and CI.
+- [ ] Decide later: Addressables, editor extensions, localization pipeline, partial hot reload, rollback.
+- [ ] Tag foundation release only after gates pass.
 
-Goal: Story references stable IDs instead of hard-coded files.
+**Gate:** another creator can author/swap Story with docs and no Engine-source changes.
 
-- [ ] Content registry
-- [ ] Stable content IDs
-- [ ] Duplicate-ID detection
-- [ ] Missing-ID errors
-- [ ] Asset resolver
-- [ ] Sprite/image loading
-- [ ] Audio loading
-- [ ] Prefab/generic Unity object loading
-- [ ] Basic cache
-- [ ] Asset unloading strategy
+## Sequence guardrails
 
-Initial implementation can use direct Unity references or ScriptableObjects. Addressables can be added later behind the same API.
-
-**Done when:** Story can request an asset by ID and Engine resolves and loads it.
-
----
-
-## Phase 3 — Presentation
-
-Goal: expose reusable visual and audio primitives.
-
-### Views
-
-- [ ] Generic view host
-- [ ] Show/hide
-- [ ] Position
-- [ ] Scale
-- [ ] Layer/order
-- [ ] Opacity
-- [ ] Fade
-- [ ] Move
-- [ ] Crossfade
-- [ ] Basic shake/effects
-
-### UI
-
-- [ ] Screen host
-- [ ] Panel host
-- [ ] Modal/overlay host
-- [ ] Popup/notification support
-- [ ] Input blocking during transitions
-
-### Audio
-
-- [ ] BGM channel
-- [ ] SFX channel
-- [ ] Ambience channel
-- [ ] Voice channel
-- [ ] Volume settings
-- [ ] Fade/crossfade
-
-**Done when:** Story can present backgrounds, characters, CGs, UI, and audio using only generic Engine APIs.
-
----
-
-## Phase 4 — Yarn Integration
-
-Goal: make Yarn the default Story dialogue layer without putting game rules into Engine.
-
-- [ ] Yarn adapter
-- [ ] Start node API
-- [ ] Dialogue lifecycle signals
-- [ ] Read Engine state from Yarn
-- [ ] Write Engine state from Yarn
-- [ ] Expose generic Engine commands
-- [ ] Allow Story modules to register Yarn commands
-- [ ] Allow Story modules to register Yarn functions
-- [ ] Clear Yarn error reporting
-
-**Done when:** a Story Yarn file can run dialogue, access state, and invoke Story-defined behavior.
-
----
-
-## Phase 5 — Conditions and Flow Primitives
-
-Goal: provide generic tools for Story to build its own event/flow systems.
-
-- [ ] Condition interface/model
-- [ ] Equality operators
-- [ ] Numeric comparisons
-- [ ] AND
-- [ ] OR
-- [ ] NOT
-- [ ] State-value conditions
-- [ ] Story-registered custom predicates
-- [ ] Generic action sequence execution
-- [ ] Async action sequences
-
-Do **not** build dating, quests, time, locations, or inventory into Engine.
-
-A reference Story-side event module may be created to prove the API.
-
-**Done when:** Story can define a conditional flow/event without adding game-specific logic to Engine.
-
----
-
-## Phase 6 — Persistence
-
-Goal: save any Story-defined runtime state without Engine understanding its meaning.
-
-- [ ] Save container format
-- [ ] Save slots
-- [ ] State serialization
-- [ ] Module save hooks
-- [ ] Module load hooks
-- [ ] Save metadata
-- [ ] Timestamp
-- [ ] Save version
-- [ ] Backup/recovery handling
-- [ ] Migration hook
-- [ ] User settings separated from game progress
-
-**Done when:** quit/relaunch restores the same Story state and Story modules can persist their own data.
-
----
-
-## Phase 7 — Debugging and Validation
-
-Goal: make content-heavy development fast to test.
-
-### Runtime Debug
-
-- [ ] State inspector
-- [ ] Edit state values
-- [ ] Module inspector
-- [ ] Command runner
-- [ ] Signal history
-- [ ] Content registry inspector
-- [ ] Start Yarn node manually
-- [ ] Save/load controls
-
-### Validation
-
-- [ ] Duplicate content IDs
-- [ ] Missing asset IDs
-- [ ] Invalid conditions
-- [ ] Unknown commands
-- [ ] Missing Yarn references
-- [ ] Module dependency errors
-- [ ] Story manifest validation
-
-Target editor entry:
-
-```text
-Tools → Visual Game Engine → Validate Content
-```
-
-**Done when:** common Story mistakes can be identified without debugging C# manually.
-
----
-
-## Phase 8 — Reference Story
-
-Goal: prove that the Engine is reusable.
-
-Create a tiny sample Story containing:
-
-- [ ] two simple locations
-- [ ] one character
-- [ ] one Yarn conversation
-- [ ] one choice
-- [ ] arbitrary Story state
-- [ ] one Story module
-- [ ] one conditional event
-- [ ] one background
-- [ ] one character image
-- [ ] one CG
-- [ ] one audio track
-- [ ] save/load
-
-The sample Story is a test client, not part of Engine architecture.
-
-**Done when:** the entire sample can be deleted and replaced by another Story without modifying Engine code.
-
----
-
-## Phase 9 — Foundation Release
-
-Goal: stabilize the reusable API.
-
-- [ ] Review public Engine API
-- [ ] Remove Story-specific assumptions
-- [ ] Add API documentation
-- [ ] Add setup guide
-- [ ] Add example Story documentation
-- [ ] Add automated tests for core systems
-- [ ] Confirm supported Unity version
-- [ ] Confirm Yarn Spinner version
-- [ ] Choose project license
-- [ ] Tag first foundation release
-
-## Foundation Exit Criteria
-
-The Engine foundation is ready when a Story package can:
-
-1. register modules;
-2. define arbitrary state;
-3. register commands;
-4. emit and receive signals;
-5. register and resolve content;
-6. load and present assets;
-7. run Yarn dialogue;
-8. register Story-specific Yarn behavior;
-9. evaluate conditions;
-10. save/load its own state;
-11. use debug and validation tools;
-
-without modifying Engine source code.
+Do not build editor, complex Lua scripting, arbitrary mods, Addressables or life-sim-specific Engine systems before proving VN vertical slice and package contract. Fix missing Engine public primitives through explicit versioned changes; do not sneak Story gameplay into Engine.
