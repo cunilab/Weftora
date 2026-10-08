@@ -58,4 +58,4 @@ Rust = implementation language for **engine maintainers**. Story = separate auth
 
 ## Status
 
-**Docs + docs-CI proposal.** No Rust workspace, playable engine, CLI, exporter or runtime tests committed yet. Future example directories remain roadmap tasks. Current repo: `cunilab/Weftora`. Windows x64 prioritized; other platforms not implemented or validated.
+**Docs-only proposal with optional local docs checker; no GitHub Actions.** No Rust workspace, playable engine, CLI, exporter or runtime tests committed yet. Future example directories remain roadmap tasks. Current repo: `cunilab/Weftora`. Windows x64 prioritized; other platforms not implemented or validated.
