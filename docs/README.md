@@ -2,7 +2,7 @@
 id: WFT-DOCS-001
 title: Weftora Documentation Index
 type: docs_index
-doc_version: 0.2.1
+doc_version: 0.2.2
 status: proposed
 implementation: not_applicable
 created: 2026-10-08
@@ -28,7 +28,7 @@ Single entry point for Weftora engineering/product docs. **Metadata in each file
 | [Architecture](./architecture.md) | WFT-ARCH-001 | 0.6.0 | proposed | not_started | 2026-10-08 | windows-first |
 | [Platform Plan](./platforms.md) | WFT-PLAT-001 | 0.1.1 | proposed | not_started | 2026-10-08 | multiplatform-planning |
 | [Success Criteria](./success-criteria.md) | WFT-ACCEPT-001 | 0.2.0 | proposed | not_started | 2026-10-08 | windows-first |
-| [Documentation Standards](./standards.md) | WFT-STD-001 | 0.1.2 | proposed | not_applicable | 2026-10-08 | documentation |
+| [Documentation Standards](./standards.md) | WFT-STD-001 | 0.1.3 | proposed | not_applicable | 2026-10-08 | documentation |
 | [Rust-native Engine ADR](./adr/0001-rust-native-engine.md) | WFT-ADR-001 | 0.1.0 | proposed | not_applicable | 2026-10-08 | documentation |
 
 ## Interpretation
@@ -49,6 +49,7 @@ Single entry point for Weftora engineering/product docs. **Metadata in each file
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.2.2 | Align index with removal of GitHub Actions. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.2.1 | Update docs checker status and standards revision. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.2.0 | Register new Rust decision ADR and updated docs revisions. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.1 | Track roadmap example-planning revision; no example files. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
