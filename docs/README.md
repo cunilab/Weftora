@@ -23,20 +23,12 @@ Single entry point for Weftora engineering/product docs. **Metadata in each file
 
 | Document | ID | Doc version | Status | Implementation | Updated | Scope |
 | --- | --- | --- | --- | --- | --- | --- |
-| [Product Requirements](../PRD.md) | WFT-PRD-001 | 0.5.0 | proposed | not_started | 2026-10-08 | windows-first |
+| [Product Requirements](../PRD.md) | WFT-PRD-001 | 0.4.1 | proposed | not_started | 2026-10-08 | windows-first |
 | [Roadmap](../ROADMAP.md) | WFT-ROADMAP-001 | 0.6.0 | proposed | not_started | 2026-10-08 | windows-first |
-| [Architecture](./architecture.md) | WFT-ARCH-001 | 0.6.0 | proposed | not_started | 2026-10-08 | windows-first |
+| [Architecture](./architecture.md) | WFT-ARCH-001 | 0.5.1 | proposed | not_started | 2026-10-08 | windows-first |
 | [Platform Plan](./platforms.md) | WFT-PLAT-001 | 0.1.1 | proposed | not_started | 2026-10-08 | multiplatform-planning |
-| [Success Criteria](./success-criteria.md) | WFT-ACCEPT-001 | 0.2.0 | proposed | not_started | 2026-10-08 | windows-first |
+| [Success Criteria](./success-criteria.md) | WFT-ACCEPT-001 | 0.1.1 | proposed | not_started | 2026-10-08 | windows-first |
 | [Documentation Standards](./standards.md) | WFT-STD-001 | 0.1.0 | proposed | not_applicable | 2026-10-08 | documentation |
-
-## Game authoring examples
-
-- [Examples overview](../examples/README.md) — first game workflow, layout, file responsibilities.
-- [Hello Story](../examples/hello-story/README.md) — text-only Yarn starter and provisional JSON catalogs. Not runnable until player implemented.
-- Phase 5 adds independent life-sim Story B later; not included yet.
-
-Example READMEs are authoring aids, not versioned governance specs.
 
 ## Interpretation
 
@@ -56,5 +48,5 @@ Example READMEs are authoring aids, not versioned governance specs.
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
-| 2026-10-08 | 0.1.1 | Register examples and updated doc versions. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
+| 2026-10-08 | 0.1.1 | Track roadmap example-planning revision; no example files. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.0 | Introduce versioned doc register and index. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

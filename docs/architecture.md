@@ -2,7 +2,7 @@
 id: WFT-ARCH-001
 title: Weftora Architecture
 type: architecture
-doc_version: 0.6.0
+doc_version: 0.5.1
 status: proposed
 implementation: not_started
 created: 2026-10-08
@@ -167,7 +167,7 @@ No engine-level `RelationshipSystem`, `TimeSystem`, `ShopSystem`, or `InventoryS
 Preferred dev format: human-editable directories. Release packaging can use a directory, archive or platform asset container decided by deployment spikes. IDs—not paths—form Story-facing references.
 
 ```text
-examples/hello-story/
+stories/sample-vn/
 ├── manifest.json
 ├── data/             # characters, states, locations, catalogs
 ├── dialogue/         # Yarn source; compiled during build/validation
@@ -184,7 +184,7 @@ Manifest v1 **proposal**, not supported implementation:
 ```json
 {
   "schemaVersion": 1,
-  "id": "example.hello_story",
+  "id": "sample.vn",
   "version": "0.1.0",
   "requiredEngineApi": "^0.1.0",
   "entrypoint": "intro",
@@ -195,11 +195,9 @@ Manifest v1 **proposal**, not supported implementation:
     "screens": ["screens/catalog.json"],
     "assets": ["assets/catalog.json"]
   },
-  "capabilities": ["dialogue", "screens"]
+  "capabilities": ["dialogue", "images", "audio", "screens"]
 }
 ```
-
-**Example package:** [`examples/hello-story/`](../examples/hello-story/README.md) demonstrates dialogue, catalog, menu and manifest in Story files, not Rust. **Authoring specimen only:** catalog/UI schema is proposed and cannot be compiled/played by Weftora yet. Renderer/audio/save examples follow Phase 3.
 
 **Package rules:**
 - Unique namespaced stable IDs; reject duplicates, missing IDs, unknown widgets/commands, invalid Yarn nodes and invalid conditions with source locations.
@@ -371,5 +369,4 @@ No Rust code, tools, executable binaries, or tests are claimed by this proposal.
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
-| 2026-10-08 | 0.6.0 | Add example Story contract and provisional schema notice. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

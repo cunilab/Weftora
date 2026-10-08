@@ -34,13 +34,6 @@ CLI commands above = **planned interface**, not implemented. Creators should not
 - **Native extension:** genuinely new low-level capability needs Engine/adapter code and release; ordinary Story changes must not.
 - **Distribution:** one compatible compiled Engine/player can launch different Story packages; export bundles existing target player with Story files. Supported target builds must exist; no arbitrary platform support promised.
 
-## Example: create first game
-
-- [Examples overview](./examples/README.md) — proposed game folder layout, author workflow, file roles.
-- [Hello Story](./examples/hello-story/README.md) — minimal branching Yarn dialogue, menu, manifest, catalogs and expected outcomes.
-
-**Examples currently DESIGN ONLY.** No Weftora player/CLI yet; sample JSON keys provisional. Not runnable today.
-
 ## Rust workspace (proposed)
 
 ```text

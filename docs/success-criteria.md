@@ -2,7 +2,7 @@
 id: WFT-ACCEPT-001
 title: Weftora Roadmap Success Criteria
 type: acceptance_criteria
-doc_version: 0.2.0
+doc_version: 0.1.1
 status: proposed
 implementation: not_started
 created: 2026-10-08
@@ -67,7 +67,7 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 | ID | Mandatory success criterion | Verification / proof |
 | --- | --- | --- |
 | P2-01 | Windows x64 player starts/exits cleanly, displays background sprite + text/choice UI, accepts keyboard/mouse, plays audible sample, loads assets through stable IDs | Manual smoke checklist + logs on recorded Windows OS/GPU/audio device; closed/relaunched successfully |
-| P2-02 | `examples/hello-story/dialogue/intro.yarn` compiles; choice selection reaches both expected endings | Match both paths against `examples/hello-story/tests/expected.json` in a real Yarn adapter test; example fixture currently unexecuted |
+| P2-02 | Yarn source compiles/loads; narrative starts node, shows lines, offers choice(s), follows selected branch, reaches deterministic end | Fixture `intro.yarn` with at least two branches; captured line/choice/branch trace compared against expected |
 | P2-03 | Yarn command reads/writes **canonical Engine state** (or explicitly synchronized mapping) without conflicting shadow values | Integration fixture: choice changes state, command reads it, next dialogue condition sees same value; wrong type reports diagnostic |
 | P2-04 | Invalid Yarn syntax, missing node and unknown Story command fail with useful file/node context; no process panic | Three negative fixtures; expected error IDs and non-silent failure |
 | P2-05 | Bevy/Yarn adapters stay outside headless crates; tested compatible version/feature set locked; unresolved upstream gaps documented | `cargo metadata` graph check, reproducible Windows build, ADR with known limitations and license inventory |
@@ -81,7 +81,7 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 
 | ID | Mandatory success criterion | Verification / proof |
 | --- | --- | --- |
-| P3-01 | Story A extends `examples/hello-story/` to complete VN and launches via `weftora-player.exe`; has menu, two dialogue branches/endings or outcomes, background, character image, CG, audio, visual transition, choice UI | Recorded scripted walkthrough for each branch, interactive Windows player test and asset manifest |
+| P3-01 | Story A launches from external folder through `weftora-player.exe`; has menu, two dialogue branches/endings or outcomes, background, character image, CG, audio, visual transition, choice UI | Recorded scripted walkthrough for each branch, interactive Windows player test and asset manifest |
 | P3-02 | Story-owned screen definitions, theme, sprite and Yarn lines change without modifying/rebuilding player | Edit external Story, validate/relaunch, compare pre/post player SHA-256: **same hash**, new content visible |
 | P3-03 | Keyboard/mouse choices and menu navigation work; windows resize with readable UI; screen bindings reflect Engine state | Input/UI smoke steps on real Windows system with state assertions |
 | P3-04 | One canonical gameplay state is shared across Yarn and Engine; no stale values after choice/command/update | Integration test: Yarn → Engine → Yarn round-trip and type-error case |
@@ -174,5 +174,4 @@ evidence: "<CI artifact / log / screenshots / issue / test file>"
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
-| 2026-10-08 | 0.2.0 | Attach acceptance to Hello Story fixture. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

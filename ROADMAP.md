@@ -30,7 +30,7 @@ supersedes: null
 - [ ] Create `weftora-api`, `weftora-core`, `weftora-story`, CLI/player stubs; design dependency firewall.
 - [ ] Specify standalone Windows `weftora.exe` CLI + `weftora-player.exe` release artifacts; Stories remain non-Cargo source folders.
 - [ ] Define manifest v1, schema/API compatibility, stable IDs and capability checks.
-- [ ] Provide `examples/hello-story/` authoring fixture: manifest, Yarn, menu, catalogs, expected outcomes, tutorial. Add invalid fixtures separately; write ADRs.
+- [ ] **Create starter example later, during Phase 0:** `examples/hello-story/` (not included in planning PR). Include `README.md`, `manifest.json`, `dialogue/intro.yarn`, minimal data/catalogs, `screens/main_menu.json`, and expected outcomes. Use provisional schema until parser contract tested; write ADRs and invalid fixtures.
 - [ ] CI: fmt, clippy, tests, headless forbidden dependencies/unsafe assertions.
 
 **Success:** P0-01..P0-05 — locked Windows build, enforced dependency firewall, versioned manifest positive/negative tests, documented targets/licenses, green CI. [Evidence/tests](./docs/success-criteria.md#phase-0--contract--rust-workspace).
@@ -50,7 +50,7 @@ supersedes: null
 ## Phase 2 — Bevy + Yarn feasibility spikes
 
 - [ ] Pin/test Bevy renderer on Windows x64 (actual Windows GPU drivers); basic scene, sprite, UI, audio and asset loading.
-- [ ] Test `yarnspinner` Rust compiler/runtime without Bevy for dialogue/choices; cover both `examples/hello-story/dialogue/intro.yarn` paths.
+- [ ] Test `yarnspinner` Rust compiler/runtime without Bevy for dialogue/choices; validate and execute both paths of planned `examples/hello-story/dialogue/intro.yarn`.
 - [ ] Test Bevy Yarn integration or bridge: node start/choices, custom commands, mapped variables, error handling.
 - [ ] Investigate Yarn Rust WIP gaps; isolate adapter dependency, document fallback.
 - [ ] Pick minimal UI primitives and Story-backed asset resolver design.
@@ -65,7 +65,7 @@ supersedes: null
 - [ ] External Story image/audio catalogs with stable IDs.
 - [ ] Single source of truth for Yarn↔Engine variable state.
 - [ ] Save container, safe checkpoints, version checks, corruption handling; use Windows user-writable save directory, not packaged Story directory.
-- [ ] Extend `examples/hello-story/` to complete Story A VN: character/CG, audio, custom menu and persisted choice.
+- [ ] Upgrade planned `examples/hello-story/` into first **runnable** Story A: branching choice, character/CG, custom menu, audio and persisted choice. Include tutorial showing how to edit Story without rebuilding Engine.
 - [ ] Prebuilt player loads external Story A path; edit dialogue/screens/assets and run without recompiling player.
 
 **Success:** P3-01..P3-06 — playable branching VN, prebuilt Windows player, unchanged SHA-256 after Story edits, UI/input/audio, Yarn state bridge, save/relaunch + corrupted-save handling. [Evidence/tests](./docs/success-criteria.md#phase-3--first-playable-vn--safe-persistence).
@@ -83,7 +83,7 @@ supersedes: null
 
 ## Phase 5 — Second Story proves reuse
 
-- [ ] Add future separate `examples/life-sim/` Story B with locations, schedules, arbitrary stats, events and custom screens.
+- [ ] **Create second example later, during Phase 5:** `examples/life-sim/` Story B with locations, schedules, arbitrary stats, events and custom screens. Must differ meaningfully from VN sample.
 - [ ] Run Story A and B using **identical compiled player binary**; two standalone external packages, no game-specific Rust compilation.
 - [ ] Verify Engine compiles after deleting either Story.
 - [ ] Invalid package, missing ID, incompatible schema/save version and command misuse negative tests.
@@ -98,7 +98,7 @@ supersedes: null
 - [ ] State, commands, signals, event traces, Yarn node inspect/debug UI.
 - [ ] Localization/content pipeline and package version/compatibility checks.
 - [ ] Windows x64 release build, asset packaging, dependency security/license checks, GPU/audio profiling.
-- [ ] API/how-to docs, sample games, regression suite and first release tag.
+- [ ] API/how-to docs, runnable `examples/hello-story/` and `examples/life-sim/` with creator tutorials, regression suite and first release tag.
 - [ ] GUI editor only when core authoring UX and runtime are stable.
 
 **Windows foundation exit gate (ALL required):**
@@ -126,6 +126,16 @@ supersedes: null
 
 **Per-target success:** P7-01..P7-07 — **after** Windows foundation PASS, one selected target runs both Stories and existing golden tests, real-device I/O/save, validated export, Windows regression preserved. Each OS marked supported separately. [Evidence/tests](./docs/success-criteria.md#phase-7--per-platform-port-locked-until-p6-pass).
 
+## Example delivery policy
+
+- **Current PR:** roadmap requirement only. No `examples/` files/directories created.
+- **Phase 0:** create starter Story structure + documentation only after manifest draft exists; do not claim playable.
+- **Phase 2:** test Yarn branching from example via real adapter; record results.
+- **Phase 3:** make Hello Story a playable Windows VN with UI, images/audio and safe save/load.
+- **Phase 5:** add separate life-sim Story; run both on identical player binary.
+- **Phase 6:** examples, author walkthroughs, validation and Windows export must work on clean machine without Rust/Cargo.
+- Example content remains external Story data; Engine must not depend on example packages.
+
 ## Guardrails
 
 - **Windows x64 until foundation complete;** no premature other-platform port/CI/export promises. Cross-platform interfaces remain generic.
@@ -136,11 +146,11 @@ supersedes: null
 - **No unsupported rollback/sandbox guarantees**; prove safety and continuation first.
 - **Do not spend first milestones building GUI editor/custom story language**; prove runtime + creator loop.
 
-See [docs/architecture.md](./docs/architecture.md) for boundaries, runtime proposal and research gates; [examples](./examples/README.md) show proposed creator workflow. Samples not executable yet.
+See [docs/architecture.md](./docs/architecture.md) for boundaries, runtime proposal and research gates.
 
 ## Change History
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
-| 2026-10-08 | 0.6.0 | Link Phase 0/2/3/5 to authoring examples. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
+| 2026-10-08 | 0.6.0 | Plan future Hello Story and life-sim examples without adding example files. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
