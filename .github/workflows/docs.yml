@@ -1,0 +1,18 @@
+name: Documentation checks
+on:
+  pull_request:
+    paths: ['README.md', 'PRD.md', 'ROADMAP.md', 'docs/**', 'scripts/check_docs.py', '.github/workflows/docs.yml']
+  push:
+    paths: ['README.md', 'PRD.md', 'ROADMAP.md', 'docs/**', 'scripts/check_docs.py', '.github/workflows/docs.yml']
+permissions:
+  contents: read
+jobs:
+  docs:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Check docs
+        run: python scripts/check_docs.py
