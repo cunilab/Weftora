@@ -2,7 +2,7 @@
 id: WFT-PLAT-001
 title: Weftora Platform Plan
 type: platform_plan
-doc_version: 0.1.1
+doc_version: 0.1.2
 status: proposed
 implementation: not_started
 created: 2026-10-08
@@ -109,7 +109,7 @@ Windows ARM64, Android TV, handheld controllers and consoles require separate bu
 
 All required before implementation:
 1. Phase 6 Windows foundation exit signed off.
-2. Freeze platform-independent Story schema and Engine API version (with explicit migration rules).
+2. Freeze or explicitly version supported manifest schemas, Story-facing Engine API/capability contracts, save formats and dialogue artifacts using [ADR 0002](./adr/0002-versioning-compatibility.md); platform player build identity differs, Story semantics/requirements must not.
 3. Select **one** next target; write ADR with tested Rust/Bevy/Yarn/platform toolchain version and fallback.
 4. Define target player packaging, storage, lifecycle, input, renderer/audio and signing/distribution path.
 5. Add target-specific CI + real-device smoke tests only once target work begins.
@@ -129,4 +129,5 @@ All required before implementation:
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.1.2 | Clarify platform build identity versus stable Story/API compatibility contract. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

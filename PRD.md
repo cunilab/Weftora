@@ -2,7 +2,7 @@
 id: WFT-PRD-001
 title: Weftora Product Requirements
 type: product_requirements
-doc_version: 0.5.0
+doc_version: 0.6.0
 status: proposed
 implementation: not_started
 created: 2026-09-29
@@ -67,7 +67,7 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - Third-party Story content is untrusted data, not a native plugin or proven script sandbox. Forbid unrestricted host filesystem/network/native access.
 - Restrict paths to package root; reject absolute/UNC/drive paths, parent traversal, Windows reserved names, case-insensitive collisions, junctions/reparse-point/symlink escape, archive traversal and decompression bombs. Define bounded file count/size/expanded total/depth with Windows negative fixtures.
 - Load external Story manifest, content catalogs and versioned entrypoint through generic loader.
-- Validate namespaced IDs, schema/API range, required features, catalog references and file paths.
+- Validate namespaced IDs, integer manifest schema, declared Engine API SemVer range, **versioned required capabilities**, catalog references and file paths; accept only supported combinations. Never assume player release number equals API version.
 - Reject invalid packages atomically, report file/location and cause; avoid partial active Story state.
 - Support one active Story at MVP; future dependencies/mods require explicit compatibility model.
 
@@ -116,10 +116,11 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - Development Story folder may differ from release Story bundle.
 
 ### R10. Save/load
-- Save header separates `saveFormat`, `engineApi`, `storyId`, `storyVersion`. Wrong Story, incompatible API/format/version rejected unless explicit tested migration.
+- Save header separates `saveFormat` (global container format), `storyId`, `storyVersion` (provenance), `saveSchema` (Story persistence contract), stable checkpoint ID and writer Engine API/release (provenance). Wrong Story, unsupported format/schema or incompatible checkpoint rejects unless explicit tested migration. **Story-version difference alone must not reject** compatible saves.
 - Load through bounded read, version check, temporary migration and full schema/checkpoint validation before atomic activation; bad save never overwrites live state or good snapshot.
 - Versioned save container with Story identity, scoped state, module data and safe checkpoint.
 - Atomic writes/recovery, save slot metadata, clear incompatible/corrupt state behavior.
+- Save compatibility checks active Story schema/checkpoint, not the writer's Engine API/release equality; prior version is informational unless a documented engine save-format constraint applies. Migrations require explicit source/target schema mapping, no implicit downgrade, dry-run on temp snapshot, validation and failure recovery.
 - Version migration hooks defined; arbitrary mid-command/animation continuation out of scope until proven.
 
 ### R11. Story customization
@@ -135,6 +136,7 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 
 ### R13. Engine distribution vs framework dependency
 - `weftora-player` standalone executable loads external Story folder/package selected at launch; no game-specific compiled Rust needed.
+- Export records exact player/CLI release build identity and SHA-256, Story package version/identity, supported API/capabilities, compiled dialogue artifact version and Story content hashes. Prevent mismatched author CLI/compiler/player combinations; only release builds shipped together qualify as tested pairs.
 - `weftora export` bundles target-specific prebuilt player with validated Story content into playable distribution on supported platforms. Player binaries are built by Engine maintainers; cross-platform binaries not assumed available until tested.
 - Story source is never a Cargo crate or mandatory Rust/Bevy project. Editor optional; CLI/content source first-class.
 - Same compiled player runs Story A and Story B; change Story files without player rebuild. Native extensions require explicit Engine capability/release.
@@ -155,6 +157,14 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 ### R16. Measured Windows foundation performance
 
 Provisional, **unmeasured** budgets: cold launch to interactive menu ≤5 s; each sample Story idle resident RAM ≤750 MiB; input-to-visible-feedback p95 ≤100 ms; `weftora check` on Hello Story ≤2 s. Phase 2 records Windows OS/GPU/driver, asset fixture and startup/input/memory/validation baseline, then approves or revises these numeric targets via ADR before P6. P6 measures five cold launches, 100 interactions, memory in A/B and CLI check; releases blocked by unexplained budget breaches.
+
+### R17. Independent versioning and compatibility contract
+
+- Follow [ADR 0002](./docs/adr/0002-versioning-compatibility.md) as **proposed design**, subject to Phase 0 approval. Version separately: Engine release SemVer, Story-facing Engine API SemVer, manifest schema integer, Story release SemVer, global save container format integer, Story-owned `saveSchema` integer, compiled dialogue artifact format integer; docs and Rust crate versions independent.
+- Pre-1.0 Engine API minors may break; stable API: additive minor, corrective patch, breaking major. No forced Engine `1.0.0` at Phase 6. State exact supported API version range and capability versions rather than equating Engine binary version with Story requirements. Pre-release eligibility must be explicit.
+- `weftora check/run/export` reject unsupported manifest schema, Engine API ranges, missing capability versions and incompatible compiler artifacts with actionable errors **before activation/export**.
+- Story text/assets-only updates preserve `saveSchema` and valid checkpoint IDs; old saves load. Story state/checkpoint contract breaks require schema bump plus migration or refusal. An unchanged Story version does not excuse incompatible saved data.
+- Publish compatibility matrix for Engine update, Story patch, missing capabilities, changed checkpoint, corrupt data, failed migration and unsupported downgrade.
 
 ## 6. Ownership rules
 
@@ -184,7 +194,7 @@ When unclear: if gameplay behavior changes between game genres, default to Story
 - Rules language (declarative-only MVP; Rhai prototype optional).
 - Story packaging and native resource processing.
 - Yarn state bridge and safe checkpoint/continuation behavior.
-- Stable API/Story/save versioning and migration policy.
+- [ADR 0002](./docs/adr/0002-versioning-compatibility.md) — proposed API ranges, capabilities, Story/save/checkpoint contract, dialogue artifact and release identity; refine exact fields through Phase 0 tests.
 
 Use [architecture](./docs/architecture.md) for rationale, [roadmap](./ROADMAP.md) for ordered execution, and [success criteria](./docs/success-criteria.md) for mandatory executable PASS gates. Claims here are requirements, not implemented features.
 
@@ -192,5 +202,6 @@ Use [architecture](./docs/architecture.md) for rationale, [roadmap](./ROADMAP.md
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.6.0 | Specify independent release/API/manifest/save/artifact compatibility and migration policy. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.5.0 | Resolve Story package/action, Yarn compilation, save compatibility and release budget gaps. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.4.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

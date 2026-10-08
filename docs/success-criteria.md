@@ -2,7 +2,7 @@
 id: WFT-ACCEPT-001
 title: Weftora Roadmap Success Criteria
 type: acceptance_criteria
-doc_version: 0.2.0
+doc_version: 0.3.0
 status: proposed
 implementation: not_started
 created: 2026-10-08
@@ -27,7 +27,7 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 - **Automation:** Rust unit/integration, CLI acceptance, manifest fixtures and headless golden tests. Use CI run IDs and captured stdout/stderr. Manual gameplay/device checks need recorded test steps/results; include video/screenshots when useful, never as sole proof of functional correctness.
 - **Binary identity:** record SHA-256 of `weftora-player.exe` before and after Story edits and across sample Stories. Equal hash proves same artifact; also verify each package runs successfully. Do not compare exports that intentionally include different Story assets as whole-directory hashes.
 - **Negative behavior:** invalid input must yield documented error/nonzero exit (CLI) or controlled player error, not panic/silent success/partial Story activation. Schema/API incompatibility rejects **before** gameplay.
-- **Versions:** Story manifest, Engine API and save format versioning independent; compatibility/migration outcomes tested explicitly.
+- **Versions:** Engine release, Engine API, manifest schema, Story release, global save format, Story-owned saveSchema and dialogue artifact independent. Story release changes alone do **not** invalidate saves. Compatibility requires matching API ranges/versioned capabilities, stable checkpoint IDs or explicit migration; see [ADR 0002](./adr/0002-versioning-compatibility.md).
 - **Regression:** all earlier phases' mandatory tests continue passing on current Engine head. A new phase cannot silently invalidate prior acceptance.
 - **Windows-first:** Phase 0–6 tests/builds on Windows x64 only. Keep platform-independent Rust core interfaces without creating Linux/macOS/mobile/Web implementation or CI. Phase 7 unavailable until Phase 6 passes.
 
@@ -43,6 +43,7 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 | P0-04 | Windows x64 release target, provisional minimum OS support, version/license policy and dependency constraints documented; no unexplained `unsafe` in headless domain crates | ADR, pinned dependency inventory, automated `#![forbid(unsafe_code)]` policy where applicable |
 | P0-05 | CI blocks fmt/clippy/tests, manifest/architecture graph and docs link/metadata/index violations | Clean Windows CI and injected failing fixture |
 | P0-06 | Time-boxed Yarn compiler/runtime source-choice probe before headless dialogue/state API freeze; unsupported feature/versions and fallback documented | Input fixture, Windows logs, tested versions, actual choice result or failure + fallback ADR; not full P2 PASS |
+| P0-07 | Independent versioning ADR reviewed; manifest schema, Engine API SemVer range, versioned capabilities, Story release, saveFormat/saveSchema/checkpoint and dialogue artifact contract defined **before schema freeze** | Version matrix with valid/invalid manifest fixtures, unknown capability, incompatible API range, prerelease handling, documented diagnostics and reviewed ADR |
 
 **PASS evidence:** Windows CI job, version/schema fixture test report, dependency graph report, ADRs. **Not enough:** empty crate stubs with no manifest tests.
 
@@ -56,7 +57,7 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 | P1-02 | State `Get/Set/Add/Remove/Exists`, defaults and change notifications behave for bool/int/finite float/string; invalid type, missing key and nonfinite numeric value handled explicitly | Unit/property tests: mutation, notification counts, serialization-friendly semantics and expected errors |
 | P1-03 | Registered generic command accepts typed args and returns success/error; async operation completes or cancels predictably; unknown command/bad args are rejected | Integration test of success, invalid args, cancellation and cleanup |
 | P1-04 | Signals delivered with documented deterministic ordering; subscribe/unsubscribe works; recursion/loop limit prevents unbounded dispatch | Golden trace for nested emits and loop fixture ending in explicit bounded error |
-| P1-05 | External Story catalog/manifest registers initial commands/content IDs; duplicate/missing ID diagnostics; `weftora check` and headless `run` skeletons use same loader | CLI fixture for valid + invalid Story. **Full Story-authored event scheduling deferred to P4** |
+| P1-05 | External Story catalog/manifest registers initial commands/content IDs; compatible Engine API range + capability/version accepted and missing/incompatible ones refused; `weftora check` and headless `run` skeletons share loader | CLI valid + invalid Story fixtures: Engine patch-compatible/additive API, missing capability, incompatible API, unknown schema and duplicate ID. **Full events deferred to P4** |
 | P1-06 | Same input command/signal sequence generates **byte-identical normalized state + event trace** for 10 fresh runs on same Windows toolchain | Golden fixtures stored in repo; 10/10 comparisons match; no unstable timestamps/random order in normalized output |
 
 **PASS evidence:** headless test log and 10-run golden diff. **Not enough:** compiled interfaces without executable command/state tests.
@@ -72,7 +73,7 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 | P2-03 | Yarn command reads/writes **canonical Engine state** (or explicitly synchronized mapping) without conflicting shadow values | Integration fixture: choice changes state, command reads it, next dialogue condition sees same value; wrong type reports diagnostic |
 | P2-04 | Invalid Yarn syntax, missing node and unknown Story command fail with useful file/node context; no process panic | Three negative fixtures; expected error IDs and non-silent failure |
 | P2-05 | Bevy/Yarn adapters stay outside headless crates; tested compatible version/feature set locked; unresolved upstream gaps documented | `cargo metadata` graph check, reproducible Windows build, ADR with known limitations and license inventory |
-| P2-06 | Fallback adapter meets same author contract, compiler/runtime artifact and check/run/export responsibilities defined; Windows performance baseline and numeric P6 budgets approved | Comparative dialogue tests, source diagnostics, artifact/version ADR and startup/RAM/input/CLI measurements |
+| P2-06 | Fallback adapter meets same author contract; independent dialogue artifact format and compiler identity, version handshake, `check/run/export` boundaries defined; Windows performance baseline and numeric P6 budgets approved | Comparative dialogue tests; unsupported artifact rejection, compiler/player release identity + source diagnostics, baseline/ADR |
 
 **PASS evidence:** runnable Windows smoke sample, Yarn fixture traces, adapter tests, version ADR. **Not enough:** opening a window without executable Yarn dialogue.
 
@@ -86,8 +87,9 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 | P3-02 | Story-owned screen definitions, theme, sprite and Yarn lines change without modifying/rebuilding player | Edit external Story, validate/relaunch, compare pre/post player SHA-256: **same hash**, new content visible |
 | P3-03 | Keyboard/mouse choices and menu navigation work; windows resize with readable UI; screen bindings reflect Engine state | Input/UI smoke steps on real Windows system with state assertions |
 | P3-04 | One canonical gameplay state is shared across Yarn and Engine; no stale values after choice/command/update | Integration test: Yarn → Engine → Yarn round-trip and type-error case |
-| P3-05 | Safe save/relaunch/load retains canonical state/view; Story ID/version, Engine API and saveFormat mismatches or bad migration refuse without partial activation | Roundtrip plus compatibility negative matrix, Windows smoke; no mid-async save promise |
-| P3-06 | Save uses user-writable Windows location, not immutable package assets; corrupt/incompatible save rejected with clear error and no state corruption | Negative save fixtures + clean save can still load after bad save attempt |
+| P3-05 | Safe save/relaunch/load restores state/view using matching Story ID, supported saveFormat, Story-owned saveSchema and stable/mapped checkpoint; Story **version difference alone** does not refuse; writer Engine API is provenance rather than automatic rejection | Roundtrip and cross-version compatibility negative matrix; wrong Story/schema/format/checkpoint reject or explicitly migrate atomically; no mid-async save |
+| P3-06 | Save uses user-writable Windows location; corrupt/incompatible save or failed migration reports error and preserves previous state and original good save | Negative fixtures + clean save recoverable after failure; no package write | 
+| P3-07 | Story text/assets-only patch changing `storyVersion` but not `saveSchema` or checkpoint preserves existing save; breaking state/checkpoint changes explicitly migrate or refuse, downgrade not implied | Two released Story revisions on same player binary: old save loads patch; removed checkpoint and schema bump yield migration or safe rejection |
 
 **PASS evidence:** player build SHA-256, Story A branch walkthroughs, two successive content edits proving no recompile, checkpoint restore tests. **Not enough:** demo running only from Cargo project.
 
@@ -115,7 +117,7 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 | P5-02 | Same `weftora-player.exe` SHA-256 launches and completes Story A + B; no game-specific compiled Rust crate, no Engine source edits/rebuild between launches | Record one binary hash, launch commands and full smoke outputs for both packages |
 | P5-03 | Removing/renaming both Story folders does **not** break Engine crate compilation; each Story can be replaced without source dependency | Headless `cargo check` and unit tests with Story fixtures isolated; runtime missing-package error is controlled |
 | P5-04 | Reject duplicate/case-colliding IDs, missing assets/node/command, incompatible schema/API/save/UI and UNC/traversal/junction/oversized/archive-bomb content; no partial activation | Negative Windows fixture matrix incl. reparse point, resource limits and unchanged prior state |
-| P5-05 | Save from A cannot silently load in B; failed package load does not overwrite prior good state/saves; compatible migration case succeeds if migration feature shipped, otherwise rejects clearly | Cross-Story save + failure recovery tests |
+| P5-05 | Save from A cannot load in B; Story patch and compatible Engine patch/additive capability release remain valid; missing capability, changed checkpoint/saveSchema or incompatible downgrade migrate explicitly or reject safely | Two Story packages and revision fixtures, cross-Story save, compatible and incompatible engine/story version combinations, preserved prior state |
 
 **PASS evidence:** one binary hash + both Story logs, isolation build check, negative test matrix. **Not enough:** second Story is cosmetic variation of VN.
 
@@ -126,16 +128,17 @@ A phase is **PASS** only if **every mandatory criterion** passes and repeatable 
 | ID | Mandatory success criterion | Verification / proof |
 | --- | --- | --- |
 | P6-01 | Prebuilt `weftora.exe` supports `new`, `check`, `run`, `export`; new Story scaffolds valid content; invalid `check` fails with nonzero exit + actionable diagnostic | CLI integration suite with example invocation, assertions and exit codes |
-| P6-02 | `export` produces standalone Windows game directory (or documented package) with player + Story + assets and **no author Cargo/Rust installation** | Export fixture, verify files/manifest, launch on clean Windows x64 machine/VM without Rust toolchain or source checkout |
+| P6-02 | `export` produces standalone Windows game with Story/assets and **no author Cargo/Rust**; release metadata pins exact player SHA, author CLI/compiler release, Story/content hashes and supported compiled dialogue format | Export fixture, inspect release manifest/checksum, refuse mismatched CLI/player/compiler; launch clean Windows x64 VM |
 | P6-03 | Story A/B use same compiled player; edits to rule/dialogue/UI/assets change outcomes without binary changes | Repeat P3/P4/P5 hash and fixture checks against **release build**, not debug binary |
 | P6-04 | Full Windows player integration: dialogue branches, CG, UI/nav, audio channels, keyboard/mouse, resize/DPI, focus pause/resume, no crash on tested configuration | Signed-off real Windows test matrix incl. GPU/audio/OS versions and reproducible steps |
 | P6-05 | Save/restart/load, version policy, incompatible/corrupt save handling, backup/atomicity, user data path all pass; invalid Story/asset/Yarn/UI errors surfaced with locations | Automated save and validator negative suites plus manual Windows relaunch |
 | P6-06 | `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked`, dependency-direction checks and licensing/advisory policies pass under pinned Windows toolchain | Green CI with exact command logs. If extra packages/tools required, document versions and commands |
 | P6-07 | External creator unfamiliar with Rust uses published instructions to scaffold, edit, preview and export complete Story without Engine/Cargo code | Reproducible fresh-machine walkthrough (not maintainer's dev machine), written observed results + issues fixed |
 | P6-08 | Windows minimum OS/GPU, sample licenses, save/API/Story compatibility and known limits documented; P2-approved performance budgets met on fixed hardware | Release logs: 5 cold starts ≤5 s; 100 UI interactions p95 ≤100 ms; A/B idle RAM ≤750 MiB each; Hello Story `weftora check` ≤2 s (unless revised by approved ADR) |
-| P6-09 | No open **blocking** failures in earlier gates; Windows foundation release artifact tagged only **after** P6-01..08 pass | Explicit release checklist with reviewed PASS status, CI artifacts and binary hash |
+| P6-09 | No open **blocking** failures in earlier gates; Windows foundation release artifact tagged only **after** all P6 mandatory checks pass | Explicit release checklist with reviewed PASS status, CI artifacts and binary hash |
+| P6-10 | Publish independent Engine release/API, schema, capability, compiled dialogue and save support ranges; test compatible Engine update, Story patch, save migration/refusal and unsupported prerelease/downgrade; Phase 6 may ship as `0.x` | Public compatibility policy, tested CLI/player/compiler build IDs, release asset hashes and fixture matrix; no automatic `1.0.0` claim |
 
-**PASS evidence:** tagged Windows release link, clean-VM launch, published CLI/player binaries, two sample game runs, regression suite, checklist. **BLOCKED if any mandatory gate unverified.** Passing core tests alone does not unlock non-Windows development.
+**PASS evidence:** tagged Windows release link, clean-VM launch, published CLI/player binaries, versioned package/compatibility matrix, two sample game runs, regression suite, checklist. **BLOCKED if any mandatory gate unverified.** Passing core tests alone does not unlock non-Windows development.
 
 ## Phase 7 — Per-platform port (locked until P6 PASS)
 
@@ -175,5 +178,6 @@ evidence: "<CI artifact / log / screenshots / issue / test file>"
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.3.0 | Add version matrix, patch-safe save, upgrade/release gates and exact acceptance evidence. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.2.0 | Strengthen Windows package/Yarn/save/Story-action and performance evidence. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

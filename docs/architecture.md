@@ -2,7 +2,7 @@
 id: WFT-ARCH-001
 title: Weftora Architecture
 type: architecture
-doc_version: 0.6.0
+doc_version: 0.7.0
 status: proposed
 implementation: not_started
 created: 2026-10-08
@@ -169,7 +169,7 @@ No engine-level `RelationshipSystem`, `TimeSystem`, `ShopSystem`, or `InventoryS
 Preferred dev format: human-editable directories. Release packaging can use a directory, archive or platform asset container decided by deployment spikes. IDs—not paths—form Story-facing references.
 
 ```text
-stories/sample-vn/
+examples/hello-story/             # planned for Phase 0; not added in this PR
 ├── manifest.json
 ├── data/             # characters, states, locations, catalogs
 ├── dialogue/         # Yarn source; compiled during build/validation
@@ -181,14 +181,18 @@ stories/sample-vn/
 └── assets/           # images, audio, fonts; licensed for distribution
 ```
 
-Manifest v1 **proposal**, not supported implementation:
+Manifest v1 **illustrative proposal**, not supported implementation (all shown version numbers, capabilities and IDs are examples, **not released versions**). Source catalogue and entrypoint syntax remain subject to Phase 0 tests; see [ADR 0002](./adr/0002-versioning-compatibility.md):
 
 ```json
 {
-  "schemaVersion": 1,
-  "id": "sample.vn",
-  "version": "0.1.0",
-  "requiredEngineApi": "^0.1.0",
+  "manifestSchema": 1,
+  "id": "com.example.hello-story",
+  "storyVersion": "1.2.1",
+  "requires": {
+    "engineApi": ">=0.2.0 <0.3.0",
+    "capabilities": ["dialogue.yarn/v1", "ui.basic/v1", "flow.conditions/v1"]
+  },
+  "saveSchema": 2,
   "entrypoint": "intro",
   "catalogs": {
     "data": ["data/catalog.json"],
@@ -196,16 +200,15 @@ Manifest v1 **proposal**, not supported implementation:
     "events": ["events/catalog.json"],
     "screens": ["screens/catalog.json"],
     "assets": ["assets/catalog.json"]
-  },
-  "capabilities": ["dialogue", "images", "audio", "screens"]
+  }
 }
 ```
 
 **Package rules:**
 - Unique namespaced stable IDs; reject duplicates, missing IDs, unknown widgets/commands, invalid Yarn nodes and invalid conditions with source locations.
-- Reject unsupported `schemaVersion`, API version/capabilities, malformed content and invalid entrypoint **before** gameplay.
+- Reject unsupported `manifestSchema`, Engine API SemVer range/capability versions, malformed content and invalid entrypoint **before** gameplay. A player release SemVer is not a proxy for Engine API compatibility.
 - Normalize/validate file paths; reject traversal, absolute paths and oversized/unexpected inputs according to policy. Asset IDs are not a security boundary.
-- Hash/version package outputs where useful; pack reproducibly; keep localized content and engine API compatibility explicit.
+- Export embeds tested player build ID/SHA-256, Story ID/version, package content hash, compiled dialogue format/compiler provenance and supported API/capability metadata. Reproducible Story export should not depend on incidental host paths; avoid mismatched CLI/player/compiler versions.
 - Start with **one active Story**. Add dependency graphs/Story overlays only if tested; never silently merge namespace collisions.
 - Story package may contain executable **interpreted scripts** only behind explicit opt-in. Never equate Story content with arbitrary Rust native library loading.
 - Running same player executable against Story A or B requires compatible capabilities/build target. Assets may need target-specific processing.
@@ -293,7 +296,7 @@ Binding design must define updates, validation, layout constraints, accessibilit
 
 ### Yarn compilation boundary
 
-`weftora check`: compile Yarn source through version-pinned compiler/adapter; source-located diagnostics. `weftora run`: recompile changed development source. `weftora export`: package versioned compiled dialogue + source-map IDs; release player loads compiled artifact **without** requiring compiler, Rust or Cargo. P2 decides supported syntax, artifact format, cache invalidation, compiler/runtime version handshake and test cases. Early time-boxed P0 probe must precede freezing kernel dialogue/state APIs. If unsupported, fallback adapter must retain agreed Yarn author format or trigger new product ADR.
+`weftora check`: compile Yarn source through pinned compiler/adapter; source-located diagnostics. `weftora run`: recompile changed development source. `weftora export`: package a **separately versioned dialogue artifact format** with compiler identity/version, source-map IDs and content hash; release player loads it **without** compiler/Rust/Cargo. If artifact format unsupported, reject with useful diagnostic; never silently interpret incompatible binary content. Pair author CLI/compiler/player from tested Engine release; P2 locks subset/cache/version handshake. Early P0 Yarn feasibility probe remains prerequisite.
 
 
 **Yarn:** test `yarnspinner` (standalone compiler/runtime) and optionally `bevy_yarnspinner` as Bevy integration. Vendor/wrap no Yarn types in public `weftora-api`. Yarn Spinner for Rust project currently labels itself *work in progress / no official support*; compatibility, compiling Yarn, running choices, custom commands, variable mapping, localization and save semantics require a gated spike. If unsupported, adapter replacement must not break Story package architecture.
@@ -311,7 +314,7 @@ Binding design must define updates, validation, layout constraints, accessibilit
 
 ### Save activation and version policy
 
-Independent `saveFormat` (integer), `engineApi` (compatible range), `storyId` and `storyVersion` fields. MVP defaults to exact saveFormat/Story version and Story ID; reject incompatible Engine API; exceptions only via tested explicit migrations. Pipeline: bounded read → metadata/compatibility check → migration in temporary snapshot → full state/checkpoint validation → atomic activation. Any failure retains previous active state and known-good on-disk save. Final version matrix is Phase 0 decision; implementation verified Phase 3.
+Independent `saveFormat` (global container integer), `storyId`, `storyVersion` (writer provenance), `saveSchema` (Story-owned persisted state/checkpoint contract integer), `checkpoint.id` (stable Story checkpoint key), and writer Engine API/release metadata (provenance). Require exact Story identity, supported save container, compatible saveSchema and known/migrated checkpoint. **A Story version difference alone is NOT a rejection.** A harmless Story patch with unchanged schema/checkpoint must load; changed checkpoint/semantics requires explicit mapping/migration or clear refusal. Do not reject just because writer Engine API differs if current Story/runtime compatibility and container constraints pass. Pipeline: bounded read → metadata compatibility → migrate temporary snapshot if registered → validate state/checkpoint → atomic activation. Failure retains original save and in-memory state; downgrades unsupported by default. [ADR 0002](./adr/0002-versioning-compatibility.md) owns decision policy; P3 proves it.
 
 
 Engine serializes slots, metadata, Story identity/version, schemas, chosen state scopes, Story module payloads, and checkpoints. Use atomic write/rename where supported, corruption detection, backup/restore and explicit migration failure.
@@ -319,16 +322,18 @@ Engine serializes slots, metadata, Story identity/version, schemas, chosen state
 ```json
 {
   "saveFormat": 1,
-  "engineApi": "0.1.0",
-  "storyId": "sample.vn",
-  "storyVersion": "0.1.0",
+  "writerEngineApi": "0.2.0",
+  "writerEngineRelease": "0.3.0-alpha.1",
+  "storyId": "com.example.hello-story",
+  "storyVersion": "1.2.1",
+  "saveSchema": 2,
   "state": {},
   "modules": {},
-  "checkpoint": {}
+  "checkpoint": {"id": "scene.intro.after_choice"}
 }
 ```
 
-MVP saves only at **explicit safe points** (idle boundaries, known Yarn node/choice boundaries after adapter verification). UI/view state reconstructed from serialized Story state plus checkpoint metadata. Exact continuation of arbitrary coroutines, in-flight commands, transitions, audio position, and rollback/replay is **not** promised. Incompatible Story/package versions require explicit migration or refusal; do not silently restore partial state.
+MVP saves only at **explicit safe points** (idle boundaries, known Yarn node/choice boundaries after adapter verification). UI/view state reconstructed from serialized Story state plus stable checkpoint ID. Exact continuation of arbitrary coroutines, in-flight commands, transitions, audio position, and rollback/replay is **not** promised. Incompatible save schemas/checkpoints require explicit migration or refusal; newer Story version by itself does not cause refusal. Example versions are placeholders.
 
 ## 11. Toolchain and drift protection
 
@@ -371,7 +376,7 @@ Sample CIs above are **planned**, not present/ran. Compile-time checks do not va
 4. Choose Story distribution container/content compiler; path/packaging semantics across platforms.
 5. Decide Yarn variable mapping, nested state types and safe-checkpoint limitations via runtime tests.
 6. Evaluate Rhai needs, constraints and adversarial-test results before selecting scripting interface.
-7. Define save/schema semver ranges and migration tooling; eventually rollback model.
+7. Review [ADR 0002](./adr/0002-versioning-compatibility.md), then finalize manifest/Engine API SemVer ranges, versioned capabilities, save schema and migration rules from Phase 0/P3 evidence.
 8. Decide license after dependency/license audit.
 
 ## Reference projects (research; not added deps)
@@ -386,5 +391,6 @@ No Rust code, tools, executable binaries, or tests are claimed by this proposal.
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.7.0 | Align Story manifest/save examples with versioning ADR and check/export contract. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.6.0 | Align example paths, declare action/compile/save behavior and Rust decision ADR. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

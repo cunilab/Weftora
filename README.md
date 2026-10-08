@@ -49,6 +49,7 @@ Rust = implementation language for **engine maintainers**. Story = separate auth
 
 - [Docs index](./docs/README.md) — doc versions, scope, status, implementation state and ownership.
 - [Rust pivot ADR](./docs/adr/0001-rust-native-engine.md) — decision alternatives, risks and reversal gates.
+- [Versioning ADR](./docs/adr/0002-versioning-compatibility.md) — compatibility across player, Story packages, compiled dialogue and saves.
 - [Architecture](./docs/architecture.md) — standalone engine vs framework, runtime/player and Story package contracts.
 - [PRD](./PRD.md) — product reqs and acceptance.
 - [Roadmap](./ROADMAP.md) — Windows-first implementation phases and later port gates.
