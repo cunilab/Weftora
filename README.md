@@ -1,44 +1,43 @@
 # Visual Game Engine
 
-Reusable Unity runtime for visual novels, narrative games, and life sims. Build one Engine; load different Story packages without changing Engine source.
+**Rust-native, story-driven game engine** for visual novels, narrative games, and life simulations. Goal: alternative authoring/runtime experience inspired by Ren'Py and Yarn Spinner—not a Unity project or a wrapper around a single game.
 
-**Engine = reusable technical capabilities. Story = replaceable game behavior, flow, UI definitions, data, and assets.**
+**Engine = stable, reusable Rust technology. Story = replaceable content, gameplay rules, dialogue, UI, events, data, and assets.**
 
 ## Architecture
 
-~~~text
-Story authoring (Yarn, data, UI, optional scripts)
-                   |
-             validate / pack
-                   |
-              Story package
-                   |
-Engine runtime + adapters + public API
-                   |
-                  Unity
-~~~
+```text
+Story source (Yarn, JSON, assets, optional rules)
+                 |
+            validate / build
+                 |
+            Story package
+                 |
+          Public Story API
+                 |
+  Rust core: state, flow, save, assets,
+    commands, signals, UI contract
+                 |
+    Adapters: Bevy / Yarn / scripts
+                 |
+          Native game player
+```
 
-- **Engine:** state, commands, signals, content/asset loading, rendering, UI host, input, audio, persistence, diagnostics.
-- **Story:** dialogue, events, gameplay rules, screens/themes, characters, locations, assets, localization.
-- **Adapters:** Yarn integration and future optional scripting engines; no game-specific rules in Engine.
-- **Extensions:** new native capabilities require compiled Engine/plugin code; Story may configure or script capabilities exposed by APIs.
+- **Core:** renderer-agnostic Rust crates; no Bevy, Yarn, or Story package dependency.
+- **Runtime:** loads compatible Story packages; Engine never imports game-specific behavior.
+- **Rendering:** Bevy adapter is preferred candidate, not a dependency of core.
+- **Dialogue:** Yarn Spinner for Rust behind adapter; early compatibility spike required.
+- **Rules:** declarative flow first; Rhai is optional, subject to security/platform tests.
+- **Tools:** Rust CLI for validation/packing/testing, then creator-oriented preview/editor.
 
-No reverse dependency from Engine to Story. Yarn handles narrative scripting, not entire application runtime.
+Target: ship **the same compiled Engine/player revision with two distinctly different Story packages**, without editing Engine source. New native primitives may still require compiled extensions.
 
-## Stack
+## Documents
 
-- Unity 6 LTS (pin exact editor version during project bootstrap).
-- C# for Engine/runtime.
-- Yarn Spinner (free/open source), behind optional adapter.
-- JSON/package manifests; Unity ScriptableObjects allowed for authoring.
-- Optional sandboxed scripting runtime only after an evaluated prototype.
-
-## Docs
-
-- [PRD](./PRD.md) — requirements and acceptance.
-- [Architecture](./ARCHITECTURE.md) — boundaries, runtime, package contract, script/UI/persistence model.
-- [Roadmap](./ROADMAP.md) — ordered implementation slices.
+- [Architecture](./docs/architecture.md) — boundaries, modules, contracts, packaging, runtime design.
+- [PRD](./PRD.md) — product requirements and testable success criteria.
+- [Roadmap](./ROADMAP.md) — implementation order and acceptance gates.
 
 ## Status
 
-Architecture proposal / no Unity implementation in repository yet.
+Architecture proposal only. No Cargo workspace, compiled engine, or runtime tests committed yet. Exact Rust, Bevy, Yarn and scripting versions/target platforms must be verified and pinned in Phase 0.

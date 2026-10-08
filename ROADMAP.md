@@ -1,83 +1,92 @@
-# Roadmap — Reusable Engine + Dynamic Story
+# Roadmap — Rust-Native Visual Game Engine
 
-**Status:** v0.2 proposal. Each phase produces a runnable/testable contract. Story rules/UI/data remain replaceable; Engine remains generic.
+**Status:** v0.3 proposal. **Goal:** creator-friendly Ren'Py/Yarn alternative with headless Rust Engine and replaceable Story packages. No feature marked done until its acceptance gate passes.
 
-## Phase 0 — Repo + contracts
+## Phase 0 — Contract + Rust workspace
 
-- [ ] Create Unity 6 LTS project, pin exact editor and package versions.
-- [ ] Install pinned Yarn Spinner; create Engine.Core, Unity runtime and optional Yarn adapter assemblies.
-- [ ] Story assembly references Engine API; Engine assemblies never reference Story.
-- [ ] Define Story manifest schema v1, stable ID rules, API compatibility policy, package loading errors.
-- [ ] Choose repo license and dependency license inventory; Git ignore/LFS, CI and test assemblies.
-- [ ] Add minimal Story example and architecture decision records.
+- [ ] Choose desktop target platforms and project license; record dependency/license policy.
+- [ ] Create Cargo workspace; pin tested Rust toolchain and `Cargo.lock`.
+- [ ] Create `vge-api`, `vge-core`, `vge-story`, CLI/player stubs; design dependency firewall.
+- [ ] Define manifest v1, schema/API compatibility, stable IDs and capability checks.
+- [ ] Create `stories/sample-vn/` manifest and invalid fixtures; write ADRs.
+- [ ] CI: fmt, clippy, tests, headless forbidden dependencies/unsafe assertions.
 
-**Gate:** clean compile, automated dependency-direction check, Engine compiles after deleting Story, invalid manifest rejected.
+**Gate:** headless core compiles with no Bevy/Yarn/Story deps; valid manifest accepted, malformed/duplicate/incompatible ones rejected.
 
-## Phase 1 — Kernel + loading
+## Phase 1 — Headless engine kernel
 
-- [ ] Bootstrap/service lifecycle; module registry/dependency order.
-- [ ] Typed state store + namespaced keys + change events.
-- [ ] Command registry with typed validation, result/error, async cancellation.
-- [ ] Signal bus with cleanup, ordering and loop protection.
-- [ ] Content ID/catalog registry + duplicate/missing ID validation.
-- [ ] Load single Story manifest and launch entrypoint; diagnostics.
+- [ ] Boot/load/play/shutdown lifecycle and module/service registry.
+- [ ] Typed state store, defaults/scopes, notifications, stable IDs.
+- [ ] Typed command registry, errors, cancellation and async sequencing.
+- [ ] Signal bus ordering, cleanup and recursion protection.
+- [ ] Content catalog loader; missing/duplicate ID diagnostics.
+- [ ] CLI: `new`, `check`, `run` (headless), basic logging/trace.
+- [ ] Headless golden tests for deterministic sequence/state.
 
-**Gate:** load Story A, register Story command/module, mutate state, emit signal, reject malformed package.
+**Gate:** external Story manifest registers actions and events; replayed headless inputs produce stable outputs with clear errors.
 
-## Phase 2 — First playable VN
+## Phase 2 — Bevy + Yarn feasibility spikes
 
-- [ ] Asset resolver (direct refs or ScriptableObjects first; stable ID API).
-- [ ] Generic layers: background, characters, CG, UI; show/hide/position/fade.
-- [ ] UI host with small declarative widget/action schema; basic input.
-- [ ] Audio channels BGM/SFX/voice.
-- [ ] Yarn adapter, node/choice runner, command bridge, single mapped state source.
-- [ ] Sample Story A: intro, branching conversation, choice, CG and menu.
+- [ ] Pin/test Bevy renderer on initial desktop targets; basic scene, sprite, UI, audio and asset loading.
+- [ ] Test `yarnspinner` Rust compiler/runtime without Bevy for dialogue/choices.
+- [ ] Test Bevy Yarn integration or bridge: node start/choices, custom commands, mapped variables, error handling.
+- [ ] Investigate Yarn Rust WIP gaps; isolate adapter dependency, document fallback.
+- [ ] Pick minimal UI primitives and Story-backed asset resolver design.
+- [ ] Record findings; lock compatible versions **only after tests**.
 
-**Gate:** fully playable VN slice, only Story-defined content/rules, Engine unchanged.
+**Gate:** window displays background/dialogue/choices; Story Yarn command changes typed Engine state. Failing Yarn spike triggers adapter reassessment, not core redesign.
 
-## Phase 3 — Save/load + flow
+## Phase 3 — First complete playable VN
 
-- [ ] Atomic versioned save container, Story identity/version, schema checks.
-- [ ] Safe checkpoint contract; reconstruct UI/visual state at safe points.
-- [ ] Module persistence hooks/migrations; corruption and mismatch errors.
-- [ ] Declarative condition evaluator, event trigger registry, priority + action sequences.
-- [ ] Explicit signal/event execution ordering and failure handling.
-- [ ] One Story A conditional event and save/relaunch test.
+- [ ] Engine image/view layers, transitions, input and audio channels through Bevy.
+- [ ] Declarative Story screens: menu, dialogue, choices, buttons, bindings, theme.
+- [ ] External Story image/audio catalogs with stable IDs.
+- [ ] Single source of truth for Yarn↔Engine variable state.
+- [ ] Save container, safe checkpoints, version checks, corruption handling.
+- [ ] Sample VN with one branching interaction, character/CG, custom menu and persisted choice.
 
-**Gate:** deterministic Story state restore; no claim of mid-command/animation rollback.
+**Gate:** Story A playable/restartable; content, UI and dialogue edits need no Engine Rust changes/recompile.
 
-## Phase 4 — Dynamic rules + custom screens
+## Phase 4 — Story flow + configurable gameplay
 
-- [ ] Story-defined screens, layouts, bindings, themes, navigation and validation.
-- [ ] Story-defined custom commands/functions through public Engine API.
-- [ ] Prototype Lua interpreter against target Unity/IL2CPP, compatibility and security.
-- [ ] If prototype passes: optional script adapter, allowlisted API, errors, execution budget, script/state binding.
-- [ ] If prototype fails: retain declarative commands/conditions and document missing capabilities.
-- [ ] Editor command to validate Story catalogs, Yarn references, UI IDs/commands.
+- [ ] Story-authored condition/event/action schemas with priority and bounded scheduling.
+- [ ] Custom Story rule/command registry using generic host APIs.
+- [ ] Reusable Story modules as authored content/config; no built-in relationship/time/quest code in core.
+- [ ] Story-defined themed UI and navigation.
+- [ ] Prototype Rhai only if declarative rules insufficient; evaluate host API, constraints, hostile scripts and profiling.
+- [ ] Document adoption/rejection of optional interpreter with ADR.
 
-**Gate:** game-specific rules/screens change with Story only; no C# Engine edits.
+**Gate:** Story defines gameplay logic/events and different screens without editing Engine core. Optional scripts not assumed secure.
 
-## Phase 5 — Second independent Story
+## Phase 5 — Second Story proves reuse
 
-- [ ] Story B with custom life-sim-like UI, locations, schedules, events, economy variables.
-- [ ] Swap Story A → B without rebuilding/changing Engine code (within supported content/script pipeline).
-- [ ] Assert Engine source/assemblies contain no Story IDs and Story A deletion does not break Engine compile.
-- [ ] Reject duplicate IDs, invalid API versions, missing content and bad save migration.
-- [ ] Integration/playmode tests across both Story packages.
+- [ ] Sample life-sim-like Story B with locations, schedules, arbitrary stats, events and custom screens.
+- [ ] Run Story A and B using **identical compiled player revision**.
+- [ ] Verify Engine compiles after deleting either Story.
+- [ ] Invalid package, missing ID, incompatible schema/save version and command misuse negative tests.
+- [ ] Test startup failure rollback and save migration/refusal behavior.
 
-**Gate:** same Engine revision/binary runs two meaningfully different games.
+**Gate:** two meaningfully different games on one Engine binary; zero game-specific core changes.
 
-## Phase 6 — Creator workflow + release hardening
+## Phase 6 — Creator workflow + release
 
-- [ ] Story package validator + diagnostic report and fast edit-preview-reload cycle.
-- [ ] Basic authoring docs, sample projects, API docs and debug/state/event inspector.
-- [ ] Test target platforms/IL2CPP, asset import/load/cache and memory behavior.
-- [ ] Error recovery, save backups, licensing review, package compatibility tests and CI.
-- [ ] Decide later: Addressables, editor extensions, localization pipeline, partial hot reload, rollback.
-- [ ] Tag foundation release only after gates pass.
+- [ ] `vge-cli` scaffold, validate, build/pack, run/preview and diagnostics.
+- [ ] Fast Story edit-preview (restart/reload) and source-located validation errors.
+- [ ] State, commands, signals, event traces, Yarn node inspect/debug UI.
+- [ ] Localization/content pipeline and package version/compatibility checks.
+- [ ] Target player builds, dependency security/license checks, performance profiling.
+- [ ] API/how-to docs, sample games, regression suite and first release tag.
+- [ ] GUI editor only when core authoring UX and runtime are stable.
 
-**Gate:** another creator can author/swap Story with docs and no Engine-source changes.
+**Gate:** third-party creator can build/preview/package Story without changing Engine source.
 
-## Sequence guardrails
+## Guardrails
 
-Do not build editor, complex Lua scripting, arbitrary mods, Addressables or life-sim-specific Engine systems before proving VN vertical slice and package contract. Fix missing Engine public primitives through explicit versioned changes; do not sneak Story gameplay into Engine.
+- **No Unity**; Rust-native foundation, Bevy candidate backend, Yarn dialogue adapter.
+- **Headless core** must not depend on Bevy/Yarn/Rhai or Story packages.
+- **No native hot-loaded Rust code** in ordinary Story packages.
+- **No genre-specific systems in Engine**; use generic state/actions/views.
+- **No unsupported rollback/sandbox guarantees**; prove safety and continuation first.
+- **Do not spend first milestones building GUI editor/custom story language**; prove runtime + creator loop.
+
+See [docs/architecture.md](./docs/architecture.md) for boundaries, runtime proposal and research gates.
