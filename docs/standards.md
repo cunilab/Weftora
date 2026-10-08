@@ -2,7 +2,7 @@
 id: WFT-STD-001
 title: Weftora Documentation Standards
 type: documentation_standard
-doc_version: 0.1.1
+doc_version: 0.1.2
 status: proposed
 implementation: not_applicable
 created: 2026-10-08
@@ -103,11 +103,12 @@ Not every section required for indexes or reference docs; metadata and Change Hi
 - [ ] For technical changes, required roadmap tests/acceptance evidence defined; no PASS without tests.
 - [ ] Docs metadata and content remain compatible with Windows-first foundation scope.
 
-**Automation target (not implemented):** future docs checker validates frontmatter/IDs/types/dates/index consistency/relative links in CI; reject invalid changes. No existing checker claimed.
+**Automation enabled in PR #1:** `.github/workflows/docs.yml` runs `python scripts/check_docs.py` using Windows GitHub Actions. Standard-library checker validates frontmatter, IDs, enum/date values, document index and local Markdown links/anchors. Cargo, Story manifest/runtime and architecture graph tests remain Phase 0 tasks.
 
 ## Change History
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.1.2 | Add Windows docs checker and matching governance rules. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.1 | Register architecture decision docs and planned docs validation CI. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.0 | Define Option B YAML metadata and review policy. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
