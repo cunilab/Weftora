@@ -3,7 +3,8 @@
 **Status:** Draft v0.4 — Rust-native architecture proposal; no runtime implementation.  
 **Repo:** `cunilab/visual-game-engine`  
 **Architecture:** [docs/architecture.md](./docs/architecture.md)  
-**Roadmap:** [ROADMAP.md](./ROADMAP.md)
+**Roadmap:** [ROADMAP.md](./ROADMAP.md)  
+**Platforms:** [docs/platforms.md](./docs/platforms.md)
 
 ## 1. Product vision
 
@@ -18,7 +19,7 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - **Player:** load a packaged game and experience reliable choices, visuals/audio and save/load.
 - **Engine maintainer/AI agent:** change core safely under mechanical architecture and regression gates.
 
-Priority: desktop visual novels first; prove same runtime with second life-sim-like Story. No broad 3D/RPG ambition in foundation.
+**MVP platform: Windows x64 (`x86_64-pc-windows-msvc`) only.** Fully validate narrative engine, two Stories, creator workflow, save/load and Windows export before porting to Linux, macOS, Android, iOS or Web. Design platform boundaries early but **defer other platform implementation/build/test pipelines** until Windows foundation release gate. No broad 3D/RPG ambition in foundation.
 
 ## 3. Goals / success criteria
 
@@ -30,6 +31,7 @@ Priority: desktop visual novels first; prove same runtime with second life-sim-l
 6. **Persistence:** safe-checkpoint save/restore, version checks, corruption handling.
 7. **Maintainable Rust:** typed public contracts, bounded extension points, dependency guardrails, CI and reference Story tests.
 8. **Free/open tooling:** choose transparent, compatible dependency licenses and pin tested versions.
+9. **Portable architecture, focused execution:** core/story package interfaces avoid Windows-specific assumptions, but only Windows x64 is required or tested before platform expansion.
 
 ## 4. Non-goals for foundation
 
@@ -118,6 +120,13 @@ Priority: desktop visual novels first; prove same runtime with second life-sim-l
 - Two independent sample Story packages must pass on same built Engine/player.
 - Rust compile success alone never substitutes for authoring UX or behavioral verification.
 
+### R15. Windows-first shipping, future portability
+- First supported build and authoring CLI: Windows x64 / `x86_64-pc-windows-msvc`. Windows release baseline includes game player, external Story loading, CLI `new/check/run/export`, audio, keyboard/mouse, scalable windowed UI, persistence at user-writable path and standalone export.
+- Test Windows native filesystem (asset paths, Unicode, separators, permissions), graphics backend, app/window lifecycle, save directory, relative packaged paths, input focus, and clean launch on a Windows machine without developer toolchain.
+- Platform-neutral core contracts: assets/storage, paths, time/lifecycle, input, renderer/audio, packaging; Windows implementations live behind platform adapters. Do not force Windows `std::path` semantics or absolute host paths into Story package schemas.
+- No Linux/macOS/Android/iOS/Web implementation, CI matrix or release promise until Windows foundation exit gate. Windows portability architecture checks are allowed; unneeded cross-platform infrastructure is deferred.
+- After gate: add one target platform at a time with target-specific packaging/signing/input/storage/renderer tests. See [platforms](./docs/platforms.md).
+
 ## 6. Ownership rules
 
 **Engine:** lifecycle, state storage, generic command/signal/flow execution, rendering primitives, audio/input, view/UI host, package loading, persistence technology, diagnostics.
@@ -135,11 +144,11 @@ When unclear: if gameplay behavior changes between game genres, default to Story
 - **Isolation:** deleting all Story packages still leaves Engine workspace compiling/tests passing; core's dependency graph contains no Story/Bevy/Yarn.
 - **Authoring:** install prebuilt tools, modify Story behavior/UI/assets, validate/run/export without writing Rust, setting up a Bevy app or rebuilding compiled Engine.
 - **Failure:** missing asset/node, duplicate IDs, invalid version/schema, unsupported UI and corrupt save give actionable errors; no silent partial load.
-- **Quality:** test suite, package validator and supported player build all pass; no unverified guarantee of scripting sandbox or rollback.
+- **Quality:** Windows x64 release build, Story A/B regression suite, package validator, CLI/export install/run smoke test, audio/input/view, clean save/load/corruption recovery all pass; no unverified guarantee of scripting sandbox or rollback.
 
 ## 8. Architecture choices pending
 
-- Target platforms: desktop first candidate; exact OS/graphics support pinned by test.
+- Initial target: Windows x64 only; exact Windows/graphics/runtime prerequisites confirmed by tests. Ports to Linux, macOS, Android, iOS and Web require Windows foundation exit gate + per-platform feasibility/release checks.
 - Tested Rust/Bevy/Yarn compatible versions, licenses and support risk.
 - Declarative UI schema and renderer choice.
 - Rules language (declarative-only MVP; Rhai prototype optional).

@@ -1,6 +1,6 @@
 # Architecture — Rust-Native Weftora
 
-**Status:** proposed v0.4, docs-only; no code implemented. **Product name:** Weftora; existing GitHub repo path remains unchanged pending separate rename.  
+**Status:** proposed v0.5, docs-only; no code implemented. **Product name:** Weftora. Repo: `cunilab/Weftora`. **First supported target:** Windows x64; cross-platform expansion gated.  
 **Goal:** independent, creator-friendly alternative to Ren'Py-style narrative engines: **self-contained player/executable + separate Story packages**, built with generic Rust runtime and optional internal rendering/dialogue adapters.
 
 ## 1. Product identity and limits
@@ -11,6 +11,7 @@ Weftora is a **game engine and authoring platform**, not a game, a Unity extensi
 2. **One stable Engine supports many games:** VN and non-VN narrative simulations share runtime/API.
 3. **Rust core with enforceable boundaries:** typed contracts, explicit error handling, automated validation; no assumption compiler catches behavioral/spec drift.
 4. **Practical authoring UX:** plain editable source, clear errors, quick preview, packaging and localization; editor follows working CLI and player. Game authors launch games directly; they do not embed a Rust library in game projects.
+5. **Windows-first completion:** complete tested Windows player, two sample Stories and CLI/export before work on other OS targets; preserve portable core contracts now.
 
 **Boundary of “Story can change anything”:** only behavior supported by current Engine API, data/flow language, script host and widgets. A new native renderer, shader integration, low-level input device, OS service or widget primitive requires a compiled adapter/Engine change. No arbitrary Rust code loading into release player.
 
@@ -70,6 +71,16 @@ Weftora is a **game engine and authoring platform**, not a game, a Unity extensi
 **Strict rule:** `weftora-api` and headless core must not depend on `bevy`, `yarnspinner`, `rhai`, a Story package, or frontend apps. Renderer/dialogue/script crates depend inward. `weftora-player` composes everything. A future different renderer must not force changes to state/flow/save semantics.
 
 Bevy is recommended rendering/asset/input platform **candidate**; not project identity. Yarn is preferred dialogue authoring **candidate**; not universal scripting or state owner.
+
+### Platform-neutral contract, Windows-first execution
+
+- **Initial target:** Windows x64 (`x86_64-pc-windows-msvc`) and only Windows implementation/CI until Windows foundation acceptance. Repo is allowed to hold a **future** portability plan, not unfinished ports.
+- **Core must not hardcode Windows:** Story paths are logical IDs/relative normalized package references, not Windows absolute paths; storage/location resolution is platform service; input actions are logical, not VK keys; lifecycle/window, clock, renderer, audio and asset IO abstracted at backend boundary.
+- **Windows adapter now:** implement native event/window, keyboard/mouse and file/package paths, user-writable save location, audio/display scaling, player distribution; test real Windows GPUs.
+- **Other adapters later:** Linux/macOS desktop, Android/iOS mobile and Web differ in storage/lifecycle/input/render/packaging/signing. Their existence does not justify implementing them before Windows works.
+- **One Story schema:** optional target-specific processed asset bundles and platform metadata are permitted; never introduce OS-specific gameplay rules or require author-written Rust per target.
+- **Portability validation now:** inspect boundaries/types in code review and headless tests. No Linux/macOS/mobile/Web build matrix until Windows release gate.
+- [Platform support plan](./platforms.md) = scope, export matrix, gates and deferred risks.
 
 ## 3. Proposed Cargo workspace
 
@@ -314,11 +325,11 @@ Sample CIs above are **planned**, not present/ran. Compile-time checks do not va
 
 **Gate 4: creator UX.** CLI generates, validates, runs and exports player+Story for supported targets without author Rust/Cargo; preview/reload during development; useful source-located errors and debugger.
 
-**Gate 5: release safety.** Target-platform build, clean licenses/deps, save mismatch/corruption coverage, runtime error recovery and architecture CI.
+**Gate 5: release safety.** Verified **Windows x64** release executable on clean Windows machine, CLI/export, two Stories and full regressions; clean licenses/deps, save mismatch/corruption coverage, runtime error recovery and architecture CI. Only then unlock non-Windows ports.
 
 ## 13. Open ADRs / research gates
 
-1. Pick initial target: **desktop first** recommended; web/mobile after performance and file-loading investigation.
+1. **Windows x64 only** through foundation release; other targets after release gate. Define adapter boundaries early, defer portability implementation/CI. See [platform plan](./platforms.md).
 2. Pin compatible Rust/Bevy/Yarn versions after sample compile; Bevy 0.19 with yarnspinner 0.9 is a **candidate** combination, not tested in this repo.
 3. Choose Bevy UI vs alternative immediate-mode UI for declarative screen renderer.
 4. Choose Story distribution container/content compiler; path/packaging semantics across platforms.

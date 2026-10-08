@@ -2,6 +2,8 @@
 
 **Standalone Rust-native story game engine.** Ren'Py-like creation workflow, Yarn-style dialogue, replaceable game packages. **Not framework** requiring game authors to write Rust or integrate Bevy.
 
+**Development target: Windows x64 first.** Stabilize entire Engine → Story → player → CLI → export pipeline before Linux, macOS, Android, iOS, or Web ports. Maintain platform-neutral core contracts from start.
+
 **Engine = compiled reusable player/runtime. Story = external game data, dialogue, rules, flow, UI, themes, assets.**
 
 ## How creators use it
@@ -47,8 +49,9 @@ Rust = implementation language for **engine maintainers**. Story = separate auth
 
 - [Architecture](./docs/architecture.md) — standalone engine vs framework, runtime/player and Story package contracts.
 - [PRD](./PRD.md) — product reqs and acceptance.
-- [Roadmap](./ROADMAP.md) — testable development phases.
+- [Roadmap](./ROADMAP.md) — Windows-first implementation phases and later port gates.
+- [Platform plan](./docs/platforms.md) — Windows baseline, deferred Linux/macOS/Android/iOS/Web, platform boundaries and tests.
 
 ## Status
 
-**Docs-only proposal.** No Rust workspace, playable engine, CLI, exporter or tests committed yet. Repo GitHub path remains `cunilab/visual-game-engine`; product name proposed as **Weftora**.
+**Docs-only proposal.** No Rust workspace, playable engine, CLI, exporter or tests committed yet. Current repo: `cunilab/Weftora`. Windows x64 prioritized; other platforms not implemented or validated.
