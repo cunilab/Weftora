@@ -2,7 +2,7 @@
 id: WFT-ARCH-001
 title: Weftora Architecture
 type: architecture
-doc_version: 0.5.1
+doc_version: 0.6.0
 status: proposed
 implementation: not_started
 created: 2026-10-08
@@ -49,6 +49,8 @@ Weftora is a **game engine and authoring platform**, not a game, a Unity extensi
 **Dynamic boundary:** changing ordinary Story rules/dialogue/screens/assets should not rebuild player. New native capabilities or unimplemented widget/renderer features require an Engine release; never promise unlimited mods or native code loading.
 
 ### Extension tiers
+
+[ADR 0001](./adr/0001-rust-native-engine.md) compares proposed Rust-native path with Unity, Godot and Ren'Py; this stack is unproven until P2 acceptance.
 
 - **Tier 1 — data:** Yarn, JSON/other selected text formats, assets, character/location/event definitions, themes.
 - **Tier 2 — behavior:** declarative conditions/actions/events and later optional interpreted script with allowlisted host API.
@@ -102,7 +104,7 @@ Bevy is recommended rendering/asset/input platform **candidate**; not project id
 ## 3. Proposed Cargo workspace
 
 ```text
-visual-game-engine/
+Weftora/
 ├── Cargo.toml
 ├── Cargo.lock
 ├── rust-toolchain.toml
@@ -120,9 +122,9 @@ visual-game-engine/
 │   ├── weftora-player/            # standalone executable loads Story package
 │   ├── weftora-cli/               # author-facing 'weftora' CLI
 │   └── weftora-editor/            # later, optional visual editor
-├── stories/
-│   ├── sample-vn/
-│   └── sample-life-sim/
+├── examples/                    # roadmap tasks; not present in this PR
+│   ├── hello-story/
+│   └── life-sim/
 ├── tests/                     # package/golden/e2e fixtures
 └── docs/
     └── architecture.md
@@ -240,6 +242,11 @@ Engine controls event-loop/reentrancy bounds; Story cannot recursively generate 
 
 ## 7. State, Yarn and deterministic flow
 
+### Story authored actions (provisional contract)
+
+Commands are schema-validated Story data with namespaced IDs and typed args, not arbitrary Rust functions. Minimum allowed primitives: `state.set`, `state.add`, `signal.emit`, dialogue/view/audio actions, composed with typed conditions and deterministic order. Validate static refs/params before activating package. Execute sequentially; each completed state write is atomic. On first runtime failure, stop remainder and report failed action index; **previous writes are not implicitly rolled back**. Opt-in transactions would need a new API/ADR. Enforce recursion, action-count and async cancellation budgets. New native primitive requires Engine release.
+
+
 Use **one canonical gameplay state** with typed values and optional schema defaults. Initial types: `bool`, integer, finite float, string; complex collections deferred. Keys namespaced, e.g. `world.day`, `character.alice.affection`; Engine never parses domain meaning.
 
 Yarn variable storage must be a *mapped adapter view* onto canonical state (or use an explicitly synchronized shadow with conflict tests). Define conversion, missing defaults, commit timing, error reporting, and persistent/transient scopes before v1 save/load. Do not maintain independent unsynchronized Yarn state.
@@ -284,6 +291,11 @@ Binding design must define updates, validation, layout constraints, accessibilit
 
 ## 9. Dialogue and script adapters
 
+### Yarn compilation boundary
+
+`weftora check`: compile Yarn source through version-pinned compiler/adapter; source-located diagnostics. `weftora run`: recompile changed development source. `weftora export`: package versioned compiled dialogue + source-map IDs; release player loads compiled artifact **without** requiring compiler, Rust or Cargo. P2 decides supported syntax, artifact format, cache invalidation, compiler/runtime version handshake and test cases. Early time-boxed P0 probe must precede freezing kernel dialogue/state APIs. If unsupported, fallback adapter must retain agreed Yarn author format or trigger new product ADR.
+
+
 **Yarn:** test `yarnspinner` (standalone compiler/runtime) and optionally `bevy_yarnspinner` as Bevy integration. Vendor/wrap no Yarn types in public `weftora-api`. Yarn Spinner for Rust project currently labels itself *work in progress / no official support*; compatibility, compiling Yarn, running choices, custom commands, variable mapping, localization and save semantics require a gated spike. If unsupported, adapter replacement must not break Story package architecture.
 
 **Scripting:** declarative Story events and commands first. Later prototype **Rhai** as optional interpreter for arithmetic/rules/functions only, not replacement for Yarn or flow scheduler. Do not promise sandboxed modding:
@@ -296,6 +308,11 @@ Binding design must define updates, validation, layout constraints, accessibilit
 **Why not custom story language now?** Creator UX improves more by reusing Yarn + typed declarative definitions initially. Re-evaluate custom syntax only with documented missing authoring use cases.
 
 ## 10. Persistence, replay and rollback
+
+### Save activation and version policy
+
+Independent `saveFormat` (integer), `engineApi` (compatible range), `storyId` and `storyVersion` fields. MVP defaults to exact saveFormat/Story version and Story ID; reject incompatible Engine API; exceptions only via tested explicit migrations. Pipeline: bounded read → metadata/compatibility check → migration in temporary snapshot → full state/checkpoint validation → atomic activation. Any failure retains previous active state and known-good on-disk save. Final version matrix is Phase 0 decision; implementation verified Phase 3.
+
 
 Engine serializes slots, metadata, Story identity/version, schemas, chosen state scopes, Story module payloads, and checkpoints. Use atomic write/rename where supported, corruption detection, backup/restore and explicit migration failure.
 
@@ -369,4 +386,5 @@ No Rust code, tools, executable binaries, or tests are claimed by this proposal.
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.6.0 | Align example paths, declare action/compile/save behavior and Rust decision ADR. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

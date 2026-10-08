@@ -2,7 +2,7 @@
 id: WFT-PRD-001
 title: Weftora Product Requirements
 type: product_requirements
-doc_version: 0.4.1
+doc_version: 0.5.0
 status: proposed
 implementation: not_started
 created: 2026-09-29
@@ -64,6 +64,8 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 ## 5. Core functional requirements
 
 ### R1. Package discovery, integrity and compatibility
+- Third-party Story content is untrusted data, not a native plugin or proven script sandbox. Forbid unrestricted host filesystem/network/native access.
+- Restrict paths to package root; reject absolute/UNC/drive paths, parent traversal, Windows reserved names, case-insensitive collisions, junctions/reparse-point/symlink escape, archive traversal and decompression bombs. Define bounded file count/size/expanded total/depth with Windows negative fixtures.
 - Load external Story manifest, content catalogs and versioned entrypoint through generic loader.
 - Validate namespaced IDs, schema/API range, required features, catalog references and file paths.
 - Reject invalid packages atomically, report file/location and cause; avoid partial active Story state.
@@ -80,6 +82,8 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - Yarn variable bridge must share canonical Engine state or implement tested synchronization.
 
 ### R4. Command + signal framework
+- Story command schema: typed params and conditions, ordered allowlisted generic state/signal/dialogue/view/audio actions; new Story gameplay rules must not require Engine Rust edits.
+- Validate static refs before run; stop subsequent actions on first runtime failure; individual writes atomic, **no automatic rollback** of prior actions. Limit reentrancy/action budget, define cancellation and diagnostic index.
 - Typed, validated commands with stable IDs, result/errors, async sequencing and cancellation.
 - Deterministic within-dispatch signal ordering, subscribe/unsubscribe and loop protection.
 - Story may register its own behavior from declarative actions and (future) opt-in script functions.
@@ -90,6 +94,8 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - All game-specific event definitions authored in Story, not built into Rust runtime.
 
 ### R6. Dialogue adapter
+- Before locking headless state API, time-box Yarn compiler/runtime branch probe (Phase 0); full integration/fallback proof (Phase 2).
+- `check` compiles Yarn source with source diagnostics; `run` rebuilds changed dev dialogue; `export` bundles versioned compiled runtime data/source IDs, no authoring compiler on distributed player. Define compatible versions/feature subset by P2.
 - Start/stop Yarn nodes, show lines/choices, dispatch Story commands and expose mapped variables.
 - Compiler and runtime errors identify Story file/node; retain backend replaceability.
 - Rust Yarn port is work-in-progress; gate adoption on runnable compatibility tests.
@@ -110,6 +116,8 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - Development Story folder may differ from release Story bundle.
 
 ### R10. Save/load
+- Save header separates `saveFormat`, `engineApi`, `storyId`, `storyVersion`. Wrong Story, incompatible API/format/version rejected unless explicit tested migration.
+- Load through bounded read, version check, temporary migration and full schema/checkpoint validation before atomic activation; bad save never overwrites live state or good snapshot.
 - Versioned save container with Story identity, scoped state, module data and safe checkpoint.
 - Atomic writes/recovery, save slot metadata, clear incompatible/corrupt state behavior.
 - Version migration hooks defined; arbitrary mid-command/animation continuation out of scope until proven.
@@ -144,6 +152,10 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - No Linux/macOS/Android/iOS/Web implementation, CI matrix or release promise until Windows foundation exit gate. Windows portability architecture checks are allowed; unneeded cross-platform infrastructure is deferred.
 - After gate: add one target platform at a time with target-specific packaging/signing/input/storage/renderer tests. See [platforms](./docs/platforms.md).
 
+### R16. Measured Windows foundation performance
+
+Provisional, **unmeasured** budgets: cold launch to interactive menu ≤5 s; each sample Story idle resident RAM ≤750 MiB; input-to-visible-feedback p95 ≤100 ms; `weftora check` on Hello Story ≤2 s. Phase 2 records Windows OS/GPU/driver, asset fixture and startup/input/memory/validation baseline, then approves or revises these numeric targets via ADR before P6. P6 measures five cold launches, 100 interactions, memory in A/B and CLI check; releases blocked by unexplained budget breaches.
+
 ## 6. Ownership rules
 
 **Engine:** lifecycle, state storage, generic command/signal/flow execution, rendering primitives, audio/input, view/UI host, package loading, persistence technology, diagnostics.
@@ -164,6 +176,7 @@ When unclear: if gameplay behavior changes between game genres, default to Story
 - **Quality:** Windows x64 release build, Story A/B regression suite, package validator, CLI/export install/run smoke test, audio/input/view, clean save/load/corruption recovery all pass; no unverified guarantee of scripting sandbox or rollback.
 
 ## 8. Architecture choices pending
+- Proposed Rust vs existing engines and reversal criteria: [ADR 0001](./docs/adr/0001-rust-native-engine.md).
 
 - Initial target: Windows x64 only; exact Windows/graphics/runtime prerequisites confirmed by tests. Ports to Linux, macOS, Android, iOS and Web require Windows foundation exit gate + per-platform feasibility/release checks.
 - Tested Rust/Bevy/Yarn compatible versions, licenses and support risk.
@@ -179,4 +192,5 @@ Use [architecture](./docs/architecture.md) for rationale, [roadmap](./ROADMAP.md
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.5.0 | Resolve Story package/action, Yarn compilation, save compatibility and release budget gaps. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.4.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

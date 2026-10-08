@@ -2,7 +2,7 @@
 id: WFT-STD-001
 title: Weftora Documentation Standards
 type: documentation_standard
-doc_version: 0.1.0
+doc_version: 0.1.1
 status: proposed
 implementation: not_applicable
 created: 2026-10-08
@@ -48,7 +48,7 @@ supersedes: null
 | --- | --- |
 | `id` | Permanent, unique `WFT-[A-Z]+-NNN`; IDs do not follow filenames. |
 | `title` | Human-readable and descriptive. |
-| `type` | `product_requirements`, `roadmap`, `architecture`, `platform_plan`, `acceptance_criteria`, `docs_index`, `documentation_standard`; extend deliberately. |
+| `type` | `product_requirements`, `roadmap`, `architecture`, `platform_plan`, `acceptance_criteria`, `docs_index`, `documentation_standard`, `architecture_decision`; extend deliberately. |
 | `doc_version` | Quoted or scalar SemVer `MAJOR.MINOR.PATCH`; **independent from Engine/API/package/save versions**. |
 | `status` | Exactly `draft`, `proposed`, `accepted`, `superseded`. |
 | `implementation` | Exactly `not_started`, `in_progress`, `verified`, `not_applicable`. `verified` needs linked acceptance evidence. |
@@ -109,4 +109,5 @@ Not every section required for indexes or reference docs; metadata and Change Hi
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.1.1 | Register architecture decision docs and planned docs validation CI. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.0 | Define Option B YAML metadata and review policy. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

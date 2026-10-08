@@ -2,7 +2,7 @@
 id: WFT-ROADMAP-001
 title: Weftora Roadmap
 type: roadmap
-doc_version: 0.6.0
+doc_version: 0.7.0
 status: proposed
 implementation: not_started
 created: 2026-09-29
@@ -30,10 +30,14 @@ supersedes: null
 - [ ] Create `weftora-api`, `weftora-core`, `weftora-story`, CLI/player stubs; design dependency firewall.
 - [ ] Specify standalone Windows `weftora.exe` CLI + `weftora-player.exe` release artifacts; Stories remain non-Cargo source folders.
 - [ ] Define manifest v1, schema/API compatibility, stable IDs and capability checks.
+- [ ] Bound untrusted Story loader: package-root isolation, Windows junction/case collisions, archive traversal and size limits; negative fixtures during implementation.
+- [ ] **Early P0 Yarn viability probe** of compiling/executing choice branch **before** kernel/dialogue contracts fixed; document adapter fallback.
+- [ ] Define typed Story declarative action envelope/primitives, error/partial-commit semantics and independent save/Story/API version matrix.
+- [ ] Approve or revise [Rust pivot ADR](./docs/adr/0001-rust-native-engine.md), including tradeoffs against Unity/Godot/Ren'Py.
 - [ ] **Create starter example later, during Phase 0:** `examples/hello-story/` (not included in planning PR). Include `README.md`, `manifest.json`, `dialogue/intro.yarn`, minimal data/catalogs, `screens/main_menu.json`, and expected outcomes. Use provisional schema until parser contract tested; write ADRs and invalid fixtures.
 - [ ] CI: fmt, clippy, tests, headless forbidden dependencies/unsafe assertions.
 
-**Success:** P0-01..P0-05 — locked Windows build, enforced dependency firewall, versioned manifest positive/negative tests, documented targets/licenses, green CI. [Evidence/tests](./docs/success-criteria.md#phase-0--contract--rust-workspace).
+**Success:** P0-01..P0-06 — Windows build, dependency firewall, bounded manifests, Yarn probe/ADR, version matrix and CI. [Evidence/tests](./docs/success-criteria.md#phase-0--contract--rust-workspace).
 
 ## Phase 1 — Headless engine kernel
 
@@ -53,6 +57,8 @@ supersedes: null
 - [ ] Test `yarnspinner` Rust compiler/runtime without Bevy for dialogue/choices; validate and execute both paths of planned `examples/hello-story/dialogue/intro.yarn`.
 - [ ] Test Bevy Yarn integration or bridge: node start/choices, custom commands, mapped variables, error handling.
 - [ ] Investigate Yarn Rust WIP gaps; isolate adapter dependency, document fallback.
+- [ ] Specify `weftora check/run/export` compilation artifact, version handshake, author syntax subset and source-map diagnostics.
+- [ ] Measure startup/RAM/input/validation performance on documented Windows fixture and fix numeric release budgets by ADR.
 - [ ] Pick minimal UI primitives and Story-backed asset resolver design.
 - [ ] Record findings; lock compatible versions **only after tests**.
 
@@ -65,15 +71,17 @@ supersedes: null
 - [ ] External Story image/audio catalogs with stable IDs.
 - [ ] Single source of truth for Yarn↔Engine variable state.
 - [ ] Save container, safe checkpoints, version checks, corruption handling; use Windows user-writable save directory, not packaged Story directory.
+- [ ] Validate wrong Story/API/saveFormat/Story version matrix, migration refusal, temporary activation and previous-save recovery.
 - [ ] Upgrade planned `examples/hello-story/` into first **runnable** Story A: branching choice, character/CG, custom menu, audio and persisted choice. Include tutorial showing how to edit Story without rebuilding Engine.
 - [ ] Prebuilt player loads external Story A path; edit dialogue/screens/assets and run without recompiling player.
 
-**Success:** P3-01..P3-06 — playable branching VN, prebuilt Windows player, unchanged SHA-256 after Story edits, UI/input/audio, Yarn state bridge, save/relaunch + corrupted-save handling. [Evidence/tests](./docs/success-criteria.md#phase-3--first-playable-vn--safe-persistence).
+**Success:** P3-01..P3-06 — playable branching VN, prebuilt Windows player, unchanged SHA-256 after Story edits, UI/input/audio, Yarn state bridge, save/relaunch + corrupted-save handling. **Tag optional Windows developer alpha after P3 PASS (not foundation release; does not unlock Phase 7).** [Evidence/tests](./docs/success-criteria.md#phase-3--first-playable-vn--safe-persistence).
 
 ## Phase 4 — Story flow + configurable gameplay
 
 - [ ] Story-authored condition/event/action schemas with priority and bounded scheduling.
 - [ ] Custom Story rule/command registry using generic host APIs.
+- [ ] Prove Story-only actions with ordered partial failure, typed args, recursion budgets and unchanged player hash.
 - [ ] Reusable Story modules as authored content/config; no built-in relationship/time/quest code in core.
 - [ ] Story-defined themed UI and navigation.
 - [ ] Prototype Rhai only if declarative rules insufficient; evaluate host API, constraints, hostile scripts and profiling.
@@ -98,6 +106,7 @@ supersedes: null
 - [ ] State, commands, signals, event traces, Yarn node inspect/debug UI.
 - [ ] Localization/content pipeline and package version/compatibility checks.
 - [ ] Windows x64 release build, asset packaging, dependency security/license checks, GPU/audio profiling.
+- [ ] Meet published cold launch, input latency, idle RAM and starter validation budgets on target Windows fixture.
 - [ ] API/how-to docs, runnable `examples/hello-story/` and `examples/life-sim/` with creator tutorials, regression suite and first release tag.
 - [ ] GUI editor only when core authoring UX and runtime are stable.
 
@@ -152,5 +161,6 @@ See [docs/architecture.md](./docs/architecture.md) for boundaries, runtime propo
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.7.0 | Add early Yarn proof, secure package contract, Windows alpha and performance gate. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.6.0 | Plan future Hello Story and life-sim examples without adding example files. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
