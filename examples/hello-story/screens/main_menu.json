@@ -1,0 +1,20 @@
+{
+  "id": "ui.main_menu",
+  "type": "screen",
+  "children": [
+    {
+      "type": "text",
+      "text": "Courtyard Choice"
+    },
+    {
+      "type": "button",
+      "text": "Start",
+      "onClick": {
+        "command": "dialogue.start",
+        "args": {
+          "node": "intro"
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,5 @@
+{
+  "id": "story.game",
+  "title": "Courtyard Choice",
+  "startScreen": "ui.main_menu"
+}

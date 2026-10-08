@@ -1,0 +1,30 @@
+{
+  "status": "planned_fixture_not_executed",
+  "entrypoint": "intro",
+  "branches": [
+    {
+      "choice": "Talk with Mira",
+      "expectedNodes": [
+        "intro",
+        "MeetMira",
+        "Ending"
+      ],
+      "expectedVariable": {
+        "metMira": true
+      },
+      "expectedLine": "Mira: See you tomorrow!"
+    },
+    {
+      "choice": "Explore the courtyard",
+      "expectedNodes": [
+        "intro",
+        "ExploreCourtyard",
+        "Ending"
+      ],
+      "expectedVariable": {
+        "metMira": false
+      },
+      "expectedLine": "Narrator: You leave before sunset."
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+title: Setup
+---
+/// Whether player talked with Mira.
+<<declare $metMira = false>>
+===
+title: intro
+---
+Narrator: You enter a quiet courtyard.
+Mira: Hello! Want to talk or look around?
+-> Talk with Mira
+    <<set $metMira = true>>
+    <<jump MeetMira>>
+-> Explore the courtyard
+    <<set $metMira = false>>
+    <<jump ExploreCourtyard>>
+===
+title: MeetMira
+---
+Mira: I enjoy meeting visitors.
+<<jump Ending>>
+===
+title: ExploreCourtyard
+---
+Narrator: Sunlight shines over old stones.
+<<jump Ending>>
+===
+title: Ending
+---
+<<if $metMira>>
+    Mira: See you tomorrow!
+<<else>>
+    Narrator: You leave before sunset.
+<<endif>>
+Narrator: End of Hello Story.
+===

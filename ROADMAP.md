@@ -2,7 +2,7 @@
 id: WFT-ROADMAP-001
 title: Weftora Roadmap
 type: roadmap
-doc_version: 0.5.1
+doc_version: 0.6.0
 status: proposed
 implementation: not_started
 created: 2026-09-29
@@ -30,7 +30,7 @@ supersedes: null
 - [ ] Create `weftora-api`, `weftora-core`, `weftora-story`, CLI/player stubs; design dependency firewall.
 - [ ] Specify standalone Windows `weftora.exe` CLI + `weftora-player.exe` release artifacts; Stories remain non-Cargo source folders.
 - [ ] Define manifest v1, schema/API compatibility, stable IDs and capability checks.
-- [ ] Create `stories/sample-vn/` manifest and invalid fixtures; write ADRs.
+- [ ] Provide `examples/hello-story/` authoring fixture: manifest, Yarn, menu, catalogs, expected outcomes, tutorial. Add invalid fixtures separately; write ADRs.
 - [ ] CI: fmt, clippy, tests, headless forbidden dependencies/unsafe assertions.
 
 **Success:** P0-01..P0-05 — locked Windows build, enforced dependency firewall, versioned manifest positive/negative tests, documented targets/licenses, green CI. [Evidence/tests](./docs/success-criteria.md#phase-0--contract--rust-workspace).
@@ -50,7 +50,7 @@ supersedes: null
 ## Phase 2 — Bevy + Yarn feasibility spikes
 
 - [ ] Pin/test Bevy renderer on Windows x64 (actual Windows GPU drivers); basic scene, sprite, UI, audio and asset loading.
-- [ ] Test `yarnspinner` Rust compiler/runtime without Bevy for dialogue/choices.
+- [ ] Test `yarnspinner` Rust compiler/runtime without Bevy for dialogue/choices; cover both `examples/hello-story/dialogue/intro.yarn` paths.
 - [ ] Test Bevy Yarn integration or bridge: node start/choices, custom commands, mapped variables, error handling.
 - [ ] Investigate Yarn Rust WIP gaps; isolate adapter dependency, document fallback.
 - [ ] Pick minimal UI primitives and Story-backed asset resolver design.
@@ -65,7 +65,7 @@ supersedes: null
 - [ ] External Story image/audio catalogs with stable IDs.
 - [ ] Single source of truth for Yarn↔Engine variable state.
 - [ ] Save container, safe checkpoints, version checks, corruption handling; use Windows user-writable save directory, not packaged Story directory.
-- [ ] Sample VN with one branching interaction, character/CG, custom menu and persisted choice.
+- [ ] Extend `examples/hello-story/` to complete Story A VN: character/CG, audio, custom menu and persisted choice.
 - [ ] Prebuilt player loads external Story A path; edit dialogue/screens/assets and run without recompiling player.
 
 **Success:** P3-01..P3-06 — playable branching VN, prebuilt Windows player, unchanged SHA-256 after Story edits, UI/input/audio, Yarn state bridge, save/relaunch + corrupted-save handling. [Evidence/tests](./docs/success-criteria.md#phase-3--first-playable-vn--safe-persistence).
@@ -83,7 +83,7 @@ supersedes: null
 
 ## Phase 5 — Second Story proves reuse
 
-- [ ] Sample life-sim-like Story B with locations, schedules, arbitrary stats, events and custom screens.
+- [ ] Add future separate `examples/life-sim/` Story B with locations, schedules, arbitrary stats, events and custom screens.
 - [ ] Run Story A and B using **identical compiled player binary**; two standalone external packages, no game-specific Rust compilation.
 - [ ] Verify Engine compiles after deleting either Story.
 - [ ] Invalid package, missing ID, incompatible schema/save version and command misuse negative tests.
@@ -136,10 +136,11 @@ supersedes: null
 - **No unsupported rollback/sandbox guarantees**; prove safety and continuation first.
 - **Do not spend first milestones building GUI editor/custom story language**; prove runtime + creator loop.
 
-See [docs/architecture.md](./docs/architecture.md) for boundaries, runtime proposal and research gates.
+See [docs/architecture.md](./docs/architecture.md) for boundaries, runtime proposal and research gates; [examples](./examples/README.md) show proposed creator workflow. Samples not executable yet.
 
 ## Change History
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.6.0 | Link Phase 0/2/3/5 to authoring examples. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |

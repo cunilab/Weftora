@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "example.hello_story",
+  "version": "0.1.0",
+  "requiredEngineApi": "^0.1.0",
+  "entrypoint": "intro",
+  "catalogs": {
+    "data": [
+      "data/catalog.json"
+    ],
+    "dialogue": [
+      "dialogue/catalog.json"
+    ],
+    "events": [
+      "events/catalog.json"
+    ],
+    "screens": [
+      "screens/catalog.json"
+    ],
+    "assets": [
+      "assets/catalog.json"
+    ]
+  },
+  "capabilities": [
+    "dialogue",
+    "screens"
+  ]
+}

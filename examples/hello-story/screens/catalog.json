@@ -1,0 +1,8 @@
+{
+  "entries": [
+    {
+      "id": "ui.main_menu",
+      "path": "screens/main_menu.json"
+    }
+  ]
+}

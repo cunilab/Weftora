@@ -2,7 +2,7 @@
 id: WFT-PRD-001
 title: Weftora Product Requirements
 type: product_requirements
-doc_version: 0.4.1
+doc_version: 0.5.0
 status: proposed
 implementation: not_started
 created: 2026-09-29
@@ -124,6 +124,8 @@ Contract: **Engine ships as compiled game player + creator tools; Story package 
 - Install prebuilt tools → author Story → run game → export standalone distribution; Story author does not write or compile Rust.
 - Source-located errors for missing IDs, invalid actions, broken Yarn, incompatible manifests and unsupported widgets.
 - Development reload/preview initially restart-based; true hot reload later when state rules permit.
+- Provide copyable `examples/hello-story/` demonstrating manifest, Yarn branching, main menu, catalogs, two expected choices and author edit workflow; no Rust game project.
+- Mark examples provisional until real Windows CLI/player tests pass.
 
 ### R13. Engine distribution vs framework dependency
 - `weftora-player` standalone executable loads external Story folder/package selected at launch; no game-specific compiled Rust needed.
@@ -156,7 +158,7 @@ When unclear: if gameplay behavior changes between game genres, default to Story
 
 ## 7. Acceptance / release definition
 
-- **Story A:** playable via stand-alone Weftora player: VN: dialogue + branches, choice-driven state, background/character/CG, audio, menu, safe save/relaunch.
+- **Story A:** extend [`examples/hello-story/`](./examples/hello-story/README.md) from text-only authoring example into playable VN: dialogue + branches, choice-driven state, backgrounds/character/CG, audio, menu, safe save/relaunch.
 - **Story B:** distinct life-sim-like rules, events, navigation and custom screens. Same **player binary** runs A and B without new Rust game crate or Engine edits.
 - **Isolation:** deleting all Story packages still leaves Engine workspace compiling/tests passing; core's dependency graph contains no Story/Bevy/Yarn.
 - **Authoring:** install prebuilt tools, modify Story behavior/UI/assets, validate/run/export without writing Rust, setting up a Bevy app or rebuilding compiled Engine.
@@ -179,4 +181,5 @@ Use [architecture](./docs/architecture.md) for rationale, [roadmap](./ROADMAP.md
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.5.0 | Require copyable Story example and runtime validation. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.4.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
