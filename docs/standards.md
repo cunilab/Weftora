@@ -2,7 +2,7 @@
 id: WFT-STD-001
 title: Weftora Documentation Standards
 type: documentation_standard
-doc_version: 0.1.3
+doc_version: 0.1.4
 status: proposed
 implementation: not_applicable
 created: 2026-10-08
@@ -17,7 +17,7 @@ supersedes: null
 
 # Documentation Standards
 
-**Applies:** `PRD.md`, `ROADMAP.md`, authored `docs/*.md`, future doc content. **Exceptions:** root `README.md` (short entry point) and `docs/templates/*.md` (copyable templates). Docs-only policy; optional local checker available. No GitHub Actions workflow until future implementation phase.
+**Applies:** `PRD.md`, `ROADMAP.md`, authored `docs/*.md`, future doc content. **Exceptions:** root `README.md` (short entry point) and `docs/templates/*.md` (copyable templates). Docs-only policy; verification manual until Phase 0 implements tooling.
 
 ## Mandatory YAML frontmatter
 
@@ -103,12 +103,13 @@ Not every section required for indexes or reference docs; metadata and Change Hi
 - [ ] For technical changes, required roadmap tests/acceptance evidence defined; no PASS without tests.
 - [ ] Docs metadata and content remain compatible with Windows-first foundation scope.
 
-**Optional local validation:** run `python scripts/check_docs.py` manually before doc PR review. Checker validates frontmatter, IDs, enum/date values, document index and local Markdown links/anchors. **No GitHub Actions workflow in this PR**; automated docs/Cargo/Story/architecture gates are future Phase 0 tasks.
+**Validation:** verify metadata, IDs, dates, index and local links manually for now. Automated docs/Cargo/Story/architecture checks are Phase 0 tasks. No validation scripts or GitHub Actions added in this planning PR.
 
 ## Change History
 
 | Date | Version | Change | Reference |
 | --- | --- | --- | --- |
+| 2026-10-08 | 0.1.4 | Remove local validation script; defer automation to Phase 0. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.3 | Remove GitHub Actions; retain optional local checker. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.2 | Add Windows docs checker and matching governance rules. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
 | 2026-10-08 | 0.1.1 | Register architecture decision docs and planned docs validation CI. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
