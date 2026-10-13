@@ -1,187 +1,100 @@
 ---
 id: WFT-ARCH-001
 title: Weftora Architecture
-type: architecture
-doc_version: 0.7.0
 status: proposed
-implementation: not_started
-created: 2026-10-08
-updated: 2026-10-08
-last_reviewed: null
-owner: Weftora Maintainers
-scope: windows-first
-product_release: unreleased
-related_pr: 1
-supersedes: null
 ---
 
-# Architecture — Rust-Native Weftora
+# Weftora Architecture
 
-**Product name:** Weftora. Repo: `cunilab/Weftora`. **First supported target:** Windows x64; cross-platform expansion gated.  
-**Goal:** independent, creator-friendly alternative to Ren'Py-style narrative engines: **self-contained player/executable + separate Story packages**, built with generic Rust runtime and optional internal rendering/dialogue adapters.
+This document describes **how** Weftora is built. Product scope is in the [PRD](../PRD.md); phase order is in the [roadmap](../ROADMAP.md). Nothing here is implemented yet; all names and formats are proposals.
 
-## 1. Product identity and limits
+## 1. Product boundary
 
-Weftora is a **game engine and authoring platform**, not a game, a Unity extension, or a collection of hard-coded life-sim features. Design priorities:
+Weftora's product is its **apps** — `weftora-player` and the `weftora` CLI — not its crates. Authors install the apps, write Story folders and ship games. They never create a Cargo project, wire Bevy systems or recompile the Engine.
 
-1. **Story iteration without recompiling Rust:** change dialogue, data, supported gameplay rules, declarative UI, flow and assets; validate and relaunch/preview using prebuilt Engine tools. Creators do not write Rust.
-2. **One stable Engine supports many games:** VN and non-VN narrative simulations share runtime/API.
-3. **Rust core with enforceable boundaries:** typed contracts, explicit error handling, automated validation; no assumption compiler catches behavioral/spec drift.
-4. **Practical authoring UX:** plain editable source, clear errors, quick preview, packaging and localization; editor follows working CLI and player. Game authors launch games directly; they do not embed a Rust library in game projects.
-5. **Windows-first completion:** complete tested Windows player, two sample Stories and CLI/export before work on other OS targets; preserve portable core contracts now.
+"A Story can change anything" means anything the current Engine API supports. Three extension tiers make that boundary explicit:
 
-**Boundary of “Story can change anything”:** only behavior supported by current Engine API, data/flow language, script host and widgets. A new native renderer, shader integration, low-level input device, OS service or widget primitive requires a compiled adapter/Engine change. No arbitrary Rust code loading into release player.
+| Tier | What | Who | Needs Engine release? |
+| --- | --- | --- | --- |
+| 1 — Content | Yarn dialogue, data, catalogs, screens, themes, assets | Author | No |
+| 2 — Behaviour | Declarative events/actions and Rhai scripts ([ADR 0003](./adr/0003-story-rules-language.md)) | Author / designer | No |
+| 3 — Native | New widgets, renderer features, platform services, Engine primitives | Engine maintainer | Yes |
 
-### Standalone engine, not developer framework
+Story packages never load native code.
 
-**Product interface = apps**, not crates. Weftora owns its runtime, content pipeline, player, UX, and export process. Rust crates are internal implementation modules. End users should install Weftora, author Story folders, run/check them, and distribute runnable games **without** writing Rust, wiring Bevy systems, creating a Cargo app, or recompiling core.
-
-**Deliverables (separate):**
-1. **`weftora-player`:** compiled player/runtime loads **external, version-compatible Story package(s)** and runs game. No genre-specific source import or hardcoded Story file paths. Runtime can run independently with chosen Story path; initial MVP supports one active Story.
-2. **`weftora` CLI:** proposed `new`, `check`, `run`, `export` commands; author and validate Story, launch same player, package for supported targets. CLI must not impose Rust/Cargo on Story authors; tooling may use Cargo internally for building Engine releases.
-3. **`weftora-editor` (later):** visual authoring/preview for same Story schema/Engine runner. Editor is optional; text+CLI remains first-class.
-4. **Story source/package:** human-editable Yarn/data/events/screens/assets; package manifest/capability contract. No `Cargo.toml`, Rust crate, `main.rs`, Bevy app or native DLL necessary for supported gameplay.
-
-**Two runtime modes:** `weftora run path/to/story` plays development Story using prebuilt player; `weftora export path/to/story` validates/packs Story and copies target-specific prebuilt player + supported assets into independent distribution. Commands and details are proposed, not currently implemented. Player may load directories in dev and verified package archives in production; packaging format TBD.
-
-**Key distinction:** Bevy is implementation backend for rendering/input/assets, **not** a user-facing dependency or author programming model. Yarn provides authored dialogue, **not** full game engine. Author interacts with Weftora's stable content schemas + Story APIs.
-
-**Dynamic boundary:** changing ordinary Story rules/dialogue/screens/assets should not rebuild player. New native capabilities or unimplemented widget/renderer features require an Engine release; never promise unlimited mods or native code loading.
-
-### Extension tiers
-
-[ADR 0001](./adr/0001-rust-native-engine.md) compares proposed Rust-native path with Unity, Godot and Ren'Py; this stack is unproven until P2 acceptance.
-
-- **Tier 1 — data:** Yarn, JSON/other selected text formats, assets, character/location/event definitions, themes.
-- **Tier 2 — behavior:** declarative conditions/actions/events and later optional interpreted script with allowlisted host API.
-- **Tier 3 — native:** Rust crates implementing new host services, renderer/UI widgets and platform integrations; build-time/release-time plugins, not content-only mods.
-
-## 2. Architecture diagram
+## 2. Crates
 
 ```text
-                   Creator / CLI / Editor
-                            |
-                     validate / compile
-                            |
-                     Story Package(s)
-     manifest | data | Yarn | flow | screen defs | assets
-                            |
-                        weftora-api
-                            |
- +--------------------------+---------------------------+
- |               Rust runtime, headless                |
- | weftora-core: lifecycle/state/commands/signals          |
- | weftora-story: manifest/catalog/compat/loader           |
- | weftora-flow: predicates/triggers/sequence scheduler    |
- | weftora-save: persistence/checkpoints/migrations        |
- +--------------------------+---------------------------+
-                            |
- +--------------------------+---------------------------+
- |            Optional backend/adapters                |
- | weftora-yarn | weftora-script (future) | weftora-render-bevy     |
- | weftora-ui-bevy | audio/input/asset adapters             |
- +--------------------------+---------------------------+
-                            |
-              weftora-player (composes crates)
-                            |
-                          OS / GPU
+                      Story package (files)
+          manifest · data · Yarn · events · scripts · screens · assets
+                               │  loaded and validated by
+┌──────────────────────────────┴──────────────────────────────┐
+│ Headless (no Bevy, no Yarn, no Rhai, no Story)               │
+│   weftora-api    IDs, values, command/signal/capability types│
+│   weftora-core   lifecycle, state, commands, signals         │
+│   weftora-story  manifest, catalogs, loader, path policy     │
+│   weftora-flow   conditions, events, action scheduler        │
+│   weftora-save   save container, checkpoints, migrations     │
+└──────────────────────────────┬──────────────────────────────┘
+                               │  depended on by
+┌──────────────────────────────┴──────────────────────────────┐
+│ Adapters                                                     │
+│   weftora-yarn         Yarn compiler/runtime (yarnspinner)   │
+│   weftora-script       Rhai host                             │
+│   weftora-render-bevy  window, views, audio, input, assets   │
+│   weftora-ui-bevy      declarative UI renderer               │
+└──────────────────────────────┬──────────────────────────────┘
+                               │  composed by
+            apps/weftora-player · apps/weftora-cli
 ```
 
-**Strict rule:** `weftora-api` and headless core must not depend on `bevy`, `yarnspinner`, `rhai`, a Story package, or frontend apps. Renderer/dialogue/script crates depend inward. `weftora-player` composes everything. A future different renderer must not force changes to state/flow/save semantics.
+**Start small.** Phase 0 creates only `weftora-api`, `weftora-core`, `weftora-story`, `weftora-yarn`, `weftora-render-bevy` and the two apps. `weftora-flow`, `weftora-save`, `weftora-script` and `weftora-ui-bevy` are split out only when their code exists and a real dependency boundary justifies them.
 
-Bevy is recommended rendering/asset/input platform **candidate**; not project identity. Yarn is preferred dialogue authoring **candidate**; not universal scripting or state owner.
+### Dependency rules
 
-### Platform-neutral contract, Windows-first execution
+- Headless crates must not depend, directly or transitively, on `bevy`, `yarnspinner`, `rhai`, any adapter, any app or any Story. CI enforces this from `cargo metadata`.
+- Adapters depend inward on headless crates, never the reverse.
+- Only the apps compose adapters.
+- Public `weftora-api` types never expose Bevy, Yarn or Rhai types.
+- Ordering and semantics of narrative flow are defined and tested in headless code; never rely on Bevy system scheduling order for them.
 
-- **Initial target:** Windows x64 (`x86_64-pc-windows-msvc`) and only Windows implementation/CI until Windows foundation acceptance. Repo is allowed to hold a **future** portability plan, not unfinished ports.
-- **Core must not hardcode Windows:** Story paths are logical IDs/relative normalized package references, not Windows absolute paths; storage/location resolution is platform service; input actions are logical, not VK keys; lifecycle/window, clock, renderer, audio and asset IO abstracted at backend boundary.
-- **Windows adapter now:** implement native event/window, keyboard/mouse and file/package paths, user-writable save location, audio/display scaling, player distribution; test real Windows GPUs.
-- **Other adapters later:** Linux/macOS desktop, Android/iOS mobile and Web differ in storage/lifecycle/input/render/packaging/signing. Their existence does not justify implementing them before Windows works.
-- **One Story schema:** optional target-specific processed asset bundles and platform metadata are permitted; never introduce OS-specific gameplay rules or require author-written Rust per target.
-- **Portability validation now:** inspect boundaries/types in code review and headless tests. No Linux/macOS/mobile/Web build matrix until Windows release gate.
-- [Platform support plan](./platforms.md) = scope, export matrix, gates and deferred risks.
+## 3. Responsibility split
 
-## 3. Proposed Cargo workspace
-
-```text
-Weftora/
-├── Cargo.toml
-├── Cargo.lock
-├── rust-toolchain.toml
-├── crates/
-│   ├── weftora-api/               # stable IDs, values, commands, traits
-│   ├── weftora-core/              # headless kernel, lifecycle, state/signals
-│   ├── weftora-story/             # manifest, catalogs, loader/validation
-│   ├── weftora-flow/              # events/conditions/action scheduling
-│   ├── weftora-save/              # slots, checkpoints, version/migrations
-│   ├── weftora-yarn/              # optional Yarn compiler/runtime adapter
-│   ├── weftora-script/            # optional interpreter (decision pending)
-│   ├── weftora-render-bevy/      # visuals, assets, audio, input bridge
-│   └── weftora-ui-bevy/          # generic UI widget renderer
-├── apps/
-│   ├── weftora-player/            # standalone executable loads Story package
-│   ├── weftora-cli/               # author-facing 'weftora' CLI
-│   └── weftora-editor/            # later, optional visual editor
-├── examples/                    # roadmap tasks; not present in this PR
-│   ├── hello-story/
-│   └── life-sim/
-├── tests/                     # package/golden/e2e fixtures
-└── docs/
-    └── architecture.md
-```
-
-Names are proposed. Weftora executable/CLI is what creators use; crates exist for Engine maintainers. Avoid proliferating crates before coherent APIs exist. Start with `weftora-api`, `weftora-core`, `weftora-story`, `weftora-player` and a minimal Bevy adapter; split only on real dependency boundaries. Cargo workspace directories for Stories are examples; **Story folders are content, not Cargo workspace members**. Published Story content must never become compile-time dependencies of core.
-
-### Dependency direction
-
-```text
-Story files ──> weftora-api schema (serialized data/API contract)
-                         ^
-weftora-core / weftora-story / weftora-flow / weftora-save
-                         ^
-weftora-yarn / weftora-script / weftora-render-bevy / weftora-ui-bevy
-                         ^
-                    weftora-player
-```
-
-This shows logical dependencies; individual runtime crates may depend on `weftora-core` and/or `weftora-api` as needed. No reverse imports from headless crates into adapters, player, or example stories.
-
-## 4. Runtime responsibility split
-
-| Domain | Engine owns | Story owns |
+| Area | Engine owns | Story owns |
 | --- | --- | --- |
-| State | typed storage, notifications, namespaces, persistence policy | keys, defaults, meaning, formulas |
-| Commands | registry, argument validation, async/cancel, errors | rules such as travel, sleep, buy |
-| Signals | dispatch, ordering, cleanup, loop guard | gameplay triggers and reactions |
-| Flow | condition interpreter, event scheduler, action sequencing | event definitions, priority, conditions |
-| Dialogue | adapter interface, node playback + UI callbacks | Yarn files, choices, custom Story actions |
-| Screens | widget renderer, layout primitives, binding engine | screen trees, theme, actions, navigation |
-| Visuals | sprite layers, transitions, animation primitives | characters, backgrounds, CG and choreography |
-| Audio | channels, playback, fade, settings | music/voice cues, timing and files |
-| Assets | stable ID resolver, cache, load/unload, errors | IDs, catalogs, asset files |
-| Saves | atomic storage, schema versions, checkpoint/restore | versioned Story state + migrations |
-| Tooling | validator, logging, content preview, debugger | authored packages and fixtures |
+| State | typed storage, scopes, notifications, serialisation | keys, defaults, meaning, formulas |
+| Commands | registry, argument validation, async/cancel, errors | game commands such as `travel`, `sleep`, `buy` |
+| Signals | dispatch, ordering, recursion limit | which signals exist and who reacts |
+| Flow | condition evaluation, event scheduling, action sequencing | event definitions, priorities |
+| Scripts | Rhai host, allowlisted API, limits | rule scripts |
+| Dialogue | Yarn adapter, node playback, state bridge | Yarn files, Yarn commands used |
+| UI | widget renderer, layout, bindings, focus | screens, theme, navigation |
+| Visuals | layers, sprites, transitions | characters, backgrounds, CGs, staging |
+| Audio | channels, fades, volume settings | cues and files |
+| Assets | ID resolution, cache, load/unload, errors | catalogs and files |
+| Saves | atomic storage, container format, load pipeline | save schema, checkpoints, migrations |
+| Tooling | validator, logs, debugger, exporter | content and test fixtures |
 
-No engine-level `RelationshipSystem`, `TimeSystem`, `ShopSystem`, or `InventorySystem`. Games may ship reusable Story modules implementing such concepts.
+The Engine has no `RelationshipSystem`, `TimeSystem`, `ShopSystem` or `InventorySystem`. Stories build those.
 
-## 5. Story package contract
+## 4. Story package
 
-Preferred dev format: human-editable directories. Release packaging can use a directory, archive or platform asset container decided by deployment spikes. IDs—not paths—form Story-facing references.
+Development format is a plain folder. The release container (folder or archive) is decided in Phase 6.
 
 ```text
-examples/hello-story/             # planned for Phase 0; not added in this PR
+examples/hello-story/
 ├── manifest.json
-├── data/             # characters, states, locations, catalogs
-├── dialogue/         # Yarn source; compiled during build/validation
-├── events/           # triggers/conditions/actions
-├── screens/          # declarative widgets/bindings/actions
+├── data/          characters, locations, initial state, catalogs
+├── dialogue/      Yarn source
+├── events/        trigger / condition / action definitions
+├── scripts/       Rhai rule scripts (Phase 4+)
+├── screens/       declarative UI
 ├── themes/
 ├── localization/
-├── scripts/          # optional and disabled until interpreter accepted
-└── assets/           # images, audio, fonts; licensed for distribution
+└── assets/        images, audio, fonts (must be licensed for redistribution)
 ```
 
-Manifest v1 **illustrative proposal**, not supported implementation (all shown version numbers, capabilities and IDs are examples, **not released versions**). Source catalogue and entrypoint syntax remain subject to Phase 0 tests; see [ADR 0002](./adr/0002-versioning-compatibility.md):
+Manifest v1 proposal (values are illustrative):
 
 ```json
 {
@@ -190,7 +103,7 @@ Manifest v1 **illustrative proposal**, not supported implementation (all shown v
   "storyVersion": "1.2.1",
   "requires": {
     "engineApi": ">=0.2.0 <0.3.0",
-    "capabilities": ["dialogue.yarn/v1", "ui.basic/v1", "flow.conditions/v1"]
+    "capabilities": ["dialogue.yarn/1", "ui.basic/1"]
   },
   "saveSchema": 2,
   "entrypoint": "intro",
@@ -204,74 +117,79 @@ Manifest v1 **illustrative proposal**, not supported implementation (all shown v
 }
 ```
 
-**Package rules:**
-- Unique namespaced stable IDs; reject duplicates, missing IDs, unknown widgets/commands, invalid Yarn nodes and invalid conditions with source locations.
-- Reject unsupported `manifestSchema`, Engine API SemVer range/capability versions, malformed content and invalid entrypoint **before** gameplay. A player release SemVer is not a proxy for Engine API compatibility.
-- Normalize/validate file paths; reject traversal, absolute paths and oversized/unexpected inputs according to policy. Asset IDs are not a security boundary.
-- Export embeds tested player build ID/SHA-256, Story ID/version, package content hash, compiled dialogue format/compiler provenance and supported API/capability metadata. Reproducible Story export should not depend on incidental host paths; avoid mismatched CLI/player/compiler versions.
-- Start with **one active Story**. Add dependency graphs/Story overlays only if tested; never silently merge namespace collisions.
-- Story package may contain executable **interpreted scripts** only behind explicit opt-in. Never equate Story content with arbitrary Rust native library loading.
-- Running same player executable against Story A or B requires compatible capabilities/build target. Assets may need target-specific processing.
+Version fields are defined in [ADR 0002](./adr/0002-versioning-compatibility.md). Phase 0 uses `manifestSchema: 0`, which is explicitly unstable.
 
-## 6. Public API and game loop
+**Loader rules**
 
-Illustrative API vocabulary (not actual Rust signatures):
+- IDs are namespaced and unique; duplicates, missing references, unknown commands/widgets and invalid Yarn nodes are rejected with file and location.
+- Unsupported manifest schema, Engine API range or capability is rejected **before** any Story state becomes active. Activation is all-or-nothing.
+- Paths are relative to the Story root. The loader rejects absolute, UNC, drive-relative and `\\?\` paths; `..` traversal; Windows reserved device names with or without an extension (`CON`, `NUL.txt`, `COM1`, …); names ending in a dot or space; `:` (alternate data streams); names that collide case-insensitively; symlinks and junctions that resolve outside the root; and packages over the file-count, file-size or total-size limits. Asset IDs are not a security boundary — the path policy is.
+- One active Story at a time. Story dependencies or overlays need their own design.
 
-```text
-state.get(id) / state.set(id, value) / state.add(id, number)
-commands.execute(id, arguments) / commands.cancel(handle)
-signals.emit(id, payload) / signals.subscribe(id, handler)
-content.resolve(id) / assets.load(id)
-views.show(id, options) / views.hide(id)
-screens.open(id) / screens.close(id)
-dialogue.start(node) / dialogue.choose(choice_id)
-save.write(slot) / save.load(slot)
-```
+## 5. Runtime model
 
-Runtime sequence:
+### State
 
-```text
-Input
-  -> Story screen button / Yarn choice
-  -> validated command
-  -> Story-defined action/rule
-  -> state mutation + signals
-  -> eligible Story event conditions / ordered action sequence
-  -> dialogue / view / screen / audio requests
-  -> backend renders
-```
+One canonical game state. Keys are namespaced strings (`world.day`, `character.alice.affection`); the Engine never interprets them.
 
-Engine controls event-loop/reentrancy bounds; Story cannot recursively generate unbounded signal storms. Async commands require an explicit continuation/cancel model. Do not rely on implicit Bevy ECS ordering for headless narrative semantics.
+- Phase 1 value types: `bool`, `int` (i64), `float` (finite f64), `string`.
+- Phase 4 adds `list` and `map` (string keys) of those values, required by Story B ([ADR 0003](./adr/0003-story-rules-language.md)).
+- Every key has a scope: `persistent` (saved), `session` (not saved) or `settings` (saved separately from progress).
+- Serialisation is deterministic (stable key order) so golden tests and saves are reproducible.
 
-## 7. State, Yarn and deterministic flow
+### Commands and actions
 
-### Story authored actions (provisional contract)
+A command has a namespaced ID, a typed argument schema and returns success or a typed error. Engine primitives include `state.set`, `state.add`, `signal.emit`, `dialogue.start`, `view.show`, `view.hide`, `audio.play`, `audio.stop`, `screen.open`, `screen.close`, `save.write`.
 
-Commands are schema-validated Story data with namespaced IDs and typed args, not arbitrary Rust functions. Minimum allowed primitives: `state.set`, `state.add`, `signal.emit`, dialogue/view/audio actions, composed with typed conditions and deterministic order. Validate static refs/params before activating package. Execute sequentially; each completed state write is atomic. On first runtime failure, stop remainder and report failed action index; **previous writes are not implicitly rolled back**. Opt-in transactions would need a new API/ADR. Enforce recursion, action-count and async cancellation budgets. New native primitive requires Engine release.
+Stories define their own commands as either an ordered list of actions (declarative) or a Rhai function. Execution semantics:
 
+- Static references and argument types are validated when the package loads.
+- Actions run in order; each state write is atomic.
+- On the first failure the remaining actions are skipped and the error reports the failing action's index. **Earlier writes are not rolled back.** Transactions, if ever needed, require a new ADR.
+- Recursion depth, action count per dispatch and async cancellation are bounded by the Engine.
 
-Use **one canonical gameplay state** with typed values and optional schema defaults. Initial types: `bool`, integer, finite float, string; complex collections deferred. Keys namespaced, e.g. `world.day`, `character.alice.affection`; Engine never parses domain meaning.
+### Signals and flow
 
-Yarn variable storage must be a *mapped adapter view* onto canonical state (or use an explicitly synchronized shadow with conflict tests). Define conversion, missing defaults, commit timing, error reporting, and persistent/transient scopes before v1 save/load. Do not maintain independent unsynchronized Yarn state.
+Signals are delivered in a documented deterministic order. Nested emits are queued, not delivered re-entrantly, and a per-frame budget stops signal storms with an explicit error.
 
-Event scheduler specifies ordered trigger evaluation, explicit priority/tie-break, action sequencing, async suspension, cancellation, and bounds for repeated/reentrant signals. Preserve ordering across headless tests and Bevy player.
-
-Sample (concept only):
+Events are `trigger → conditions → actions` with an explicit priority and tie-break (declaration order). The scheduler, not Bevy, decides evaluation order, so headless tests and the real player behave identically.
 
 ```text
-screen ui.cafe -> onClick: command story.buy_coffee
-story.buy_coffee -> validate funds -> state change -> signal.emit(coffee_bought)
-event first_purchase -> when flag false -> dialogue.start(first_purchase)
-Yarn choice -> update mapped state -> view.show(character.happy)
+input → screen button / Yarn choice → command → actions or Rhai
+      → state changes + signals → matching events → dialogue / view / audio requests
+      → renderer
 ```
 
-Commands like `story.buy_coffee` belong to Story, never `weftora-core`.
+## 6. Dialogue (Yarn Spinner)
 
-## 8. Declarative UI and presentation
+- Use the **Bevy-independent `yarnspinner` crates** inside `weftora-yarn`. Do not use `bevy_yarnspinner`: it ties Weftora's Bevy upgrades to a third-party crate's release schedule. The Rust port is community-maintained and labelled work-in-progress; Phase 0 tests it and records the fallback.
+- Fallback options, in order: patch or fork the Rust port; bundle the official Yarn Spinner command-line compiler with the CLI and run its compiled output on the Rust runtime (output compatibility must be verified first); switch dialogue language (new ADR).
+- Yarn variables are a view onto canonical state, not a separate store. Missing defaults and write timing are specified and tested.
+- Type mapping: Yarn (Rust port) has only `bool`, `string` and a 32-bit float `number`. `bool` and `string` map directly; `float` maps to `number`; `int` maps to `number` only within ±2^24 and reading a larger value from Yarn is a Story error, not silent rounding. Lists and maps are **not** exposed to Yarn; Stories expose scalar views of them through Yarn functions backed by declarative actions or Rhai.
+- Before Phase 4, Yarn commands map to Engine primitive commands only. From Phase 4, Story-defined commands (declarative or Rhai) can also be called from Yarn.
+- `weftora check` compiles Yarn and reports errors with file and node. `weftora run` recompiles changed files. `weftora export` ships compiled dialogue with its own `dialogueArtifactFormat` version, compiler identity and content hash. The player never contains the compiler and refuses unknown artifact formats.
 
-Story defines *layout, widgets, bindings, actions and theme*, not Rust GUI code per screen. Engine provides generic primitives: panel, text, image, button, list, overlay, screen, focus, animation, input routing. Schema validated during `weftora-cli check`.
+## 7. Rules scripting (Rhai)
 
-Example proposal:
+Rhai is embedded for rules too complex for declarative actions; the reasons are in [ADR 0003](./adr/0003-story-rules-language.md). This section is the host contract:
+
+- **Allowlisted API only:** read and write state, execute commands, emit signals, and a deterministic random source whose seed is stored in canonical state.
+- **Nothing else reachable:** build the engine with `Engine::new_raw()` plus only the needed packages; no file module resolver and `set_max_modules(0)` (no `import`); `eval` disabled; the `no_time` feature enabled; no file, network, process or reflection access.
+- **Limits:** operations per call, call depth, string, array and map sizes. Exceeding a limit is a Story error, not a crash or hang.
+- **No hidden script state:** scripts keep nothing between calls; anything persistent lives in canonical state, so saves stay complete.
+- **Diagnostics:** `weftora check` compiles every script; syntax and runtime errors report Story file and line.
+
+This makes accidents safe; it is **not** a guarantee that hostile mods are safe.
+
+## 8. UI and presentation
+
+Stories define screens as data: layout, widgets, theme, bindings to state and actions. Initial widgets: screen, panel, text, image, button, list, choice list, overlay. Bindings must define update timing, validation, focus order, localisation and scaling. New widget types are Tier 3 (Engine release).
+
+Presentation layers: background, character, CG, overlay, UI. Operations: show, hide, position, scale, opacity, fade, move, crossfade, shake.
+
+Whether the declarative UI renders through Bevy UI or another library is an open question decided in Phase 2.
+
+Illustrative screen definition (format provisional):
 
 ```json
 {
@@ -281,43 +199,15 @@ Example proposal:
     {
       "type": "button",
       "textKey": "menu.start",
-      "onClick": {
-        "command": "dialogue.start",
-        "args": { "node": "intro" }
-      }
+      "onClick": { "command": "dialogue.start", "args": { "node": "intro" } }
     }
   ]
 }
 ```
 
-Binding design must define updates, validation, layout constraints, accessibility/focus, localization, scaling and UI state restoration. Native widget types require renderer/UI adapter additions. First UX target: show images + choices + menu + transitions, then themed custom screens.
+## 9. Saves
 
-## 9. Dialogue and script adapters
-
-### Yarn compilation boundary
-
-`weftora check`: compile Yarn source through pinned compiler/adapter; source-located diagnostics. `weftora run`: recompile changed development source. `weftora export`: package a **separately versioned dialogue artifact format** with compiler identity/version, source-map IDs and content hash; release player loads it **without** compiler/Rust/Cargo. If artifact format unsupported, reject with useful diagnostic; never silently interpret incompatible binary content. Pair author CLI/compiler/player from tested Engine release; P2 locks subset/cache/version handshake. Early P0 Yarn feasibility probe remains prerequisite.
-
-
-**Yarn:** test `yarnspinner` (standalone compiler/runtime) and optionally `bevy_yarnspinner` as Bevy integration. Vendor/wrap no Yarn types in public `weftora-api`. Yarn Spinner for Rust project currently labels itself *work in progress / no official support*; compatibility, compiling Yarn, running choices, custom commands, variable mapping, localization and save semantics require a gated spike. If unsupported, adapter replacement must not break Story package architecture.
-
-**Scripting:** declarative Story events and commands first. Later prototype **Rhai** as optional interpreter for arithmetic/rules/functions only, not replacement for Yarn or flow scheduler. Do not promise sandboxed modding:
-- allowlist host calls; no unrestricted file/network/OS access or reflection;
-- set operation/call-depth/memory/object limits where supported; define cancellation/timeout strategy and host-side resource limits;
-- map values/errors into typed state and diagnostics;
-- test hostile input, panic handling, save compatibility and deterministic behavior.
-- sandbox *effectiveness* is validation target, not guarantee inferred from choosing Rust.
-
-**Why not custom story language now?** Creator UX improves more by reusing Yarn + typed declarative definitions initially. Re-evaluate custom syntax only with documented missing authoring use cases.
-
-## 10. Persistence, replay and rollback
-
-### Save activation and version policy
-
-Independent `saveFormat` (global container integer), `storyId`, `storyVersion` (writer provenance), `saveSchema` (Story-owned persisted state/checkpoint contract integer), `checkpoint.id` (stable Story checkpoint key), and writer Engine API/release metadata (provenance). Require exact Story identity, supported save container, compatible saveSchema and known/migrated checkpoint. **A Story version difference alone is NOT a rejection.** A harmless Story patch with unchanged schema/checkpoint must load; changed checkpoint/semantics requires explicit mapping/migration or clear refusal. Do not reject just because writer Engine API differs if current Story/runtime compatibility and container constraints pass. Pipeline: bounded read → metadata compatibility → migrate temporary snapshot if registered → validate state/checkpoint → atomic activation. Failure retains original save and in-memory state; downgrades unsupported by default. [ADR 0002](./adr/0002-versioning-compatibility.md) owns decision policy; P3 proves it.
-
-
-Engine serializes slots, metadata, Story identity/version, schemas, chosen state scopes, Story module payloads, and checkpoints. Use atomic write/rename where supported, corruption detection, backup/restore and explicit migration failure.
+Header fields: `saveFormat`, `storyId`, `storyVersion`, `saveSchema`, `checkpoint.id`, plus `writerEngineApi` and `writerEngineRelease` for diagnostics. Which of these decide compatibility is defined in [ADR 0002](./adr/0002-versioning-compatibility.md#compatibility-rules).
 
 ```json
 {
@@ -327,70 +217,38 @@ Engine serializes slots, metadata, Story identity/version, schemas, chosen state
   "storyId": "com.example.hello-story",
   "storyVersion": "1.2.1",
   "saveSchema": 2,
-  "state": {},
-  "modules": {},
-  "checkpoint": {"id": "scene.intro.after_choice"}
+  "checkpoint": { "id": "scene.intro.after_choice" },
+  "state": {}
 }
 ```
 
-MVP saves only at **explicit safe points** (idle boundaries, known Yarn node/choice boundaries after adapter verification). UI/view state reconstructed from serialized Story state plus stable checkpoint ID. Exact continuation of arbitrary coroutines, in-flight commands, transitions, audio position, and rollback/replay is **not** promised. Incompatible save schemas/checkpoints require explicit migration or refusal; newer Story version by itself does not cause refusal. Example versions are placeholders.
+- Saves happen only at **safe points**: no command, transition or async action is in flight, and the dialogue is at a known node or choice boundary. In-flight animations, audio position and coroutines are not saved; the view is rebuilt from state plus checkpoint.
+- Write: serialise → write temp file → flush → atomic rename; keep the previous save as a backup.
+- Load: bounded read → header compatibility → migrate a temporary copy if a migration is registered → validate state and checkpoint → atomic activation. On failure the current game and the on-disk save are untouched.
+- Saves live in the platform's user data directory, never inside the Story package.
 
-## 11. Toolchain and drift protection
+## 10. Drift protection
 
-Rust provides strong *compile-time* memory/type safety, but neither proves correct game mechanics nor prevents AI-driven valid-code regressions. Treat boundaries as executable tests.
+- `#![forbid(unsafe_code)]` in headless crates. Any `unsafe` in adapters needs a reviewed, documented exception.
+- Pinned `rust-toolchain.toml` and committed `Cargo.lock`; licence and advisory checks (`cargo deny`) from Phase 0.
+- **Merge gate (the single list; other docs link here):** `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked`, `cargo deny check`, the dependency-direction check, and the docs link/header check.
+- Headless golden tests: same Story input → same ordered events, state and render requests.
+- Negative fixtures for every loader, validator and save rule.
+- Contract changes need an ADR; see [standards](./standards.md#changing-documents).
 
-### Controls
+Passing compilation never proves author-visible behaviour; the [success criteria](./success-criteria.md) define what does.
 
-- `#![forbid(unsafe_code)]` in headless/domain crates; any unavoidable unsafe in adapters requires a documented, reviewed exception and tests.
-- Cargo workspace with pinned `rust-toolchain.toml`, committed `Cargo.lock`, dependency policy and optional license/advisory checks.
-- CI dependency graph assertion: `weftora-core`, `weftora-api`, `weftora-story`, `weftora-flow`, `weftora-save` contain no Bevy/Yarn/Rhai/Story dependency.
-- Validate manifest/JSON schemas from Rust-owned types where practical; revisioned schemas and fixtures.
-- Headless golden tests (same Story input → same ordered events/state/requests); error-case tests (duplicate IDs, malformed commands, recursion cycles, invalid save).
-- Property-based tests for serialization/idempotence where useful; integration tests with Story A/B on same player; snapshot/API compatibility diff review.
-- Merge gates: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked`, plus package validator/architecture/target build checks as they exist.
-- ADR for any change to dependency direction, exposed Engine capability, runtime language, file formats, renderer, or save semantics.
+## 11. Open questions
 
-Sample CIs above are **planned**, not present/ran. Compile-time checks do not validate author-visible behavior.
+1. **Authoring file format.** JSON is shown above but is verbose and has no comments. Candidates: JSON with comments (JSONC), TOML, RON or YAML. Decide in Phase 0 with the first real Story files; schema validation is generated from Rust types in any case.
+2. **UI renderer.** Bevy UI vs. an alternative for the declarative screen renderer (Phase 2).
+3. **Release package container.** Folder vs. archive (Phase 6).
+4. **Yarn ↔ state mapping details**, including list/map values (Phases 2 and 4).
+5. **Licence**, after the dependency licence audit (Phase 6).
+6. **Exact dependency versions.** Pinned only after Phase 0 spikes pass. As of October 2026 the latest Bevy is 0.19.x and the latest Yarn Spinner for Rust release found is 0.8.0 (March 2026); pairing must be verified, not assumed.
 
-**Measured completion:** mandatory P0–P7 test IDs, evidence and PASS/BLOCKED rules: [success criteria](./success-criteria.md). Descriptive architecture alone never satisfies release gate.
+## References
 
-## 12. Rollout and acceptance gates
-
-**Gate 0: architecture/bootstrap.** Cargo builds, zero reverse imports, Story manifest validates/rejects errors; initial example package.
-
-**Gate 1: playable narrative slice.** Via prebuilt player/CLI (no author Rust/Cargo), single external Story with Yarn choices, two screens, image/CG, audio, persistent state; player runs without Engine source edits.
-
-**Gate 2: dynamic rules.** Declarative Story conditions/actions and custom themed UI; changing rules/assets does not recompile Engine; optional scripting gated by spike.
-
-**Gate 3: two distinct games.** VN package and life-sim-like package run against identical compiled player binary/revision; no Rust/Bevy game project per Story. Delete either package: Engine still compiles and other game runs.
-
-**Gate 4: creator UX.** CLI generates, validates, runs and exports player+Story for supported targets without author Rust/Cargo; preview/reload during development; useful source-located errors and debugger.
-
-**Gate 5: release safety.** Verified **Windows x64** release executable on clean Windows machine, CLI/export, two Stories and full regressions; clean licenses/deps, save mismatch/corruption coverage, runtime error recovery and architecture CI. Only then unlock non-Windows ports.
-
-## 13. Open ADRs / research gates
-
-1. **Windows x64 only** through foundation release; other targets after release gate. Define adapter boundaries early, defer portability implementation/CI. See [platform plan](./platforms.md).
-2. Pin compatible Rust/Bevy/Yarn versions after sample compile; Bevy 0.19 with yarnspinner 0.9 is a **candidate** combination, not tested in this repo.
-3. Choose Bevy UI vs alternative immediate-mode UI for declarative screen renderer.
-4. Choose Story distribution container/content compiler; path/packaging semantics across platforms.
-5. Decide Yarn variable mapping, nested state types and safe-checkpoint limitations via runtime tests.
-6. Evaluate Rhai needs, constraints and adversarial-test results before selecting scripting interface.
-7. Review [ADR 0002](./adr/0002-versioning-compatibility.md), then finalize manifest/Engine API SemVer ranges, versioned capabilities, save schema and migration rules from Phase 0/P3 evidence.
-8. Decide license after dependency/license audit.
-
-## Reference projects (research; not added deps)
-
-- [Bevy](https://bevyengine.org/) — rendering/asset/input candidate.
-- [Yarn Spinner for Rust](https://github.com/YarnSpinnerTool/YarnSpinner-Rust) — WIP compiler/runtime + Bevy adapter; upstream version table.
-- [Rhai](https://rhai.rs/) — optional embedded scripting candidate.
-
-No Rust code, tools, executable binaries, or tests are claimed by this proposal.
-
-## Change History
-
-| Date | Version | Change | Reference |
-| --- | --- | --- | --- |
-| 2026-10-08 | 0.7.0 | Align Story manifest/save examples with versioning ADR and check/export contract. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
-| 2026-10-08 | 0.6.0 | Align example paths, declare action/compile/save behavior and Rust decision ADR. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
-| 2026-10-08 | 0.5.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
+- [Bevy](https://bevyengine.org/)
+- [Yarn Spinner for Rust](https://github.com/YarnSpinnerTool/YarnSpinner-Rust)
+- [Rhai](https://rhai.rs/)

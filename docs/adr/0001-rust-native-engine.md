@@ -1,51 +1,58 @@
 ---
 id: WFT-ADR-001
-title: Proposed Rust-Native Engine Decision
-type: architecture_decision
-doc_version: 0.1.0
+title: ADR 0001 — Rust-Native Engine
 status: proposed
-implementation: not_applicable
-created: 2026-10-08
-updated: 2026-10-08
-last_reviewed: null
-owner: Weftora Maintainers
-scope: documentation
-product_release: unreleased
-related_pr: 1
-supersedes: null
 ---
 
-# ADR 0001 — Proposed Rust-native engine
+# ADR 0001 — Rust-Native Engine
 
-**Status: proposed; no technical implementation or benchmarks.** PR #1 pivots prior Unity 6 LTS/Yarn foundation into standalone Rust-native Windows player + CLI + external Story packages. Require explicit maintainer decision.
+## Context
 
-## Drivers
+The first design for this repository was a Unity 6 LTS framework with Yarn Spinner, where each game was a Unity project. PR #1 replaces it with a standalone engine: a prebuilt player and CLI that run external Story packages, so authors never need a game engine project or a compiler.
 
-One compiled player runs distinct VN and life-sim Stories. Creators edit dialogue, rules, screens and assets via prebuilt tools, without Rust/Cargo/Unity projects or per-game native binaries. Windows x64 first, later ports gated.
+The drivers are:
 
-## Alternatives and tradeoffs
+- one compiled player runs a visual novel and a life-sim unchanged;
+- authors edit dialogue, rules, screens and assets with prebuilt tools only;
+- the runtime, file formats and distribution are owned by the project;
+- Windows x64 ships first; other platforms come later.
 
-| Option | Strength | Cost/tradeoff |
+## Options
+
+| Option | Strengths | Costs |
 | --- | --- | --- |
-| Unity 6 LTS + Yarn | Mature asset/UI ecosystem and existing project direction | External Unity project/runtime dependency, engine release/licensing lifecycle |
-| Godot + Story host | Open source 2D/UI/tooling | Custom authoring/package contract atop existing engine |
-| Ren'Py based player | Mature VN authoring, export | Generic life-sim UI/rules require nontrivial extension |
-| Rust core + Bevy backend + Yarn adapter (**proposed**) | Own runtime/API/distribution, independent headless core | High engineering cost; Yarn Rust, player/UI/export and creator UX unproven |
+| Unity 6 LTS + Yarn Spinner (previous plan) | Mature editor, UI, asset pipeline; official Yarn Spinner support | Authors need Unity; engine licence and release lifecycle outside our control; "prebuilt player + external Story" fights Unity's build model |
+| Godot 4 + Story host | Open source, strong 2D and UI, exports to many platforms | We still build the Story format, loader and tools, but on top of someone else's runtime; GDScript/C# extension model |
+| Ren'Py | Decades of visual-novel authoring and export | Python-based; life-sim rules and custom UI are possible but fight the VN model; not our runtime |
+| **Rust core + Bevy adapter + Yarn adapter (chosen, proposed)** | Own runtime, formats and distribution; headless testable core; single small binary | Highest engineering cost; Yarn Rust port is community-maintained and work-in-progress; Bevy has breaking releases every few months; UI, export and creator UX all unproven |
 
-These are product-design tradeoffs, **not** evidence of Rust performance or delivery speed.
+These are product tradeoffs, not evidence that Rust is faster to deliver.
 
-## Required proof/reversal gates
+## Decision (proposed)
 
-- P0: time-boxed real Yarn compiler/runtime choice probe *before* committing kernel dialogue/state APIs; document tested versions/license and fallback.
-- P2: real Windows rendering/input/audio, compiled Yarn branching, canonical state bridge and source-located diagnostics. If unsupported, test replacement adapter or revisit Godot/Unity.
-- P3: Story author runs/changes packaged VN through prebuilt player, same binary SHA; safe save/load; optional developer alpha only.
-- P6: publish creator workflow costs, measurable startup/RAM/input/validation budgets, maintenance effort and clean-machine install evidence.
-- **Reverse/revisit** if Yarn author contract cannot be met, ordinary Story rules require game-specific Rust compile, or measured Windows creator/maintainer burden exceeds simpler host-engine option. New stack decision requires new ADR and amended PRD/roadmap.
+Build the Rust-native engine, but treat it as a **bet with explicit exit points**, not a commitment.
 
-Rust memory safety does not prove story correctness. No promise of Rhai sandbox or source compatibility until tests.
+To limit the main risks:
 
-## Change History
+- **Bevy churn:** Bevy is confined to adapter crates; the headless core never sees it. Upgrade Bevy deliberately, at most once per phase, never mid-phase.
+- **Yarn port maturity:** use only the Bevy-independent `yarnspinner` crates, not `bevy_yarnspinner`, so Bevy upgrades never wait on a third party. Fallbacks are listed in [architecture §6](../architecture.md#6-dialogue-yarn-spinner).
+- **Scope:** the roadmap is a walking skeleton. Phase 0 must get a real Story on screen through the real CLI and player.
 
-| Date | Version | Change | Reference |
-| --- | --- | --- | --- |
-| 2026-10-08 | 0.1.0 | Record proposed Rust pivot, alternatives and reversal tests. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
+## Budget and reversal gates
+
+The maintainer sets a calendar budget for each gate when Phase 0 starts and records it here. Exceeding a budget by more than 50% forces a written go/no-go review. Silently continuing is not allowed.
+
+| Gate | Must be true | If not |
+| --- | --- | --- |
+| End of Phase 0 | `weftora run examples/hello-story` shows text and a choice that changes state, on Windows, through `yarnspinner` + Bevy | Try the Yarn fallbacks; if the stack itself fails, revisit Godot |
+| End of Phase 2 | Full Yarn integration, views, audio and declarative UI work on Windows; performance baseline is inside or near budget | Revisit the UI renderer or the stack |
+| End of Phase 3 | An author changes Story A without touching the player binary; saves survive a Story patch | Stop and re-plan before building rules |
+| End of Phase 6 | A non-Rust user creates and exports a game on a clean Windows machine | Do not release; fix or re-scope |
+
+**Revisit the whole decision** if Story rules start needing game-specific Rust, if the Yarn author contract cannot be met, or if maintenance cost clearly exceeds a host-engine option. Changing stack needs a new ADR that supersedes this one.
+
+## Consequences
+
+- Rust memory safety does not prove story correctness; behaviour is proven by tests.
+- No promise of a Rhai sandbox for untrusted mods.
+- The previous Unity documents are superseded by this PR's PRD, roadmap and architecture.

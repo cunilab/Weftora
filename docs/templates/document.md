@@ -1,46 +1,29 @@
 ---
 id: WFT-EXAMPLE-001
 title: Replace With Document Title
-type: architecture
-doc_version: 0.1.0
 status: draft
-implementation: not_started
-created: YYYY-MM-DD
-updated: YYYY-MM-DD
-last_reviewed: null
-owner: Weftora Maintainers
-scope: windows-first
-product_release: unreleased
-related_pr: null
-supersedes: null
 ---
 
 # Replace With Document Title
 
-> Template only. **Replace all example values**; ID must be unique and dates real. Template itself excluded from metadata validation. See [standards](../standards.md).
+> Template. Replace the ID with a new unique one and follow the [standards](../standards.md).
 
 ## Overview
 
-Goal, audience and problem.
+Goal, audience and the problem this document addresses.
 
 ## Scope
 
-In-scope and non-goals; Windows-first if applicable.
+What is in scope and what is explicitly not.
 
-## Design / Requirements
+## Design / requirements
 
-Contracts, functionality and constraints.
+Contracts, behaviour and constraints. Link to the owning document instead of restating rules that live elsewhere.
 
-## Validation / Success Criteria
+## Validation
 
-Tests and evidence needed; references to [success criteria](../success-criteria.md) if applicable.
+Which [success criteria](../success-criteria.md) prove this, or which new ones are needed.
 
-## Open Decisions
+## Open questions
 
-Items requiring ADR or product decision.
-
-## Change History
-
-| Date | Version | Change | Reference |
-| --- | --- | --- | --- |
-| YYYY-MM-DD | 0.1.0 | Initial draft. | PR link |
+Items that still need a decision or an ADR.

@@ -1,62 +1,43 @@
 # Weftora
 
-**Standalone Rust-native story game engine.** Ren'Py-like creation workflow, Yarn-style dialogue, replaceable game packages. **Not framework** requiring game authors to write Rust or integrate Bevy.
+Weftora is a standalone engine for narrative and story-driven 2D games: visual novels, life-sims, and anything in between. It is written in Rust, but **game authors never write Rust**. They write Yarn dialogue, data, rules and screens, and run them on a prebuilt player.
 
-**Development target: Windows x64 first.** Stabilize entire Engine → Story → player → CLI → export pipeline before Linux, macOS, Android, iOS, or Web ports. Maintain platform-neutral core contracts from start.
+> **Status:** design proposal. No code exists yet. Everything below is planned, not implemented.
 
-**Engine = compiled reusable player/runtime. Story = external game data, dialogue, rules, flow, UI, themes, assets.**
-
-## How creators use it
-
-~~~text
-Author edits Story files (Yarn, JSON, sprites/audio)
-                      |
-                 weftora check
-                      |
-                weftora run
-                      |
-         Prebuilt Weftora Engine/player
-                      |
-                Game playable
-                      |
-               weftora export
-                      |
-     Standalone distribution: player + Story
-~~~
-
-CLI commands above = **planned interface**, not implemented. Creators should not need Cargo/Rust toolchain or Engine recompilation to build supported Story content. Editor/visual preview later sit atop same player and package contract.
-
-## Engine / Story boundary
-
-- **Engine:** typed state, generic commands/signals, flow scheduler, asset loading, rendering/UI primitives, input/audio, save/load, validation, packaging.
-- **Story:** data, gameplay logic, characters, dialogue, events, choices, screens/themes, asset catalogs, localization.
-- **Adapters:** internal Bevy renderer + optional Yarn runtime + future scripted-rule adapter. Story authors need not depend on Bevy, Yarn Rust APIs, or Rust crates.
-- **Native extension:** genuinely new low-level capability needs Engine/adapter code and release; ordinary Story changes must not.
-- **Distribution:** one compatible compiled Engine/player can launch different Story packages; export bundles existing target player with Story files. Supported target builds must exist; no arbitrary platform support promised.
-
-## Rust workspace (proposed)
+## How it is meant to work
 
 ```text
-crates/       # Weftora Engine core, contracts, adapters
-apps/         # player, CLI, future editor
-examples/     # future Story packages, not Cargo workspace members
-docs/         # architecture and decisions
+Author edits a Story folder (Yarn, data, screens, images, audio)
+        │
+   weftora check     → validate content, compile dialogue, report errors with file/line
+        │
+   weftora run       → play it on the prebuilt Weftora player
+        │
+   weftora export    → standalone game folder: prebuilt player + Story
 ```
 
-Rust = implementation language for **engine maintainers**. Story = separate authoring format; no game-specific Rust compile step.
+- **Engine** — the compiled player and tools: state, commands, signals, rules execution, rendering, UI, audio, saves, validation, export.
+- **Story** — everything that makes a particular game: dialogue, characters, rules, events, screens, themes, assets.
+- Changing a Story never requires rebuilding the Engine. One player binary runs many different games.
 
-## Docs
+## Targets
 
-- [Docs index](./docs/README.md) — doc versions, scope, status, implementation state and ownership.
-- [Rust pivot ADR](./docs/adr/0001-rust-native-engine.md) — decision alternatives, risks and reversal gates.
-- [Versioning ADR](./docs/adr/0002-versioning-compatibility.md) — compatibility across player, Story packages, compiled dialogue and saves.
-- [Architecture](./docs/architecture.md) — standalone engine vs framework, runtime/player and Story package contracts.
-- [PRD](./PRD.md) — product reqs and acceptance.
-- [Roadmap](./ROADMAP.md) — Windows-first implementation phases and later port gates.
-- [Success criteria](./docs/success-criteria.md) — measurable PASS/FAIL gates for every phase.
-- [Doc standards](./docs/standards.md) — metadata template, versioning, status and review rules.
-- [Platform plan](./docs/platforms.md) — Windows baseline, deferred Linux/macOS/Android/iOS/Web, platform boundaries and tests.
+Windows x64 is the first and only release target until the foundation release. Development also works on macOS and Linux, but they are not supported releases. See the [platform plan](./docs/platforms.md).
 
-## Status
+## Planned repository layout
 
-**Docs-only proposal. No validation scripts or GitHub Actions.** No Rust workspace, playable engine, CLI, exporter or runtime tests committed yet. Future example directories remain roadmap tasks. Current repo: `cunilab/Weftora`. Windows x64 prioritized; other platforms not implemented or validated.
+```text
+crates/     Engine libraries (internal to Weftora)
+apps/       weftora-player, weftora CLI
+examples/   sample Stories (content, not Rust)
+docs/       architecture, decisions, criteria
+```
+
+## Documentation
+
+- [Product requirements](./PRD.md): what Weftora must do and what it won't do.
+- [Roadmap](./ROADMAP.md): phases, starting with a playable skeleton.
+- [Architecture](./docs/architecture.md): crates, boundaries and the Story package format.
+- [Success criteria](./docs/success-criteria.md): pass/fail checks for each phase.
+- [Decisions (ADRs)](./docs/adr/): why Rust, how versioning works, and the rules language.
+- [Docs index](./docs/README.md)

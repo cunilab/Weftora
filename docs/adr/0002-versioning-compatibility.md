@@ -1,98 +1,61 @@
 ---
 id: WFT-ADR-002
-title: Versioning and Compatibility Contract
-type: architecture_decision
-doc_version: 0.1.0
+title: ADR 0002 — Versioning and Compatibility
 status: proposed
-implementation: not_applicable
-created: 2026-10-08
-updated: 2026-10-08
-last_reviewed: null
-owner: Weftora Maintainers
-scope: documentation
-product_release: unreleased
-related_pr: 1
-supersedes: null
 ---
 
-# ADR 0002 — Versioning and compatibility contract
+# ADR 0002 — Versioning and Compatibility
 
-**Status: proposed, not implemented.** Approve contract in Phase 0 before locking first real manifest/state/API schemas. Versions below are **illustrative only**; no Weftora executable, public API, Story save format or dialogue artifact has shipped.
+## Context
 
-## Decision: independent version domains
+A Story package, the player that runs it, the compiled dialogue it ships and the saves it produces all change on different schedules. Tying them to one version number would either break saves on every text fix or hide real incompatibilities. Nothing has shipped yet, so every version below is illustrative.
 
-| Domain | Field / identity | Policy |
+## Decision (proposed): independent version domains, introduced when needed
+
+| Domain | Field | Format | Introduced | Rule |
+| --- | --- | --- | --- | --- |
+| Engine release | `engineRelease` + build ID + SHA-256 | SemVer | Phase 0 | Identifies the exact player/CLI build |
+| Story-facing Engine API | `engineApi`; manifest `requires.engineApi` | SemVer | Phase 1 | Independent of release number. Pre-1.0: a minor bump may break. From 1.0: additive = minor, fix = patch, break = major |
+| Capabilities | manifest `requires.capabilities`, e.g. `dialogue.yarn/1` | `id/major` | Phase 1 | Coarse feature contracts. Start with very few; add one only when a Story could reasonably run without it |
+| Manifest structure | `manifestSchema` | integer | Phase 0 (`0` = unstable), `1` in Phase 1 | Bump on incompatible manifest changes |
+| Story release | `storyVersion` | SemVer | Phase 1 | Author's own release; **never** used alone to reject a save |
+| Save container | `saveFormat` | integer | Phase 3 | Global Engine format, the same for every Story |
+| Story save contract | `saveSchema` | integer per Story | Phase 3 | Bumped by the author when saved state or checkpoint meaning changes incompatibly |
+| Compiled dialogue | `dialogueArtifactFormat` + compiler ID/version + input hash | integer | Phase 2 | Separate from the Yarn language version |
+
+Documentation and internal crate versions are unrelated to all of the above.
+
+**Ranges.** `requires.engineApi` uses explicit comparator ranges such as `>=0.2.0 <0.3.0`. Pre-release Engine APIs never satisfy a range unless the range names a pre-release explicitly. Exact comparator syntax is fixed in Phase 1 with tests.
+
+**No forced 1.0.** The Phase 6 foundation release may be `0.x` with a published compatibility table.
+
+## Compatibility rules
+
+1. **Story activation:** supported `manifestSchema` → `engineApi` in range → every required capability supported → references valid → compiled dialogue format supported → activate atomically. Any failure rejects before gameplay with the names and versions involved.
+2. **Authoring vs. shipping:** `check` and `run` compile Yarn from source; `export` packages compiled dialogue and records the CLI, compiler and player build identities. Exporting with a player the CLI was not released with is refused.
+3. **Loading a save** requires: matching `storyId`, a supported `saveFormat`, the Story's current `saveSchema` (or a registered migration from the save's schema) and a known or mapped checkpoint ID. `storyVersion` and the writer's Engine version are recorded for diagnostics only.
+4. **Story patches:** changing text, translations, images or audio while keeping `saveSchema` and checkpoint IDs keeps old saves loadable. Adding a saved field with a default may keep the same schema.
+5. **Breaking Story changes:** removing or renaming saved fields or checkpoints, or changing what a checkpoint means, requires a `saveSchema` bump plus a migration, or a clear refusal. A version bump alone migrates nothing. A refused save is never deleted or overwritten, and a new game is never started silently.
+6. **Downgrades** are unsupported by default and rejected with a clear message.
+
+## Required fixtures
+
+| Scenario | Expected | Phase |
 | --- | --- | --- |
-| Engine/player + creator tools release | `engineRelease`, build ID, binary SHA-256 | SemVer e.g. `0.3.0-alpha.1`. Identify exact tested CLI/compiler/player pair; patch release need not change public API |
-| Story-facing Engine API | `engineApi` and manifest `requires.engineApi` | SemVer, independently from Engine release. `0.x` minor can break; from `1.0`, additive minor, fixes patch, breaks major |
-| Story package manifest structure | `manifestSchema` | Integer, increment for incompatible parsing/required-field changes; deliberate backward support possible |
-| Authored Story release | `storyVersion` | SemVer, independently from saved-state compatibility; content-only edits may increase patch |
-| Engine save container serialization | `saveFormat` | Integer global format for all Stories; distinct from Story state schema |
-| Story-owned persistent state and checkpoint semantics | `saveSchema` | Integer per `storyId`; bump for incompatible saved state or checkpoint contract |
-| Compiled dialogue artifact | `dialogueArtifactFormat` | Integer for binary data contract; also record compiler ID/version and input hash; not Yarn source version |
-| Doc versions + internal Rust dependencies | `doc_version`, Cargo crate versions | Independent; documentation changes do not imply runtime compatibility |
+| Engine patch, API unchanged | Story loads | 1 |
+| Engine API additive within the Story's range | Story loads unchanged | 1 |
+| API outside range, or missing capability | Rejected, naming requirement and versions | 1 |
+| Unknown `manifestSchema` | Rejected before activation | 1 |
+| Pre-release Engine API not named by the range | Rejected with guidance | 1 |
+| Unknown `dialogueArtifactFormat` | Rejected before activation | 2 |
+| Story text/asset patch, same `saveSchema` and checkpoints | Old save loads | 3 |
+| Removed checkpoint or `saveSchema` bump | Migrates or is refused; original save preserved | 3 |
+| Save from Story A loaded in Story B | Rejected | 5 |
+| Corrupt save, failed migration, unknown `saveFormat` | Rejected; live state and save file unchanged | 3 |
+| Downgrade to an older Engine or Story | Rejected with guidance | 6 |
+| Export with mismatched CLI/compiler/player | Refused | 6 |
 
-**No forced `1.0.0`** when Windows Phase 6 passes. `0.x` releases require explicit documented compatibility limits. For `requires.engineApi`, prefer explicit comparator ranges e.g. `>=0.2.0 <0.3.0`; pre-releases require explicit matching opt-in, not accidental acceptance of unstable versions. Define comparator semantics during P0; do not infer compatibility from matching major release alone.
+## Consequences
 
-## Proposed author Story manifest
-
-```json
-{
-  "manifestSchema": 1,
-  "id": "com.example.hello-story",
-  "storyVersion": "1.2.1",
-  "requires": {
-    "engineApi": ">=0.2.0 <0.3.0",
-    "capabilities": [
-      "dialogue.yarn/v1",
-      "ui.basic/v1",
-      "flow.conditions/v1"
-    ]
-  },
-  "saveSchema": 2,
-  "entrypoint": "intro"
-}
-```
-
-This is a **subset**; content catalogs and asset rules are described in [architecture](../architecture.md). Capability IDs include an explicit major contract revision; Engine may implement multiple versions. Requirement checks are inclusion tests against supported capabilities, not exact binary release comparison. An Engine API bump must not silently remove any capability promised within an advertised compatible range.
-
-## Compatibility decisions, not release-number equality
-
-1. **Story activation:** parse supported `manifestSchema` → validate `requires.engineApi` against current Engine API version, including pre-release policy → confirm versioned capabilities → check asset/data/command refs and compiled dialogue artifact format → activate atomically. Unsupported requirements fail before gameplay.
-2. **Authoring vs shipping:** `weftora check` compiles Yarn source; `run` recompiles changed source; `export` packages compiled dialogue with artifact format, compiler ID/version, source IDs and content hash. Shipped player never needs author compiler; refuse unsupported artifact formats. Record CLI/compiler/player tested release build IDs and player SHA-256 so mixed releases cannot silently export an untested binary.
-3. **Save load:** read bounded header with `saveFormat`, `storyId`, `storyVersion` (provenance), `saveSchema`, checkpoint ID, writer Engine API/release (provenance). Require **matching Story ID**, supported global format and compatible Story saveSchema + checkpoint. Writer API/release differences do **not alone** reject save; check current Story/runtime. Validate/migrate temp snapshot before atomic activation. Failure preserves existing in-memory state and known-good on-disk save.
-4. **Story patch safety:** changing dialogue text, translation, sprites or audio with unchanged state schema and stable, semantically compatible checkpoint IDs must load older saves despite different `storyVersion`. Adding fields with deterministic defaults can remain same schema if backwards-compatible; semantic changes to choice/event resume points can break saves even if fields unchanged.
-5. **Breaking Story changes:** removing/renaming saved fields or checkpoint IDs, or changing checkpoint meaning, requires new `saveSchema` plus explicit deterministic migration/mapping (or reject with diagnostics). A version bump alone does not migrate. Never silently start new game or overwrite save after refusal.
-6. **Downgrades:** new Story/runtime saves are not guaranteed readable by older versions. Unsupported downgrade rejects; optional reverse migrations require their own tests. Migration chains must declare supported from/to schema and test repeated application/failure recovery.
-
-## Compatibility fixtures required by phases
-
-| Scenario | Expected |
-| --- | --- |
-| Engine release patch, public API unchanged | Same Story loads |
-| Engine API additive within declared compatible range | Old Story loads unchanged |
-| Engine API outside declared range or missing capability version | Reject with named requirement/versions |
-| Unknown manifest schema or dialogue artifact format | Reject before activation; explain supported formats |
-| Story text/assets-only patch, unchanged saveSchema/checkpoint | Old save loads |
-| New optional saved field with deterministic default | Old save loads if declared schema-compatible |
-| Deleted/renamed checkpoint or incompatible saved state | Explicit migration/mapping or refusal; original save preserved |
-| Save from Story A in Story B | Reject |
-| Failed/corrupt migration or unknown save container format | Reject without changing current state or good on-disk save |
-| Unsupported Engine/Story downgrade or prerelease range | Reject with versions and corrective guidance |
-| CLI/compiler/player release mismatch at export | Reject instead of creating untested package |
-
-Maintain tested fixtures using at least **two released Story revisions** and **two Engine release/API identities** where applicable; record supported API/capability/format matrix in Windows release notes. A binary SHA proves identity, not compatibility by itself.
-
-## Design boundaries and deferred decisions
-
-- Phase 0 resolves exact field names/serialization schemas, comparator parser, prerelease range rules, capability registry and positive/negative fixtures **before implementation contract freezes**.
-- Phase 2 resolves compiler artifact layout, cache invalidation, compiler/runtime adapter compatibility, supported Yarn subset and export metadata.
-- Phase 3 resolves stable checkpoint representation, schema migration hooks, transactional activation and corruption recovery.
-- Phase 6 publishes supported-version matrix and rejects untested tooling combinations. No auto-update service, package registry, complex migration framework or scripts required in this planning PR.
-- Breaking changes to public fields/capabilities/persistence must update this ADR, PRD, architecture, roadmap and acceptance cases together.
-
-## Change History
-
-| Date | Version | Change | Reference |
-| --- | --- | --- | --- |
-| 2026-10-08 | 0.1.0 | Propose independent version domains, compatibility matrices and safe migrations. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
+- More fields than a single version number, but each one prevents a specific class of broken save or broken package.
+- This ADR owns the version fields and compatibility rules; other docs link here. Changes update this ADR and its fixtures in the success criteria in the same PR.

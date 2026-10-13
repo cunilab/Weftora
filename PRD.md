@@ -1,207 +1,113 @@
 ---
 id: WFT-PRD-001
 title: Weftora Product Requirements
-type: product_requirements
-doc_version: 0.6.0
 status: proposed
-implementation: not_started
-created: 2026-09-29
-updated: 2026-10-08
-last_reviewed: null
-owner: Weftora Maintainers
-scope: windows-first
-product_release: unreleased
-related_pr: 1
-supersedes: null
 ---
 
-# Product Requirements — Weftora
+# Weftora Product Requirements
 
-**Repo:** `cunilab/Weftora`  
-**Architecture:** [docs/architecture.md](./docs/architecture.md)  
-**Roadmap:** [ROADMAP.md](./ROADMAP.md)  
-**Platforms:** [docs/platforms.md](./docs/platforms.md)  
-**Phase gates:** [docs/success-criteria.md](./docs/success-criteria.md)
+Related: [Architecture](./docs/architecture.md) · [Roadmap](./ROADMAP.md) · [Success criteria](./docs/success-criteria.md) · [Platforms](./docs/platforms.md)
 
-## 1. Product vision
+## 1. Vision
 
-Build **Weftora, a standalone Rust-native visual game engine with its own player and creator tools** that makes narrative and 2D story-heavy games quick to author and change. Inspiration: Ren'Py's end-to-end storytelling workflow and Yarn's approachable dialogue scripting. This project is an **alternative engine**, not a Unity extension, Yarn renderer, or Rust/Bevy framework developers must embed in their own game code.
+Weftora is a standalone engine for narrative and 2D story-heavy games. It is written in Rust but **authors never write Rust**. The inspiration is Ren'Py's end-to-end workflow and Yarn Spinner's approachable dialogue.
 
-Contract: **Engine ships as compiled game player + creator tools; Story package supplies gameplay behavior, rules, flow, UI definitions, dialogue, state schema, content and assets.** Most changes in a game must not require Engine rebuild. Native capabilities require explicit Engine/backend extensions.
+Weftora ships as two prebuilt programs:
 
-## 2. Users and use cases
+- **the player** (`weftora-player`), which runs a game, and
+- **the CLI** (`weftora`), which creates, checks, runs and exports games.
 
-- **Author:** install prebuilt Weftora tools; write Yarn dialogue, describe scenes, actions, rules and screens as data; preview without Rust/Cargo/Bevy project; get actionable errors.
-- **Game developer:** compose Story-specific rules, events and screens through content/scripts using supported Engine APIs; Rust only for native Engine extensions.
-- **Player:** load a packaged game and experience reliable choices, visuals/audio and save/load.
-- **Engine maintainer/AI agent:** change core safely under mechanical architecture and regression gates.
+A game is a **Story package**: a folder of dialogue, data, rules, screens and assets. Changing a Story never requires rebuilding the player. Only genuinely new low-level capabilities (a new widget type, a new platform service) require a new Engine release.
 
-**MVP platform: Windows x64 (`x86_64-pc-windows-msvc`) only.** Fully validate narrative engine, two Stories, creator workflow, save/load and Windows export before porting to Linux, macOS, Android, iOS or Web. Design platform boundaries early but **defer other platform implementation/build/test pipelines** until Windows foundation release gate. No broad 3D/RPG ambition in foundation.
+Weftora is not a Unity extension, not a Yarn renderer, and not a Rust/Bevy library that developers embed in their own game code.
 
-## 3. Goals / success criteria
+## 2. Users
 
-1. **Standalone reusable engine:** one compiled Weftora player/revision runs two distinct Story packages without Engine source changes and without custom Rust game binaries.
-2. **Replaceable Story:** author can change data, dialogue, event rules, themes, screens and assets, then validate/run using prebuilt Engine without Rust compiler/Cargo or recompiling player.
-3. **Renderer independence:** headless API/state/flow/save crates do not depend on Bevy, Yarn or example Story.
-4. **Simple content authoring:** text-based content formats, stable IDs, schema-backed diagnostics, CLI preview and tooling.
-5. **Reliable narratives:** Yarn choices + Story commands + generic flow/events + coordinated single gameplay state.
-6. **Persistence:** safe-checkpoint save/restore, version checks, corruption handling.
-7. **Maintainable Rust:** typed public contracts, bounded extension points, dependency guardrails, CI and reference Story tests.
-8. **Free/open tooling:** choose transparent, compatible dependency licenses and pin tested versions.
-9. **Portable architecture, focused execution:** core/story package interfaces avoid Windows-specific assumptions, but only Windows x64 is required or tested before platform expansion.
+- **Author** — installs prebuilt tools, writes Yarn dialogue and Story data, previews and exports a game. Gets actionable error messages. Never installs Rust, Cargo or Bevy.
+- **Game designer** — expresses game rules (events, conditions, resources, schedules) through declarative data and, where needed, Rhai scripts inside the Story.
+- **Player** — runs an exported game with reliable choices, visuals, audio and saves.
+- **Engine maintainer** (human or AI agent) — changes the Rust Engine safely behind tests and dependency rules.
 
-## 4. Non-goals for foundation
+## 3. Goals
 
-- Unity integration, engine-specific Unity assets or MonoBehaviours.
-- Full-featured 3D world/editor, physics, multiplayer or networked game simulation.
-- Built-in dating/economy/relationship/quest/phone/inventory mechanics in Rust core.
-- Custom competitor to Yarn language/parser before evidence demands it.
-- Arbitrary Rust/C++ native dynamic code loading through Story packages.
-- Guaranteed sandbox for untrusted mods before explicit threat model/test gate.
-- General arbitrary-state rollback or serialization of in-flight tasks/animations.
-- Full GUI editor before headless runtime + playable slice exist.
+1. **One player, many games.** The same compiled player binary runs two meaningfully different Stories (a visual novel and a life-sim) without Engine changes.
+2. **Fast Story iteration.** Authors change dialogue, data, rules, screens and assets, then check and run them with the prebuilt tools.
+3. **Headless core.** State, flow, rules and save logic build and test without Bevy, Yarn or any Story.
+4. **Clear authoring errors.** Every content error points to a file and location.
+5. **Reliable saves.** Saves load across compatible Story and Engine updates, and fail safely otherwise.
+6. **Maintainable Rust.** Typed contracts, enforced dependency direction, CI and golden tests.
+7. **Open dependencies.** Permissively licensed, pinned and audited.
+8. **Windows release first, portable design.** Windows x64 is the only release target until the foundation release; core contracts stay platform-neutral.
 
-## 5. Core functional requirements
+## 4. Non-goals for the foundation
 
-### R1. Package discovery, integrity and compatibility
-- Third-party Story content is untrusted data, not a native plugin or proven script sandbox. Forbid unrestricted host filesystem/network/native access.
-- Restrict paths to package root; reject absolute/UNC/drive paths, parent traversal, Windows reserved names, case-insensitive collisions, junctions/reparse-point/symlink escape, archive traversal and decompression bombs. Define bounded file count/size/expanded total/depth with Windows negative fixtures.
-- Load external Story manifest, content catalogs and versioned entrypoint through generic loader.
-- Validate namespaced IDs, integer manifest schema, declared Engine API SemVer range, **versioned required capabilities**, catalog references and file paths; accept only supported combinations. Never assume player release number equals API version.
-- Reject invalid packages atomically, report file/location and cause; avoid partial active Story state.
-- Support one active Story at MVP; future dependencies/mods require explicit compatibility model.
+- Unity integration of any kind.
+- 3D worlds, physics, multiplayer or networking.
+- Built-in genre systems in the Engine (dating, economy, quests, phone, inventory, calendars). Stories build these.
+- A replacement for the Yarn language.
+- Loading native code (Rust/C/C++ DLLs) from Story packages.
+- A guaranteed sandbox for untrusted third-party mods.
+- Rollback, or saving in the middle of running commands or animations.
+- A GUI editor before the CLI and player are proven.
+- Release builds for any platform other than Windows x64.
 
-### R2. Lifecycle and runtime boundaries
-- Provide boot/load/ready/play/pause/shutdown lifecycle and ordered init/teardown with errors.
-- Engine API types independent of rendering and narrative backends; compile `weftora-core` without Bevy/Yarn.
-- No Story-specific names, assets, types or gameplay assumptions in Engine core.
+## 5. Requirements
 
-### R3. Typed state
-- Namespaced keys; bool/integer/finite float/string values initially; get/set/add/remove, defaults, change notifications.
-- Explicit state scopes and save policies; deterministic serialization and clear type errors.
-- Yarn variable bridge must share canonical Engine state or implement tested synchronization.
+Details of each mechanism live in the [architecture](./docs/architecture.md); pass/fail checks live in [success criteria](./docs/success-criteria.md).
 
-### R4. Command + signal framework
-- Story command schema: typed params and conditions, ordered allowlisted generic state/signal/dialogue/view/audio actions; new Story gameplay rules must not require Engine Rust edits.
-- Validate static refs before run; stop subsequent actions on first runtime failure; individual writes atomic, **no automatic rollback** of prior actions. Limit reentrancy/action budget, define cancellation and diagnostic index.
-- Typed, validated commands with stable IDs, result/errors, async sequencing and cancellation.
-- Deterministic within-dispatch signal ordering, subscribe/unsubscribe and loop protection.
-- Story may register its own behavior from declarative actions and (future) opt-in script functions.
+**R1. Story packages.** The player loads one external Story package chosen at launch. The package declares its identity, required Engine API range and capabilities. Invalid packages are rejected as a whole, before gameplay, with file and location in the error. Story file paths are confined to the package root.
 
-### R5. Generic conditions + flow
-- State comparisons, boolean composition, conditions, triggers, priorities, ordered actions.
-- Generic flow scheduler with async handling, traceability and bounded reentrancy.
-- All game-specific event definitions authored in Story, not built into Rust runtime.
+**R2. Lifecycle.** Boot → load → ready → play ⇄ pause → shutdown run in a documented order; failed initialisation leaves no half-loaded Story.
 
-### R6. Dialogue adapter
-- Before locking headless state API, time-box Yarn compiler/runtime branch probe (Phase 0); full integration/fallback proof (Phase 2).
-- `check` compiles Yarn source with source diagnostics; `run` rebuilds changed dev dialogue; `export` bundles versioned compiled runtime data/source IDs, no authoring compiler on distributed player. Define compatible versions/feature subset by P2.
-- Start/stop Yarn nodes, show lines/choices, dispatch Story commands and expose mapped variables.
-- Compiler and runtime errors identify Story file/node; retain backend replaceability.
-- Rust Yarn port is work-in-progress; gate adoption on runnable compatibility tests.
+**R3. State.** One canonical, typed, namespaced game state. Values: bool, integer, finite float, string, and — before Story B — lists and maps of those. Defaults, change notifications and explicit persistence scopes. The Engine never interprets key meaning.
 
-### R7. Generic visuals + audio
-- Render Story-defined backgrounds, multiple sprites, CG, layers, positioning, fades and transitions.
-- Generic audio channels (BGM/SFX/voice), playback/fades/user volumes.
-- Implementation via Bevy adapter initially, without leaking Bevy types into headless API.
+**R4. Commands and signals.** Commands have stable IDs, typed arguments, results and errors, and may be asynchronous and cancellable. Signals have deterministic ordering and bounded recursion. Stories define their own commands from Engine primitives.
 
-### R8. Declarative UI
-- Story defines screens, widgets, layout/theme, bindings, focus/input and actions using validated schema.
-- Start with menu, dialogue line, choices, panel, image, buttons, overlays; grow from real use cases.
-- Arbitrary new native widget types require adapter changes, not silent Story code injection.
+**R5. Rules and flow.** Stories define events as trigger → conditions → ordered actions with priorities. Simple rules are declarative data; complex rules use Rhai scripts with host-enforced limits ([ADR 0003](./docs/adr/0003-story-rules-language.md)). No genre rule lives in Engine code.
 
-### R9. Asset loading
-- Stable Story asset IDs, catalog-backed resolution, caching/release, clear missing/duplicate errors.
-- Image/audio/font formats and packaging pinned to explicit supported targets; not direct arbitrary file paths in public Story API.
-- Development Story folder may differ from release Story bundle.
+**R6. Dialogue.** Yarn Spinner is the dialogue language. Authors get compiler errors with file and node during `check`; exported games ship compiled dialogue and do not need the compiler. Yarn variables read and write the canonical state, never a separate copy.
 
-### R10. Save/load
-- Save header separates `saveFormat` (global container format), `storyId`, `storyVersion` (provenance), `saveSchema` (Story persistence contract), stable checkpoint ID and writer Engine API/release (provenance). Wrong Story, unsupported format/schema or incompatible checkpoint rejects unless explicit tested migration. **Story-version difference alone must not reject** compatible saves.
-- Load through bounded read, version check, temporary migration and full schema/checkpoint validation before atomic activation; bad save never overwrites live state or good snapshot.
-- Versioned save container with Story identity, scoped state, module data and safe checkpoint.
-- Atomic writes/recovery, save slot metadata, clear incompatible/corrupt state behavior.
-- Save compatibility checks active Story schema/checkpoint, not the writer's Engine API/release equality; prior version is informational unless a documented engine save-format constraint applies. Migrations require explicit source/target schema mapping, no implicit downgrade, dry-run on temp snapshot, validation and failure recovery.
-- Version migration hooks defined; arbitrary mid-command/animation continuation out of scope until proven.
+**R7. Presentation and audio.** Backgrounds, multiple character sprites, CGs, layers, positioning, fades and transitions. Audio channels for music, sound effects, ambience and voice, with fades and user volume.
 
-### R11. Story customization
-- Define gameplay rules, characters, locations, events, conditions, UI behavior without modifying Rust Engine.
-- Start with declarative flow and custom commands; evaluate optional Rhai adapter for complex rules.
-- Script host, if approved, exposes allowlisted Engine services with bounded resources and error reporting.
+**R8. Declarative UI.** Stories define screens, widgets, layout, theme, state bindings and actions as validated data. The initial widget set grows from real Story needs. New widget types need an Engine release.
 
-### R12. Creator experience
-- Standalone `weftora` CLI (implemented by `weftora-cli`) scaffolds, validates, previews and exports supported Story packages.
-- Install prebuilt tools → author Story → run game → export standalone distribution; Story author does not write or compile Rust.
-- Source-located errors for missing IDs, invalid actions, broken Yarn, incompatible manifests and unsupported widgets.
-- Development reload/preview initially restart-based; true hot reload later when state rules permit.
+**R9. Assets.** Stories reference assets by stable ID through catalogs, never by raw path in game logic. Missing and duplicate IDs are reported clearly.
 
-### R13. Engine distribution vs framework dependency
-- `weftora-player` standalone executable loads external Story folder/package selected at launch; no game-specific compiled Rust needed.
-- Export records exact player/CLI release build identity and SHA-256, Story package version/identity, supported API/capabilities, compiled dialogue artifact version and Story content hashes. Prevent mismatched author CLI/compiler/player combinations; only release builds shipped together qualify as tested pairs.
-- `weftora export` bundles target-specific prebuilt player with validated Story content into playable distribution on supported platforms. Player binaries are built by Engine maintainers; cross-platform binaries not assumed available until tested.
-- Story source is never a Cargo crate or mandatory Rust/Bevy project. Editor optional; CLI/content source first-class.
-- Same compiled player runs Story A and Story B; change Story files without player rebuild. Native extensions require explicit Engine capability/release.
+**R10. Saves.** Saves are written only at safe points, atomically, to a user-writable location. Loading validates and, if needed, migrates a temporary copy before replacing live state; a failed load never damages the current game or the existing save. Compatibility follows [ADR 0002](./docs/adr/0002-versioning-compatibility.md): a different Story version alone never rejects a save.
 
-### R14. Tests and architecture enforcement
-- CI fmt/clippy/tests and dependency-direction check; `#![forbid(unsafe_code)]` for headless crates where appropriate.
-- Golden headless narrative/flow tests, manifest/schema fixture tests, safe save roundtrip and compatibility negatives.
-- Two independent sample Story packages must pass on same built Engine/player.
-- Rust compile success alone never substitutes for authoring UX or behavioral verification.
+**R11. Creator tools.** `weftora new | check | run | export`. Restart-based preview first; hot reload later where state rules allow it.
 
-### R15. Windows-first shipping, future portability
-- First supported build and authoring CLI: Windows x64 / `x86_64-pc-windows-msvc`. Windows release baseline includes game player, external Story loading, CLI `new/check/run/export`, audio, keyboard/mouse, scalable windowed UI, persistence at user-writable path and standalone export.
-- Test Windows native filesystem (asset paths, Unicode, separators, permissions), graphics backend, app/window lifecycle, save directory, relative packaged paths, input focus, and clean launch on a Windows machine without developer toolchain.
-- Platform-neutral core contracts: assets/storage, paths, time/lifecycle, input, renderer/audio, packaging; Windows implementations live behind platform adapters. Do not force Windows `std::path` semantics or absolute host paths into Story package schemas.
-- No Linux/macOS/Android/iOS/Web implementation, CI matrix or release promise until Windows foundation exit gate. Windows portability architecture checks are allowed; unneeded cross-platform infrastructure is deferred.
-- After gate: add one target platform at a time with target-specific packaging/signing/input/storage/renderer tests. See [platforms](./docs/platforms.md).
+**R12. Distribution.** `export` copies a prebuilt player plus the validated Story into a standalone game folder and records the player, compiler and content identities. Mismatched tool versions are refused.
 
-### R16. Measured Windows foundation performance
+**R13. Versioning.** Engine release, Engine API, manifest schema, Story release, save container format, Story save schema and compiled dialogue format are versioned independently ([ADR 0002](./docs/adr/0002-versioning-compatibility.md)).
 
-Provisional, **unmeasured** budgets: cold launch to interactive menu ≤5 s; each sample Story idle resident RAM ≤750 MiB; input-to-visible-feedback p95 ≤100 ms; `weftora check` on Hello Story ≤2 s. Phase 2 records Windows OS/GPU/driver, asset fixture and startup/input/memory/validation baseline, then approves or revises these numeric targets via ADR before P6. P6 measures five cold launches, 100 interactions, memory in A/B and CLI check; releases blocked by unexplained budget breaches.
+**R14. Quality gates.** Every merge passes the gate defined in [architecture §10](./docs/architecture.md#10-drift-protection). Headless crates forbid `unsafe`. Golden tests cover narrative and flow behaviour. Compiling is never accepted as proof of behaviour.
 
-### R17. Independent versioning and compatibility contract
+**R15. Performance.** Provisional, unmeasured Windows budgets: cold start to menu ≤ 5 s; input-to-feedback p95 ≤ 100 ms; idle memory ≤ 750 MiB per sample Story; `weftora check` on the starter Story ≤ 2 s. Phase 2 measures a baseline and confirms or revises these by ADR.
 
-- Follow [ADR 0002](./docs/adr/0002-versioning-compatibility.md) as **proposed design**, subject to Phase 0 approval. Version separately: Engine release SemVer, Story-facing Engine API SemVer, manifest schema integer, Story release SemVer, global save container format integer, Story-owned `saveSchema` integer, compiled dialogue artifact format integer; docs and Rust crate versions independent.
-- Pre-1.0 Engine API minors may break; stable API: additive minor, corrective patch, breaking major. No forced Engine `1.0.0` at Phase 6. State exact supported API version range and capability versions rather than equating Engine binary version with Story requirements. Pre-release eligibility must be explicit.
-- `weftora check/run/export` reject unsupported manifest schema, Engine API ranges, missing capability versions and incompatible compiler artifacts with actionable errors **before activation/export**.
-- Story text/assets-only updates preserve `saveSchema` and valid checkpoint IDs; old saves load. Story state/checkpoint contract breaks require schema bump plus migration or refusal. An unchanged Story version does not excuse incompatible saved data.
-- Publish compatibility matrix for Engine update, Story patch, missing capabilities, changed checkpoint, corrupt data, failed migration and unsupported downgrade.
+## 6. Ownership rule
 
-## 6. Ownership rules
+If behaviour could differ between two games, it belongs to the **Story**. If a generic technical primitive is missing, add it to the **Engine** deliberately, with tests, a version bump and, for contract changes, an ADR.
 
-**Engine:** lifecycle, state storage, generic command/signal/flow execution, rendering primitives, audio/input, view/UI host, package loading, persistence technology, diagnostics.
+| Engine | Story |
+| --- | --- |
+| Lifecycle, state storage, command/signal/flow execution | Variables and their meaning, progression, rules |
+| Rendering, audio, input, UI hosting | Dialogue, events, characters, locations |
+| Package loading, validation, diagnostics | Screens, themes, localisation |
+| Save technology | Assets, save schema and migrations |
 
-**Story:** variables/meaning, progression, rules, dialogue, events, locations, relationships, activities, shops, theme/UI definitions, localization, data/assets.
+## 7. Foundation acceptance
 
-**Adapter/native extension:** rendering backend, dialogue interpreter, optional script host, new native widgets/platform services; explicit versioned Engine capabilities.
+The foundation is complete when the Phase 6 gate in [success criteria](./docs/success-criteria.md) passes, which means:
 
-When unclear: if gameplay behavior changes between game genres, default to Story. If generic technical primitive is missing, update Engine API deliberately with tests and versioning.
+- **Story A**, a visual novel, and **Story B**, a life-sim, both run on the same Windows release player binary.
+- A person who does not know Rust can create, edit, check, run and export a game on a clean Windows machine.
+- Invalid content, incompatible versions and corrupt saves produce actionable errors and never a partial load.
+- Deleting every Story leaves the Engine workspace building and its tests passing.
 
-## 7. Acceptance / release definition
+## 8. Decisions
 
-- **Story A:** playable via stand-alone Weftora player: VN: dialogue + branches, choice-driven state, background/character/CG, audio, menu, safe save/relaunch.
-- **Story B:** distinct life-sim-like rules, events, navigation and custom screens. Same **player binary** runs A and B without new Rust game crate or Engine edits.
-- **Isolation:** deleting all Story packages still leaves Engine workspace compiling/tests passing; core's dependency graph contains no Story/Bevy/Yarn.
-- **Authoring:** install prebuilt tools, modify Story behavior/UI/assets, validate/run/export without writing Rust, setting up a Bevy app or rebuilding compiled Engine.
-- **Failure:** missing asset/node, duplicate IDs, invalid version/schema, unsupported UI and corrupt save give actionable errors; no silent partial load.
-- **Quality:** Windows x64 release build, Story A/B regression suite, package validator, CLI/export install/run smoke test, audio/input/view, clean save/load/corruption recovery all pass; no unverified guarantee of scripting sandbox or rollback.
-
-## 8. Architecture choices pending
-- Proposed Rust vs existing engines and reversal criteria: [ADR 0001](./docs/adr/0001-rust-native-engine.md).
-
-- Initial target: Windows x64 only; exact Windows/graphics/runtime prerequisites confirmed by tests. Ports to Linux, macOS, Android, iOS and Web require Windows foundation exit gate + per-platform feasibility/release checks.
-- Tested Rust/Bevy/Yarn compatible versions, licenses and support risk.
-- Declarative UI schema and renderer choice.
-- Rules language (declarative-only MVP; Rhai prototype optional).
-- Story packaging and native resource processing.
-- Yarn state bridge and safe checkpoint/continuation behavior.
-- [ADR 0002](./docs/adr/0002-versioning-compatibility.md) — proposed API ranges, capabilities, Story/save/checkpoint contract, dialogue artifact and release identity; refine exact fields through Phase 0 tests.
-
-Use [architecture](./docs/architecture.md) for rationale, [roadmap](./ROADMAP.md) for ordered execution, and [success criteria](./docs/success-criteria.md) for mandatory executable PASS gates. Claims here are requirements, not implemented features.
-
-## Change History
-
-| Date | Version | Change | Reference |
-| --- | --- | --- | --- |
-| 2026-10-08 | 0.6.0 | Specify independent release/API/manifest/save/artifact compatibility and migration policy. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
-| 2026-10-08 | 0.5.0 | Resolve Story package/action, Yarn compilation, save compatibility and release budget gaps. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
-| 2026-10-08 | 0.4.1 | Standardize metadata/header and doc lifecycle. | [PR #1](https://github.com/cunilab/Weftora/pull/1) |
+- Stack, budget and reversal gates: [ADR 0001](./docs/adr/0001-rust-native-engine.md).
+- Versioning and save compatibility: [ADR 0002](./docs/adr/0002-versioning-compatibility.md).
+- Rules language and collection state: [ADR 0003](./docs/adr/0003-story-rules-language.md).
+- Still open: UI renderer approach, Story authoring file format, release package container, licence. See [architecture §11](./docs/architecture.md#11-open-questions).
