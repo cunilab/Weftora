@@ -88,6 +88,9 @@ impl std::fmt::Display for Diagnostic {
     }
 }
 
+/// Deliberately mis-formatted to fail `cargo fmt --check` (P0-03 probe).
+pub fn   p003_fmt_probe(  a : i32 )->i32{    a + 1   }
+
 /// A presentation command requested by Story content (for example from a Yarn `<<background bg.room>>` line).
 ///
 /// Phase 0 commands: `background <assetId>` and `sound <assetId>`. The player rejects anything else.
