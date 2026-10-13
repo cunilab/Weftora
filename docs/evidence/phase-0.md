@@ -8,20 +8,24 @@ status: proposed
 
 Results for the [Phase 0 checks](../success-criteria.md#phase-0--spikes-and-walking-skeleton). Phase 0 is **not passed** until every check passes on Windows x64; macOS results below come from the maintainer's development host and do not count toward the gate on their own ([platforms](../platforms.md)).
 
+Windows x64 results are recorded separately with their own artefacts: **[Phase 0 Windows evidence](./phase-0-windows.md)**. It closes P0-01, P0-02, P0-05, P0-06 and P0-07 on Windows; P0-03 and P0-10 remain partial.
+
 **Environment (dev host):** macOS 27.0, Apple M1, 8 GiB, Metal; Rust 1.98.0 (pinned); Bevy 0.20.0; `yarnspinner` 0.9.0 (Bevy feature off). Branch `feat/phase-0-walking-skeleton`, 2026-10-13.
+
+**Environment (Windows verification host):** Windows 11 Pro build 26200, i7-13620H, 15.7 GiB, NVIDIA RTX 4050 Laptop GPU (driver 610.62, Vulkan), Realtek High Definition Audio; Rust 1.98.0 (pinned); commit `cc0d6e4`. See the [Windows evidence page](./phase-0-windows.md).
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| P0-01 workspace builds, player reports identity | PASS (macOS + Windows CI, [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo check --workspace --locked`; `weftora-player --version` → `weftora-player 0.0.1 (sha256 abcc5d2e…)` |
-| P0-02 headless crates free of Bevy/Yarn/Rhai | PASS (macOS + Windows CI, [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo xtask deps`; injected `bevy_platform` (normal, optional and Windows-only) into `weftora-core` → failed with the dependency path |
+| P0-01 workspace builds, player reports identity | PASS (macOS + Windows CI + [Windows local](./phase-0-windows.md), [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo check --workspace --locked`; release `weftora-player --version` → `weftora-player 0.0.1 (sha256 8fee0455…)`, matching the on-disk SHA-256 |
+| P0-02 headless crates free of Bevy/Yarn/Rhai | PASS (macOS + Windows CI + [Windows local](./phase-0-windows.md), [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo xtask deps`; injected `bevy_platform` (normal, optional and Windows-only) into `weftora-core` → failed with the dependency path |
 | P0-03 CI blocks on the merge gate | PARTIAL | Required Windows and Dependencies jobs green on PR #2 ([CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)); an injected failure is still needed to show a merge is blocked |
 | P0-04 Yarn spike | PASS (headless, macOS) | `crates/weftora-yarn/tests/hello_story.rs`: both branches traced, `curious` true/false, Rust→Yarn state, syntax error with file+line, missing node, Int beyond ±2^24 rejected. Gaps below |
-| P0-05 Bevy spike | PASS (macOS); Windows NOT_RUN | Window with background, Guide line, two choices, chime; screenshots taken during the run |
-| P0-06 walking skeleton | PASS (macOS); Windows NOT_RUN | `weftora run examples/hello-story`; key `1` → "You looked closer, so the state key "curious" is now true." |
-| P0-07 edit Yarn, same player | PASS (macOS); Windows NOT_RUN | Edited a line, `weftora check` OK; player SHA-256 unchanged (`abcc5d2e…`) |
+| P0-05 Bevy spike | PASS (macOS + [Windows](./phase-0-windows.md)) | Window with background, Guide line, two choices, chime. Windows: Vulkan on the RTX 4050; sound path proven by a controlled error on a corrupt `chime.wav`, no panic |
+| P0-06 walking skeleton | PASS (macOS + [Windows](./phase-0-windows.md)) | `weftora run examples/hello-story`; key `1` → "You looked closer, so the state key "curious" is now true."; key `2` → "…stays false." Both branches on Windows, 6 distinct frames each |
+| P0-07 edit Yarn, same player | PASS (macOS + [Windows](./phase-0-windows.md)) | Edited a line, `weftora check` OK; player SHA-256 unchanged (`8fee0455…` on Windows, before and after the edit) |
 | P0-08 loader rejects paths outside the Story | PASS | `weftora-story` tests: absolute, `..`, backslash, drive, UNC, `:`, symlink escape |
 | P0-09 authoring format chosen | PASS | [ADR 0004](../adr/0004-story-authoring-format.md): JSONC |
-| P0-10 export runs without Rust | PARTIAL | `weftora export` → `dist/hello-story/` with `weftora-export.json`; exported player starts with no arguments on macOS. Clean Windows machine NOT_RUN |
+| P0-10 export runs without Rust | PARTIAL | `weftora export` → 7 files (player, `weftora-export.json`, 5 story files), no Cargo residue; exported player starts with no arguments and with `cargo`/`rustc`/`rustup` scrubbed from the environment ([Windows](./phase-0-windows.md), macOS). A machine with Rust truly *uninstalled* NOT_RUN — see [sandbox blocked](./artifacts/phase-0-windows/p10-sandbox-blocked.txt) |
 | P0-11 go/no-go recorded | PASS | [ADR 0001](../adr/0001-rust-native-engine.md#phase-0-go-no-go-decision) |
 
 ## Yarn spike: gaps found
@@ -52,6 +56,8 @@ During the audit `cargo deny` also flagged a newly published vulnerability, RUST
 
 ## To finish Phase 0 on Windows
 
+P0-01, P0-02, P0-05, P0-06 and P0-07 are now **done on Windows** — see the
+[Windows evidence page](./phase-0-windows.md) and its committed artefacts. Two checks remain:
+
 1. Inject one failure in a throwaway PR (for example a formatting error) and confirm the required job fails and blocks the merge (P0-03).
-2. On a Windows x64 machine with the release build: `weftora run examples/hello-story`, play both branches, edit a line and confirm the player hash is unchanged (P0-05 to P0-07). Record OS build, GPU, driver and audio device.
-3. `weftora export examples/hello-story --out dist\hello-story`, copy the folder to a Windows machine without Rust, run `weftora-player.exe` (P0-10).
+2. `weftora export examples/hello-story --out dist\hello-story`, copy the folder to a Windows machine **without Rust or Cargo installed**, run `weftora-player.exe` (P0-10). The export itself is proven self-contained on Windows; what is missing is a genuinely Rust-free host — either a second machine/VM, or an elevated shell to provision Windows Sandbox (installed here, but with no container base image and enabling it needs elevation).

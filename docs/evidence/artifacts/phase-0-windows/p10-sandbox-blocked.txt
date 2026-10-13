@@ -1,0 +1,44 @@
+Weftora Phase 0 - P0-10 "clean Windows machine with no Rust" attempt
+Host: Windows 11 Pro build 26200, i7-13620H, 15.7 GiB, NVIDIA RTX 4050 Laptop
+Captured: 2026-10-13 ~23:45-23:50 (+07:00)
+
+ATTEMPT: Windows Sandbox (the only Rust-free Windows environment available on
+this host). RESULT: NOT AVAILABLE on this machine.
+
+Evidence that the sandbox cannot boot here:
+  - C:\Windows\System32\WindowsSandbox.exe            -> present
+  - C:\ProgramData\Microsoft\Windows\Containers\BaseImages
+                                                       -> ABSENT (no base image
+                                                          provisioned)
+  - vmcompute (Host Compute Service)                  -> Running
+  - HvHost                                            -> Running
+  - Get-WindowsOptionalFeature -FeatureName
+    Containers-DisposableClientVM                     -> requires elevation
+                                                          (access denied for this
+                                                          non-elevated shell)
+
+Behaviour observed:
+  - Launching WindowsSandbox.exe with a .wsb config (both the real P0-10 config
+    and a trivial 2-line marker-file config) the UI process exits within ~10-25s
+    and the mapped results folder is never written to.
+  - Conclusion: the sandbox feature is installed but not provisioned; enabling
+    it needs an elevated shell, which this agent does not have.
+
+WHAT WAS PROVED INSTEAD (partial credit, same as the evidence page's PARTIAL):
+  1. `weftora export examples\hello-story --out ...` exit code 0 on Windows x64.
+  2. The export contains exactly 7 files: weftora-player.exe, weftora-export.json
+     and 5 story files. No .rs, no Cargo, no target/ residue.
+  3. weftora-export.json carries exportFormat, cli{version,sha256},
+     player{file,sha256}, story{id,storyVersion} and a SHA-256 per story file.
+  4. The exported weftora-player.exe was launched with NO arguments (it must find
+     story/ beside itself) and with cargo/rustc/rustup REMOVED from PATH and
+     RUSTUP_HOME/CARGO_HOME/RUSTC/CARGO unset:
+       - `weftora-player --version` -> exit 0
+       - the game window came up titled "Hello Story"
+       - the full frame sequence was captured and matches the repo-built player
+         byte-for-byte (same SHA-256 of the same rendered frames).
+
+STILL OUTSTANDING for P0-10:
+  - The strict wording is "a Windows machine with no Rust or Cargo INSTALLED".
+    That requires a second physical/VM machine, or an elevated shell to provision
+    Windows Sandbox. Neither was available to this agent.
