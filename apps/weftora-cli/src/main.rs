@@ -183,11 +183,39 @@ fn run_command(dir: &Path) -> CliResult {
 }
 
 fn export_command(dir: &Path, out: &Path) -> CliResult {
+    let requested_out: PathBuf = out.components().collect();
+    match fs::symlink_metadata(&requested_out) {
+        Ok(metadata) if is_symlink_or_reparse_point(&metadata) => {
+            return Err(Failure::one(format!(
+                "error: output directory must not be a symlink or junction: `{}`",
+                out.display()
+            )));
+        }
+        Ok(_) => {}
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => {
+            return Err(Failure::one(format!(
+                "error: accessing output directory: {e}"
+            )));
+        }
+    }
+    let story_root = dir
+        .canonicalize()
+        .map_err(|e| Failure::one(format!("error: accessing Story root: {e}")))?;
+    let output_root = canonicalize_output(out)
+        .map_err(|e| Failure::one(format!("error: resolving output directory: {e}")))?;
+    if output_root.starts_with(&story_root) || story_root.starts_with(&output_root) {
+        return Err(Failure::one(
+            "error: output directory and Story root must not overlap (equal, inside, or containing the Story root)",
+        ));
+    }
+    // Use the same resolved destination for writes and failure cleanup.
+    let out = output_root.as_path();
     let checked = check(dir).map_err(Failure::Messages)?;
     let player = player_path()?;
     let io_err = |what: &str, e: io::Error| Failure::one(format!("error: {what}: {e}"));
 
-    match fs::read_dir(out) {
+    let out_preexisted = match fs::read_dir(out) {
         Ok(entries) => {
             if entries.count() > 0 {
                 return Err(Failure::one(format!(
@@ -195,8 +223,9 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
                     out.display()
                 )));
             }
+            true
         }
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) if e.kind() == io::ErrorKind::NotFound => false,
         Err(_) if out.exists() => {
             return Err(Failure::one(format!(
                 "error: `{}` exists and is not a directory",
@@ -204,46 +233,168 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
             )));
         }
         Err(e) => return Err(io_err("reading output directory", e)),
+    };
+    let mut missing_directories = Vec::new();
+    if !out_preexisted {
+        let mut missing = out;
+        loop {
+            match fs::symlink_metadata(missing) {
+                Ok(_) => break,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                    missing_directories.push(missing.to_path_buf());
+                    missing = missing
+                        .parent()
+                        .expect("absolute output has an existing ancestor");
+                }
+                Err(e) => return Err(io_err("accessing output ancestor", e)),
+            }
+        }
     }
+    let mut created_root = None;
 
-    fs::create_dir_all(out).map_err(|e| io_err("creating output directory", e))?;
-    let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
-    fs::copy(&player, out.join(&player_name)).map_err(|e| io_err("copying player", e))?;
+    let mut result = (|| {
+        for directory in missing_directories.iter().rev() {
+            fs::create_dir(directory).map_err(|e| io_err("creating output directory", e))?;
+            if created_root.is_none() {
+                created_root = Some(directory.as_path());
+            }
+        }
+        let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
+        fs::copy(&player, out.join(&player_name)).map_err(|e| io_err("copying player", e))?;
 
-    let story_out = out.join("story");
-    let mut copied = BTreeMap::new();
-    copy_story(dir, &story_out, "", &mut copied)?;
+        let story_out = out.join("story");
+        let mut copied = BTreeMap::new();
+        copy_story(dir, &story_out, "", &mut copied)?;
+        verify_copied_references(&checked.story, &copied)?;
 
-    let exe = std::env::current_exe().map_err(|e| io_err("locating weftora", e))?;
-    let manifest = checked.story.manifest();
-    let report = serde_json::json!({
-        "exportFormat": EXPORT_FORMAT,
-        "cli": {
-            "version": VERSION,
-            "sha256": sha256_file(&exe).map_err(|e| io_err("hashing weftora", e))?,
-        },
-        "player": {
-            "file": player_name,
-            "sha256": sha256_file(&player).map_err(|e| io_err("hashing player", e))?,
-        },
-        "story": { "id": manifest.id, "storyVersion": manifest.story_version },
-        "files": copied
-            .iter()
-            .map(|(path, hash)| serde_json::json!({ "path": path, "sha256": hash }))
-            .collect::<Vec<_>>(),
-    });
-    let text = serde_json::to_string_pretty(&report).expect("export report serialises") + "\n";
-    fs::write(out.join("weftora-export.json"), text)
-        .map_err(|e| io_err("writing weftora-export.json", e))?;
+        let exe = std::env::current_exe().map_err(|e| io_err("locating weftora", e))?;
+        let manifest = checked.story.manifest();
+        let report = serde_json::json!({
+            "exportFormat": EXPORT_FORMAT,
+            "cli": {
+                "version": VERSION,
+                "sha256": sha256_file(&exe).map_err(|e| io_err("hashing weftora", e))?,
+            },
+            "player": {
+                "file": player_name,
+                "sha256": sha256_file(&player).map_err(|e| io_err("hashing player", e))?,
+            },
+            "story": { "id": manifest.id, "storyVersion": manifest.story_version },
+            "files": copied
+                .iter()
+                .map(|(path, hash)| serde_json::json!({ "path": path, "sha256": hash }))
+                .collect::<Vec<_>>(),
+        });
+        let text = serde_json::to_string_pretty(&report).expect("export report serialises") + "\n";
+        fs::write(out.join("weftora-export.json"), text)
+            .map_err(|e| io_err("writing weftora-export.json", e))?;
 
-    println!(
-        "exported {} v{} to {} ({} story files)",
-        manifest.id,
-        manifest.story_version,
-        out.display(),
-        copied.len()
-    );
-    Ok(ExitCode::SUCCESS)
+        println!(
+            "exported {} v{} to {} ({} story files)",
+            manifest.id,
+            manifest.story_version,
+            out.display(),
+            copied.len()
+        );
+        Ok(ExitCode::SUCCESS)
+    })();
+    if let Err(Failure::Messages(messages)) = &mut result {
+        let cleanup = if out_preexisted {
+            remove_export_contents(out)
+        } else if let Some(created) = created_root {
+            fs::remove_dir_all(created)
+        } else {
+            Ok(())
+        };
+        if let Err(error) = cleanup {
+            messages.push(format!(
+                "error: removing failed export `{}`: {error}",
+                out.display()
+            ));
+        }
+    }
+    result
+}
+
+fn remove_export_contents(out: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(out)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            fs::remove_dir_all(entry.path())?;
+        } else {
+            fs::remove_file(entry.path())?;
+        }
+    }
+    Ok(())
+}
+
+fn is_symlink_or_reparse_point(metadata: &fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        metadata.file_type().is_symlink() || metadata.file_attributes() & 0x400 != 0
+    }
+    #[cfg(not(windows))]
+    {
+        metadata.file_type().is_symlink()
+    }
+}
+
+/// Resolves existing ancestors through symlinks, retaining the nonexistent suffix.
+fn canonicalize_output(path: &Path) -> io::Result<PathBuf> {
+    let absolute = std::path::absolute(path)?;
+    let mut ancestor = absolute.as_path();
+    let mut suffix = Vec::new();
+    let mut resolved = loop {
+        match ancestor.canonicalize() {
+            Ok(path) => break path,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                let component = ancestor.components().next_back().ok_or(e)?;
+                suffix.push(component.as_os_str().to_owned());
+                ancestor = ancestor.parent().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::NotFound, "no existing output ancestor")
+                })?;
+            }
+            Err(e) => return Err(e),
+        }
+    };
+    for component in suffix.into_iter().rev() {
+        if component == ".." {
+            resolved.pop();
+        } else if component != "." {
+            resolved.push(component);
+            // A `..` after a missing component can lead back to an existing symlink.
+            match resolved.canonicalize() {
+                Ok(path) => resolved = path,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                Err(e) => return Err(e),
+            }
+        }
+    }
+    Ok(resolved)
+}
+
+fn verify_copied_references(
+    story: &Story,
+    copied: &BTreeMap<String, String>,
+) -> Result<(), Failure> {
+    let manifest = story.manifest();
+    for reference in std::iter::once(weftora_story::MANIFEST_FILE)
+        .chain(manifest.dialogue.iter().map(String::as_str))
+        .chain(manifest.assets.values().map(String::as_str))
+    {
+        let relative = reference
+            .split('/')
+            .filter(|segment| !segment.is_empty())
+            .collect::<Vec<_>>()
+            .join("/");
+        if !copied.contains_key(&relative) {
+            return Err(Failure::one(format!(
+                "error: export is incomplete: referenced file `{reference}` was not copied"
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// Copies `src` into `dst`, skipping dotfiles and refusing symlinks. `copied` maps Story-relative `/` paths to SHA-256.
@@ -274,8 +425,9 @@ fn copy_story(
         }
         let path = entry.path();
         let relative = format!("{prefix}{name_str}");
-        let file_type = entry.file_type().map_err(|e| io_err(&path, e))?;
-        if file_type.is_symlink() {
+        let metadata = fs::symlink_metadata(&path).map_err(|e| io_err(&path, e))?;
+        let file_type = metadata.file_type();
+        if is_symlink_or_reparse_point(&metadata) {
             return Err(Failure::one(format!(
                 "error: `{relative}` is a symlink; symlinks are not exported"
             )));
@@ -299,4 +451,36 @@ fn sha256_file(path: &Path) -> io::Result<String> {
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn incomplete_export_fails_reference_verification() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-story");
+        let story = Story::load(&root).unwrap();
+        let mut copied = BTreeMap::new();
+        copy_story(
+            &root,
+            &tempfile::tempdir().unwrap().path().join("story"),
+            "",
+            &mut copied,
+        )
+        .unwrap_or_else(|_| panic!("fixture must copy successfully"));
+        assert!(verify_copied_references(&story, &copied).is_ok());
+        for reference in std::iter::once(weftora_story::MANIFEST_FILE)
+            .chain(story.manifest().dialogue.iter().map(String::as_str))
+            .chain(story.manifest().assets.values().map(String::as_str))
+        {
+            let hash = copied.remove(reference).unwrap();
+            let Err(Failure::Messages(messages)) = verify_copied_references(&story, &copied) else {
+                panic!("missing reference must fail export");
+            };
+            assert!(messages[0].contains(reference));
+            assert!(messages[0].contains("was not copied"));
+            copied.insert(reference.to_owned(), hash);
+        }
+    }
 }
