@@ -17,7 +17,7 @@ status: proposed
 
 ## Phase 0 — Spikes and walking skeleton
 
-Goal: prove the stack end to end with the thinnest possible slice. Time-boxed: the budget is set in [ADR 0001](./docs/adr/0001-rust-native-engine.md) when the phase starts; overrunning it triggers the go/no-go review.
+Goal: prove the stack end to end with the thinnest possible slice. The phase ends with the go/no-go review in [ADR 0001](./docs/adr/0001-rust-native-engine.md).
 
 - [ ] Cargo workspace with `weftora-api`, `weftora-core`, `weftora-story`, `weftora-yarn`, `weftora-render-bevy`, `apps/weftora-player`, `apps/weftora-cli`. Pinned `rust-toolchain.toml`, committed `Cargo.lock`.
 - [ ] CI runs the merge gate ([architecture §10](./docs/architecture.md#10-drift-protection)) on Windows; the player prints its release ID and build hash (`--version`).

@@ -33,7 +33,7 @@ Pass/fail checks for each phase of the [roadmap](../ROADMAP.md). Nothing here ha
 | P0-08 | The loader rejects a Story file reference outside the Story root (absolute path, `..`) with a clear error | Two negative fixtures |
 | P0-09 | The Story authoring file format is chosen by ADR | ADR with `hello-story` files in the chosen format |
 | P0-10 | **Export spike:** a folder containing only the built player and `hello-story` runs on a Windows machine with no Rust or Cargo installed | Steps, machine description, log |
-| P0-11 | ADR 0001 records the Phase 0 budget and a go/no-go decision | Updated ADR |
+| P0-11 | ADR 0001 records the Phase 0 go/no-go decision | Updated ADR |
 
 ## Phase 1 — Headless kernel
 

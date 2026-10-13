@@ -38,16 +38,16 @@ To limit the main risks:
 - **Yarn port maturity:** use only the Bevy-independent `yarnspinner` crates, not `bevy_yarnspinner`, so Bevy upgrades never wait on a third party. Fallbacks are listed in [architecture §6](../architecture.md#6-dialogue-yarn-spinner).
 - **Scope:** the roadmap is a walking skeleton. Phase 0 must get a real Story on screen through the real CLI and player.
 
-## Budget and reversal gates
+## Go/no-go gates
 
-The maintainer sets a calendar budget for each gate and records it here before that phase starts. Exceeding a budget by more than 50% forces a written go/no-go review. Silently continuing is not allowed.
+At the end of each gate phase the maintainer writes a short go/no-go decision in this ADR. A gate that is clearly stuck also triggers that review early. Silently continuing past a failed gate is not allowed.
 
-| Gate | Budget | Must be true | If not |
-| --- | --- | --- | --- |
-| End of Phase 0 | 3 weeks from the day PR #1 merges (review forced after 4.5 weeks) | `weftora run examples/hello-story` shows text and a choice that changes state, on Windows, through `yarnspinner` + Bevy | Try the Yarn fallbacks; if the stack itself fails, revisit Godot |
-| End of Phase 2 | Set at the Phase 0 go/no-go review | Full Yarn integration, views, audio and declarative UI work on Windows; performance baseline is inside or near budget | Revisit the UI renderer or the stack |
-| End of Phase 3 | Set before Phase 3 starts | An author changes Story A without touching the player binary; saves survive a Story patch | Stop and re-plan before building rules |
-| End of Phase 6 | Set before Phase 6 starts | A non-Rust user creates and exports a game on a clean Windows machine | Do not release; fix or re-scope |
+| Gate | Must be true | If not |
+| --- | --- | --- |
+| End of Phase 0 | `weftora run examples/hello-story` shows text and a choice that changes state, on Windows, through `yarnspinner` + Bevy | Try the Yarn fallbacks; if the stack itself fails, revisit Godot |
+| End of Phase 2 | Full Yarn integration, views, audio and declarative UI work on Windows; performance baseline is inside or near budget | Revisit the UI renderer or the stack |
+| End of Phase 3 | An author changes Story A without touching the player binary; saves survive a Story patch | Stop and re-plan before building rules |
+| End of Phase 6 | A non-Rust user creates and exports a game on a clean Windows machine | Do not release; fix or re-scope |
 
 **Revisit the whole decision** if Story rules start needing game-specific Rust, if the Yarn author contract cannot be met, or if maintenance cost clearly exceeds a host-engine option. Changing stack needs a new ADR that supersedes this one.
 

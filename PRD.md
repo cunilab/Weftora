@@ -107,7 +107,7 @@ The foundation is complete when the Phase 6 gate in [success criteria](./docs/su
 
 ## 8. Decisions
 
-- Stack, budget and reversal gates: [ADR 0001](./docs/adr/0001-rust-native-engine.md).
+- Stack and go/no-go gates: [ADR 0001](./docs/adr/0001-rust-native-engine.md).
 - Versioning and save compatibility: [ADR 0002](./docs/adr/0002-versioning-compatibility.md).
 - Rules language and collection state: [ADR 0003](./docs/adr/0003-story-rules-language.md).
 - Still open: UI renderer approach, Story authoring file format, release package container, licence. See [architecture §11](./docs/architecture.md#11-open-questions).
