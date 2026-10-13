@@ -260,3 +260,137 @@ fn invalid_choice_is_rejected() {
     assert!(runner.next_event().is_err());
     runner.choose(0).unwrap();
 }
+
+#[test]
+fn initial_state_types_are_checked_before_start() {
+    let compiled = compile(&source(
+        "title: Start\n---\n<<declare $flag = true>>\n<<declare $name = \"Ann\">>\n<<declare $world__day = 0>>\n<<if $flag>>\nHello {$name}, day {$world__day}\n<<endif>>\n===\n",
+    )).unwrap();
+    for (key, value, expected) in [
+        ("flag", Value::String("not-a-bool".into()), "bool"),
+        ("flag", Value::Int(1), "bool"),
+        ("name", Value::Bool(true), "string"),
+        ("name", Value::Float(1.0), "string"),
+        ("world.day", Value::String("one".into()), "number"),
+        ("world.day", Value::Bool(true), "number"),
+    ] {
+        let state = shared(&[(key, value)]);
+        let errors = weftora_yarn::check_state(&compiled, &state.read().unwrap());
+        assert_eq!(errors.len(), 1);
+        assert!(
+            matches!(&errors[0], DialogueError::StateTypeMismatch { expected: actual, .. } if *actual == expected)
+        );
+        let mut runner = DialogueRunner::new(&compiled, state);
+        assert!(matches!(
+            runner.start("Start"),
+            Err(DialogueError::StateTypeMismatch { .. })
+        ));
+    }
+    let state = shared(&[("flag", Value::String("not-a-bool".into()))]);
+    assert_eq!(
+        weftora_yarn::check_state(&compiled, &state.read().unwrap())[0].to_string(),
+        "initialState `flag` is a string but Yarn declares $flag as bool"
+    );
+    for day in [Value::Int(1), Value::Float(1.5)] {
+        let state = shared(&[
+            ("flag", Value::Bool(true)),
+            ("name", Value::String("Ann".into())),
+            ("world.day", day),
+        ]);
+        assert!(weftora_yarn::check_state(&compiled, &state.read().unwrap()).is_empty());
+        let mut runner = DialogueRunner::new(&compiled, state);
+        runner.start("Start").unwrap();
+        assert!(matches!(
+            runner.next_event().unwrap(),
+            DialogueEvent::Line { .. }
+        ));
+    }
+}
+
+#[test]
+fn integer_precision_boundaries_never_panic() {
+    let compiled = compile(&source(
+        "title: Start\n---\n<<declare $n = 0>>\nValue {$n}\n===\n",
+    ))
+    .unwrap();
+    for n in [
+        i64::MIN,
+        i64::MAX,
+        -(1 << 24),
+        1 << 24,
+        -((1 << 24) + 1),
+        (1 << 24) + 1,
+    ] {
+        let mut runner = DialogueRunner::new(&compiled, shared(&[("n", Value::Int(n))]));
+        runner.start("Start").unwrap();
+        let event = runner.next_event();
+        if (-(1 << 24)..=(1 << 24)).contains(&n) {
+            assert!(matches!(event.unwrap(), DialogueEvent::Line { .. }));
+        } else {
+            assert!(
+                matches!(event, Err(DialogueError::Variable { .. })),
+                "{n}: {event:?}"
+            );
+        }
+    }
+}
+
+#[test]
+fn self_jump_exhausts_budget_and_fails_runner() {
+    let compiled = compile(&source("title: Start\n---\n<<jump Start>>\n===\n")).unwrap();
+    let mut runner = DialogueRunner::new(&compiled, shared(&[]));
+    runner.start("Start").unwrap();
+    let error = runner.next_event().unwrap_err();
+    assert!(matches!(error, DialogueError::Runtime(_)));
+    assert!(
+        error
+            .to_string()
+            .contains("instruction budget (100000) exceeded in node `Start`")
+    );
+    assert!(matches!(
+        runner.next_event(),
+        Err(DialogueError::Runtime(_))
+    ));
+    assert!(matches!(runner.choose(0), Err(DialogueError::Runtime(_))));
+    assert!(matches!(
+        runner.start("Start"),
+        Err(DialogueError::Runtime(_))
+    ));
+}
+
+#[test]
+fn runtime_panic_is_caught_and_runner_cannot_be_restarted() {
+    let compiled = compile(&source(
+        "title: Start\n---\n<<declare $flag = true>>\nFirst\n<<if $flag>>\nSecond\n<<endif>>\n===\n",
+    )).unwrap();
+    let state = shared(&[("flag", Value::Bool(true))]);
+    let mut runner = DialogueRunner::new(&compiled, state.clone());
+    runner.start("Start").unwrap();
+    assert!(matches!(
+        runner.next_event().unwrap(),
+        DialogueEvent::Line { .. }
+    ));
+    // Simulate a Rust-side state edit after start, bypassing the initial type check.
+    state
+        .write()
+        .unwrap()
+        .set("flag", Value::String("not-a-bool".into()))
+        .unwrap();
+    let error = runner.next_event().unwrap_err();
+    assert!(matches!(error, DialogueError::Runtime(_)));
+    assert!(error.to_string().contains("runtime panicked"));
+    state
+        .write()
+        .unwrap()
+        .set("flag", Value::Bool(true))
+        .unwrap();
+    assert!(matches!(
+        runner.next_event(),
+        Err(DialogueError::Runtime(_))
+    ));
+    assert!(matches!(runner.choose(0), Err(DialogueError::Runtime(_))));
+    assert!(matches!(
+        runner.start("Start"),
+        Err(DialogueError::Runtime(_))
+    ));
+}

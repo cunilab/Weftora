@@ -86,7 +86,9 @@ fn to_yarn(name: &str, value: &Value) -> Result<YarnValue> {
     match value {
         Value::Bool(b) => Ok(YarnValue::Boolean(*b)),
         Value::String(s) => Ok(YarnValue::String(s.clone())),
-        Value::Int(i) if i.abs() <= MAX_EXACT_INT => Ok(YarnValue::Number(*i as f32)),
+        Value::Int(i) if (-MAX_EXACT_INT..=MAX_EXACT_INT).contains(i) => {
+            Ok(YarnValue::Number(*i as f32))
+        }
         Value::Int(i) => Err(var_error(
             name,
             format!("int {i} is outside ±{MAX_EXACT_INT} and cannot be read exactly by Yarn"),

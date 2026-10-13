@@ -10,11 +10,12 @@
 
 use std::collections::{HashMap, VecDeque};
 
+use weftora_api::Value;
 use weftora_api::{Diagnostic, StoryCommand};
-use weftora_core::SharedState;
+use weftora_core::{SharedState, State};
 use weftora_story::DialogueSource;
 use yarnspinner::compiler::{Compiler, DiagnosticSeverity, File as YarnFile};
-use yarnspinner::core::Program;
+use yarnspinner::core::{Program, YarnValue};
 use yarnspinner::runtime::{Dialogue, OptionId, StringTableTextProvider};
 
 mod storage;
@@ -167,6 +168,39 @@ pub fn compile(sources: &[DialogueSource]) -> Result<CompiledDialogue, Vec<Diagn
     })
 }
 
+/// Checks canonical state values against the compiled Yarn variable types.
+/// Missing values use Yarn defaults; ints and floats both match Yarn numbers.
+pub fn check_state(dialogue: &CompiledDialogue, state: &State) -> Vec<DialogueError> {
+    check_program_state(&dialogue.program, state)
+}
+
+fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
+    state
+        .iter()
+        .filter_map(|(key, value)| {
+            let variable = format!("${}", key.replace('.', "__"));
+            let declared: YarnValue = program.initial_values.get(&variable)?.clone().into();
+            let expected = match declared {
+                YarnValue::Boolean(_) => "bool",
+                YarnValue::String(_) => "string",
+                YarnValue::Number(_) => "number",
+            };
+            let matches = matches!(
+                (value, expected),
+                (Value::Bool(_), "bool")
+                    | (Value::String(_), "string")
+                    | (Value::Int(_) | Value::Float(_), "number")
+            );
+            (!matches).then(|| DialogueError::StateTypeMismatch {
+                key: key.to_string(),
+                variable,
+                actual: value.type_name(),
+                expected,
+            })
+        })
+        .collect()
+}
+
 /// Splits command text on whitespace, honouring double quotes and `\"` / `\\` escapes inside them.
 fn split_command(input: &str) -> Vec<String> {
     let mut parts = Vec::new();
@@ -225,6 +259,13 @@ pub struct Choice {
 /// Runtime errors from dialogue execution.
 #[derive(Debug, thiserror::Error)]
 pub enum DialogueError {
+    #[error("initialState `{key}` is a {actual} but Yarn declares {variable} as {expected}")]
+    StateTypeMismatch {
+        key: String,
+        variable: String,
+        actual: &'static str,
+        expected: &'static str,
+    },
     #[error("dialogue node `{0}` does not exist")]
     MissingNode(String),
     #[error("choice {0} is not one of the offered choices")]
@@ -238,6 +279,9 @@ pub enum DialogueError {
 /// Runs compiled dialogue against canonical state, one presentation event at a time.
 pub struct DialogueRunner {
     dialogue: Dialogue,
+    state: SharedState,
+    program: Program,
+    failure: Option<String>,
     queue: VecDeque<DialogueEvent>,
     /// `(id, available)` of the choices offered by the last `Choices` event that was not yet answered.
     pending_choices: Option<Vec<(usize, bool)>>,
@@ -255,11 +299,18 @@ impl DialogueRunner {
     pub fn new(dialogue: &CompiledDialogue, state: SharedState) -> Self {
         let mut text = StringTableTextProvider::new();
         text.extend_base_language(dialogue.strings.clone());
-        let storage = StateStorage::new(state);
+        let storage = StateStorage::new(state.clone());
         let mut yarn = Dialogue::new(Box::new(storage), Box::new(text));
-        yarn.replace_program(dialogue.program.clone());
+        let initialization = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            yarn.replace_program(dialogue.program.clone());
+        }));
         Self {
             dialogue: yarn,
+            state,
+            program: dialogue.program.clone(),
+            failure: initialization
+                .err()
+                .map(|_| "Yarn runtime panicked during initialization".into()),
             queue: VecDeque::new(),
             pending_choices: None,
             started: false,
@@ -269,13 +320,28 @@ impl DialogueRunner {
 
     /// Starts (or restarts) the dialogue at `node`.
     pub fn start(&mut self, node: &str) -> Result<(), DialogueError> {
+        self.ensure_healthy()?;
+        {
+            let state = self
+                .state
+                .read()
+                .map_err(|_| DialogueError::Runtime("state lock is poisoned".into()))?;
+            if let Some(error) = check_program_state(&self.program, &state)
+                .into_iter()
+                .next()
+            {
+                return Err(error);
+            }
+        }
         if !self.dialogue.node_exists(node) {
             return Err(DialogueError::MissingNode(node.to_string()));
         }
-        if self.dialogue.is_active() {
-            self.dialogue.stop();
-        }
-        self.dialogue.set_node(node).map_err(map_dialogue_error)?;
+        self.runtime_call(|dialogue| {
+            if dialogue.is_active() {
+                dialogue.stop();
+            }
+            dialogue.set_node(node).map(|_| ())
+        })?;
         self.queue.clear();
         self.pending_choices = None;
         self.started = true;
@@ -285,6 +351,7 @@ impl DialogueRunner {
 
     /// Returns the next event. After [`DialogueEvent::End`] it keeps returning `End` until `start` is called.
     pub fn next_event(&mut self) -> Result<DialogueEvent, DialogueError> {
+        self.ensure_healthy()?;
         if let Some(event) = self.queue.pop_front() {
             return Ok(event);
         }
@@ -301,7 +368,7 @@ impl DialogueRunner {
                 "a choice must be made before continuing".into(),
             ));
         }
-        let events = self.dialogue.continue_().map_err(map_dialogue_error)?;
+        let events = self.runtime_call(Dialogue::continue_)?;
         for event in events {
             match event {
                 yarnspinner::runtime::DialogueEvent::Line(line) => {
@@ -349,6 +416,7 @@ impl DialogueRunner {
 
     /// Selects one of the choices from the last [`DialogueEvent::Choices`].
     pub fn choose(&mut self, index: usize) -> Result<(), DialogueError> {
+        self.ensure_healthy()?;
         let valid = self
             .pending_choices
             .as_ref()
@@ -356,11 +424,35 @@ impl DialogueRunner {
         if !valid {
             return Err(DialogueError::InvalidChoice(index));
         }
-        self.dialogue
-            .set_selected_option(OptionId(index))
-            .map_err(map_dialogue_error)?;
+        self.runtime_call(|dialogue| dialogue.set_selected_option(OptionId(index)).map(|_| ()))?;
         self.pending_choices = None;
         Ok(())
+    }
+
+    fn ensure_healthy(&self) -> Result<(), DialogueError> {
+        match &self.failure {
+            Some(message) => Err(DialogueError::Runtime(message.clone())),
+            None => Ok(()),
+        }
+    }
+
+    // A VM error may leave its stack/program counter partly changed. Never resume it.
+    fn runtime_call<T>(
+        &mut self,
+        call: impl FnOnce(&mut Dialogue) -> Result<T, yarnspinner::runtime::DialogueError>,
+    ) -> Result<T, DialogueError> {
+        self.ensure_healthy()?;
+        let result =
+            std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| call(&mut self.dialogue)));
+        let error = match result {
+            Ok(Ok(value)) => return Ok(value),
+            Ok(Err(error)) => map_dialogue_error(error),
+            Err(_) => DialogueError::Runtime("Yarn runtime panicked; runner has failed".into()),
+        };
+        self.failure = Some(error.to_string());
+        self.queue.clear();
+        self.pending_choices = None;
+        Err(error)
     }
 }
 
@@ -370,5 +462,53 @@ fn map_dialogue_error(error: yarnspinner::runtime::DialogueError) -> DialogueErr
         Y::InvalidNode { node_name } => DialogueError::MissingNode(node_name),
         Y::VariableStorageError(e) => storage::map_storage_error(e),
         other => DialogueError::Runtime(other.to_string()),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::sync::{Arc, RwLock};
+
+    #[test]
+    fn configurable_budget_resets_between_continue_calls() {
+        let compiled = compile(&[DialogueSource {
+            file: "test.yarn".into(),
+            contents: "title: Start\n---\nFirst\nSecond\n===\n".into(),
+        }])
+        .unwrap();
+        let mut runner = DialogueRunner::new(&compiled, Arc::new(RwLock::new(State::new())));
+        runner.dialogue.set_instruction_budget(1);
+        runner.start("Start").unwrap();
+        assert!(matches!(
+            runner.next_event().unwrap(),
+            DialogueEvent::Line { .. }
+        ));
+        assert!(matches!(
+            runner.next_event().unwrap(),
+            DialogueEvent::Line { .. }
+        ));
+        assert_eq!(runner.next_event().unwrap(), DialogueEvent::End);
+    }
+
+    #[test]
+    fn zero_budget_executes_no_instruction() {
+        let compiled = compile(&[DialogueSource {
+            file: "test.yarn".into(),
+            contents: "title: Start\n---\n<<set $n = 1>>\n===\n".into(),
+        }])
+        .unwrap();
+        let state = Arc::new(RwLock::new(State::new()));
+        let mut runner = DialogueRunner::new(&compiled, state.clone());
+        runner.dialogue.set_instruction_budget(0);
+        runner.start("Start").unwrap();
+        assert!(
+            runner
+                .next_event()
+                .unwrap_err()
+                .to_string()
+                .contains("instruction budget (0)")
+        );
+        assert_ne!(state.read().unwrap().get("n"), Ok(&Value::Float(1.0)));
     }
 }

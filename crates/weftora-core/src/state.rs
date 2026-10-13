@@ -96,6 +96,11 @@ impl State {
 /// Validates a state key: non-empty dot-separated segments of `[a-z0-9_]`, each starting with a letter or `_`.
 pub fn validate_key(key: &str) -> Result<(), StateError> {
     let invalid = || StateError::InvalidKey(key.to_string());
+    if key.contains("__") {
+        return Err(StateError::InvalidKey(format!(
+            "{key} (`__` is reserved for the Yarn mapping)"
+        )));
+    }
     if key.is_empty() {
         return Err(invalid());
     }
@@ -135,6 +140,16 @@ mod tests {
         ] {
             assert!(validate_key(bad).is_err(), "{bad}");
         }
+    }
+
+    #[test]
+    fn double_underscore_is_reserved() {
+        for key in ["a__b", "__", "world.a__b"] {
+            let error = validate_key(key).unwrap_err();
+            assert!(error.to_string().contains("reserved for the Yarn mapping"));
+            assert!(State::new().set(key, Value::Bool(true)).is_err());
+        }
+        assert!(validate_key("a.b").is_ok());
     }
 
     #[test]
