@@ -197,7 +197,7 @@ impl Story {
 }
 
 /// Path policy (Phase 0 subset of architecture §4): `relative` must be a relative path with `/` separators,
-/// no hidden, `.` or `..` segments, no drive/UNC/absolute form, and must resolve (after following symlinks) inside `root`.
+/// no hidden, `.` or `..` segments, no drive/UNC/absolute form, and no symlink or junction segments inside `root`.
 /// References must match the canonical on-disk spelling, including case.
 pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnostic> {
     let bad = |msg: &str| Diagnostic::new(relative, None, msg);
@@ -224,6 +224,18 @@ pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnosti
     let root_canon = root
         .canonicalize()
         .map_err(|e| bad(&format!("cannot access Story root: {e}")))?;
+    let mut segment_path = root_canon.clone();
+    for segment in Path::new(relative).components() {
+        segment_path.push(segment);
+        let metadata = std::fs::symlink_metadata(&segment_path)
+            .map_err(|e| bad(&format!("file cannot be accessed: {e}")))?;
+        if is_symlink_or_reparse_point(&metadata) {
+            return Err(bad(&format!(
+                "`{relative}` passes through a symlink at `{}`; symlinks are not allowed in Stories",
+                segment_path.display()
+            )));
+        }
+    }
     let target = root_canon
         .join(relative)
         .canonicalize()
@@ -238,11 +250,35 @@ pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnosti
             .map(|component| component.as_os_str().to_string_lossy())
             .collect::<Vec<_>>()
             .join("/");
+        let requested: Vec<_> = relative.split('/').filter(|s| !s.is_empty()).collect();
+        let actual: Vec<_> = spelling.split('/').collect();
+        if requested.len() == actual.len()
+            && requested
+                .iter()
+                .zip(&actual)
+                .all(|(a, b)| a.to_lowercase() == b.to_lowercase())
+        {
+            return Err(bad(&format!(
+                "`{relative}` differs in case from `{spelling}` on disk"
+            )));
+        }
         return Err(bad(&format!(
-            "`{relative}` differs in case from `{spelling}` on disk"
+            "`{relative}` resolves to a different on-disk path `{spelling}`"
         )));
     }
     Ok(target)
+}
+
+fn is_symlink_or_reparse_point(metadata: &std::fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        metadata.file_type().is_symlink() || metadata.file_attributes() & 0x400 != 0
+    }
+    #[cfg(not(windows))]
+    {
+        metadata.file_type().is_symlink()
+    }
 }
 
 #[cfg(test)]
@@ -336,7 +372,11 @@ mod tests {
         std::os::unix::fs::symlink(external_manifest, dir.path().join(MANIFEST_FILE)).unwrap();
         let diagnostics = Story::load(dir.path()).unwrap_err();
         assert_eq!(diagnostics[0].file, MANIFEST_FILE);
-        assert!(diagnostics[0].message.contains("outside the Story root"));
+        assert!(
+            diagnostics[0]
+                .message
+                .contains("symlinks are not allowed in Stories")
+        );
     }
 
     #[test]
@@ -400,6 +440,62 @@ mod tests {
 
     #[cfg(unix)]
     #[test]
+    fn rejects_internal_file_symlink() {
+        let dir = story_dir(GOOD);
+        fs::rename(dir.path().join("d/a.yarn"), dir.path().join("d/real.yarn")).unwrap();
+        std::os::unix::fs::symlink("real.yarn", dir.path().join("d/a.yarn")).unwrap();
+        let diagnostic = resolve_in_root(dir.path(), "d/a.yarn").unwrap_err();
+        assert!(
+            diagnostic
+                .message
+                .contains("`d/a.yarn` passes through a symlink")
+        );
+        assert!(diagnostic.message.contains("/d/a.yarn`"));
+        assert!(!diagnostic.message.contains("differs in case"));
+        assert!(Story::load(dir.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_internal_directory_symlink() {
+        let dir = story_dir(GOOD);
+        fs::rename(dir.path().join("d"), dir.path().join("real")).unwrap();
+        std::os::unix::fs::symlink("real", dir.path().join("d")).unwrap();
+        let diagnostic = resolve_in_root(dir.path(), "d/a.yarn").unwrap_err();
+        assert!(diagnostic.message.contains("passes through a symlink"));
+        assert!(diagnostic.message.contains("/d`"));
+        assert!(!diagnostic.message.contains("differs in case"));
+        assert!(Story::load(dir.path()).is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_internal_manifest_symlink() {
+        let dir = story_dir(GOOD);
+        fs::rename(
+            dir.path().join(MANIFEST_FILE),
+            dir.path().join("real.jsonc"),
+        )
+        .unwrap();
+        std::os::unix::fs::symlink("real.jsonc", dir.path().join(MANIFEST_FILE)).unwrap();
+        let diagnostics = Story::load(dir.path()).unwrap_err();
+        assert!(diagnostics[0].message.contains("passes through a symlink"));
+        assert!(!diagnostics[0].message.contains("differs in case"));
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn permits_symlinked_story_root() {
+        let dir = story_dir(GOOD);
+        let aliases = tempfile::tempdir().unwrap();
+        let alias = aliases.path().join("story");
+        std::os::unix::fs::symlink(dir.path(), &alias).unwrap();
+        let story = Story::load(&alias).unwrap();
+        assert_eq!(story.dialogue_sources().unwrap()[0].file, "d/a.yarn");
+    }
+
+    #[cfg(unix)]
+    #[test]
     fn rejects_symlink_escape() {
         let outside = tempfile::tempdir().unwrap();
         fs::write(outside.path().join("secret.txt"), "s").unwrap();
@@ -411,7 +507,7 @@ mod tests {
         )
         .unwrap();
         let d = resolve_in_root(dir.path(), "link/secret.txt").unwrap_err();
-        assert!(d.message.contains("outside"), "{d}");
+        assert!(d.message.contains("passes through a symlink"), "{d}");
         assert!(resolve_in_root(dir.path(), "file-link").is_err());
     }
 }

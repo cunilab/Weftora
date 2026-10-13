@@ -41,7 +41,8 @@ fn assert_overlap_rejected(story: &Path, out_dir: &Path, player: &Path) {
         .unwrap();
     assert_eq!(out.status.code(), Some(1));
     assert!(
-        stderr(&out).contains("must not overlap"),
+        stderr(&out).contains("must not overlap")
+            || stderr(&out).contains("output directory must not be a symlink or junction"),
         "{}",
         stderr(&out)
     );
@@ -246,8 +247,19 @@ fn export_copy_failure_removes_partial_output() {
     assert!(checked.status.success(), "{}", stderr(&checked));
     let player = tmp.path().join("fake-player");
     fs::write(&player, "player").unwrap();
-    let export = tmp.path().join("export");
-    for existing_empty_directory in [false, true] {
+    for (export, existing_empty_directory, new_root) in [
+        (tmp.path().join("export"), false, tmp.path().join("export")),
+        (
+            tmp.path().join("existing"),
+            true,
+            tmp.path().join("existing"),
+        ),
+        (
+            tmp.path().join("newa/newb/out2"),
+            false,
+            tmp.path().join("newa"),
+        ),
+    ] {
         if existing_empty_directory {
             fs::create_dir(&export).unwrap();
         }
@@ -265,25 +277,47 @@ fn export_copy_failure_removes_partial_output() {
             "{}",
             stderr(&out)
         );
-        assert!(!export.exists(), "partial export remains");
+        if existing_empty_directory {
+            assert!(export.is_dir(), "pre-existing output directory was deleted");
+            assert_eq!(fs::read_dir(&export).unwrap().count(), 0);
+        } else {
+            assert!(!new_root.exists(), "newly created export ancestors remain");
+        }
     }
+}
+
+#[cfg(unix)]
+#[test]
+fn export_refuses_symlinked_output_without_touching_target() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    let player = tmp.path().join("fake-player");
+    fs::write(&player, "player").unwrap();
+    let export = tmp.path().join("export");
     fs::create_dir(&export).unwrap();
     let alias = tmp.path().join("export-alias");
     std::os::unix::fs::symlink(&export, &alias).unwrap();
-    let out = weftora()
-        .env("WEFTORA_PLAYER", &player)
-        .arg("export")
-        .arg(&story)
-        .arg("--out")
-        .arg(alias)
-        .output()
-        .unwrap();
-    assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("symlinks are not exported"));
-    assert!(
-        !export.exists(),
-        "partial export remains behind output alias"
-    );
+    for out_path in [alias.clone(), alias.join(".")] {
+        let out = weftora()
+            .env("WEFTORA_PLAYER", &player)
+            .arg("export")
+            .arg(&story)
+            .arg("--out")
+            .arg(out_path)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        assert!(stderr(&out).contains("output directory must not be a symlink or junction"));
+        assert!(export.is_dir(), "output alias target was deleted");
+        assert_eq!(fs::read_dir(&export).unwrap().count(), 0);
+        assert!(
+            fs::symlink_metadata(&alias)
+                .unwrap()
+                .file_type()
+                .is_symlink()
+        );
+    }
 }
 
 #[test]

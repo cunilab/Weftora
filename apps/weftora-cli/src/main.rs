@@ -183,6 +183,22 @@ fn run_command(dir: &Path) -> CliResult {
 }
 
 fn export_command(dir: &Path, out: &Path) -> CliResult {
+    let requested_out: PathBuf = out.components().collect();
+    match fs::symlink_metadata(&requested_out) {
+        Ok(metadata) if is_symlink_or_reparse_point(&metadata) => {
+            return Err(Failure::one(format!(
+                "error: output directory must not be a symlink or junction: `{}`",
+                out.display()
+            )));
+        }
+        Ok(_) => {}
+        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) => {
+            return Err(Failure::one(format!(
+                "error: accessing output directory: {e}"
+            )));
+        }
+    }
     let story_root = dir
         .canonicalize()
         .map_err(|e| Failure::one(format!("error: accessing Story root: {e}")))?;
@@ -193,13 +209,13 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
             "error: output directory and Story root must not overlap (equal, inside, or containing the Story root)",
         ));
     }
-    // Use the resolved destination for both writes and failure cleanup, including symlink aliases.
+    // Use the same resolved destination for writes and failure cleanup.
     let out = output_root.as_path();
     let checked = check(dir).map_err(Failure::Messages)?;
     let player = player_path()?;
     let io_err = |what: &str, e: io::Error| Failure::one(format!("error: {what}: {e}"));
 
-    match fs::read_dir(out) {
+    let out_preexisted = match fs::read_dir(out) {
         Ok(entries) => {
             if entries.count() > 0 {
                 return Err(Failure::one(format!(
@@ -207,8 +223,9 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
                     out.display()
                 )));
             }
+            true
         }
-        Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+        Err(e) if e.kind() == io::ErrorKind::NotFound => false,
         Err(_) if out.exists() => {
             return Err(Failure::one(format!(
                 "error: `{}` exists and is not a directory",
@@ -216,10 +233,32 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
             )));
         }
         Err(e) => return Err(io_err("reading output directory", e)),
+    };
+    let mut missing_directories = Vec::new();
+    if !out_preexisted {
+        let mut missing = out;
+        loop {
+            match fs::symlink_metadata(missing) {
+                Ok(_) => break,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                    missing_directories.push(missing.to_path_buf());
+                    missing = missing
+                        .parent()
+                        .expect("absolute output has an existing ancestor");
+                }
+                Err(e) => return Err(io_err("accessing output ancestor", e)),
+            }
+        }
     }
+    let mut created_root = None;
 
     let mut result = (|| {
-        fs::create_dir_all(out).map_err(|e| io_err("creating output directory", e))?;
+        for directory in missing_directories.iter().rev() {
+            fs::create_dir(directory).map_err(|e| io_err("creating output directory", e))?;
+            if created_root.is_none() {
+                created_root = Some(directory.as_path());
+            }
+        }
         let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
         fs::copy(&player, out.join(&player_name)).map_err(|e| io_err("copying player", e))?;
 
@@ -259,16 +298,46 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
         );
         Ok(ExitCode::SUCCESS)
     })();
-    if let Err(Failure::Messages(messages)) = &mut result
-        && let Err(error) = fs::remove_dir_all(out)
-        && error.kind() != io::ErrorKind::NotFound
-    {
-        messages.push(format!(
-            "error: removing failed export `{}`: {error}",
-            out.display()
-        ));
+    if let Err(Failure::Messages(messages)) = &mut result {
+        let cleanup = if out_preexisted {
+            remove_export_contents(out)
+        } else if let Some(created) = created_root {
+            fs::remove_dir_all(created)
+        } else {
+            Ok(())
+        };
+        if let Err(error) = cleanup {
+            messages.push(format!(
+                "error: removing failed export `{}`: {error}",
+                out.display()
+            ));
+        }
     }
     result
+}
+
+fn remove_export_contents(out: &Path) -> io::Result<()> {
+    for entry in fs::read_dir(out)? {
+        let entry = entry?;
+        if entry.file_type()?.is_dir() {
+            fs::remove_dir_all(entry.path())?;
+        } else {
+            fs::remove_file(entry.path())?;
+        }
+    }
+    Ok(())
+}
+
+fn is_symlink_or_reparse_point(metadata: &fs::Metadata) -> bool {
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        metadata.file_type().is_symlink() || metadata.file_attributes() & 0x400 != 0
+    }
+    #[cfg(not(windows))]
+    {
+        metadata.file_type().is_symlink()
+    }
 }
 
 /// Resolves existing ancestors through symlinks, retaining the nonexistent suffix.
@@ -356,8 +425,9 @@ fn copy_story(
         }
         let path = entry.path();
         let relative = format!("{prefix}{name_str}");
-        let file_type = entry.file_type().map_err(|e| io_err(&path, e))?;
-        if file_type.is_symlink() {
+        let metadata = fs::symlink_metadata(&path).map_err(|e| io_err(&path, e))?;
+        let file_type = metadata.file_type();
+        if is_symlink_or_reparse_point(&metadata) {
             return Err(Failure::one(format!(
                 "error: `{relative}` is a symlink; symlinks are not exported"
             )));
