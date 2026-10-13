@@ -8,7 +8,7 @@ use std::process::{Command, ExitCode};
 
 use sha2::{Digest, Sha256};
 use weftora_story::Story;
-use weftora_yarn::{CompiledDialogue, compile};
+use weftora_yarn::{CompiledDialogue, check_state, compile};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PLAYER_ENV: &str = "WEFTORA_PLAYER";
@@ -88,6 +88,14 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
         compile(&sources).map_err(|d| d.iter().map(ToString::to_string).collect::<Vec<_>>())?;
 
     let mut errors = Vec::new();
+    match weftora_core::State::with_values(&story.manifest().initial_state) {
+        Ok(state) => errors.extend(
+            check_state(&dialogue, &state)
+                .into_iter()
+                .map(|error| format!("manifest.jsonc: {error}")),
+        ),
+        Err(error) => errors.push(format!("manifest.jsonc: initialState: {error}")),
+    }
     let entrypoint = &story.manifest().entrypoint;
     if !dialogue.node_names().contains(entrypoint) {
         errors.push(format!(
@@ -482,5 +490,69 @@ mod tests {
             assert!(messages[0].contains("was not copied"));
             copied.insert(reference.to_owned(), hash);
         }
+    }
+}
+
+#[cfg(test)]
+mod check_tests {
+    use super::*;
+
+    #[test]
+    fn check_reports_initial_state_type_mismatch() {
+        let story = tempfile::tempdir().unwrap();
+        fs::write(
+            story.path().join("manifest.jsonc"),
+            r#"{
+            "manifestSchema": 0,
+            "id": "dev.weftora.type-mismatch",
+            "storyVersion": "0.1.0",
+            "title": "Type mismatch",
+            "entrypoint": "Start",
+            "dialogue": ["main.yarn"],
+            "initialState": {"flag": "not-a-bool"}
+        }"#,
+        )
+        .unwrap();
+        fs::write(
+            story.path().join("main.yarn"),
+            "title: Start\n---\n<<declare $flag = true>>\n<<if $flag>>\nHello\n<<endif>>\n===\n",
+        )
+        .unwrap();
+        let errors = check(story.path())
+            .err()
+            .expect("invalid initialState must fail check");
+        assert_eq!(
+            errors,
+            ["manifest.jsonc: initialState `flag` is a string but Yarn declares $flag as bool"]
+        );
+    }
+
+    #[test]
+    fn check_reports_initial_state_integer_precision() {
+        let story = tempfile::tempdir().unwrap();
+        fs::write(
+            story.path().join("manifest.jsonc"),
+            r#"{
+            "manifestSchema": 0, "id": "dev.weftora.precision",
+            "storyVersion": "0.1.0", "title": "Precision",
+            "entrypoint": "Start", "dialogue": ["main.yarn"],
+            "initialState": {"world.day": -9223372036854775808}
+        }"#,
+        )
+        .unwrap();
+        fs::write(
+            story.path().join("main.yarn"),
+            "title: Start\n---\n<<declare $world__day = 0>>\nHello\n===\n",
+        )
+        .unwrap();
+        let errors = check(story.path())
+            .err()
+            .expect("out-of-range int must fail check");
+        assert_eq!(
+            errors,
+            [
+                "manifest.jsonc: initialState `world.day` is an int (-9223372036854775808) outside ±16777216 and cannot be read exactly by Yarn $world__day"
+            ]
+        );
     }
 }
