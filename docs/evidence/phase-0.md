@@ -33,6 +33,23 @@ Results for the [Phase 0 checks](../success-criteria.md#phase-0--spikes-and-walk
 - The Yarn `VariableStorage` trait exposes `bevy_platform::HashMap`, so `weftora-yarn` depends on `bevy_platform` (a small utility crate, not the engine). Allowed for an adapter.
 - Fallbacks remain those in [architecture §6](../architecture.md#6-dialogue-yarn-spinner); none needed so far.
 
+## Codex audit, 2026-10-13
+
+An adversarial review by Codex (review mode) reported 8 defects. Each was confirmed by a reproduction before fixing; fixes were written by Codex workers, reviewed by Claude Opus, and have regression tests.
+
+| Finding | Reproduction | Fix |
+| --- | --- | --- |
+| `export --out` inside the Story recursed | 69 nested copies, 210 MB | Refuse overlapping or symlinked `--out`; remove only what export created on failure |
+| Hidden folders silently dropped from export | `.dialogue/` missing from the export | References may not contain hidden, `.` or `..` segments; export verifies every reference was copied |
+| Manifest symlink escaped the Story | `check` exited 0 | All references, including the manifest, reject symlink/junction segments and case mismatches |
+| State/Yarn type mismatch panicked | panic in the Yarn VM | State checked against declared Yarn types before start and in `weftora check`; runtime panics fail the runner |
+| `i64::MIN` panicked in the precision guard | overflow panic | Range check; keys that do not round-trip through the Yarn name mapping are rejected |
+| `<<jump Start>>` hung | no return | Vendored `yarnspinner_runtime` with an instruction budget; adapter caps consecutive commands (1,000) and cumulative instructions between lines/choices |
+| Unreadable sound crashed the player | `bevy_audio` unwraps its decoder | Sounds validated with the same decoder first; Story error shown |
+| Reference-style links bypassed the docs gate | broken `[g]: missing.md` passed | Docs gate parses CommonMark references |
+
+During the audit `cargo deny` also flagged a newly published vulnerability, RUSTSEC-2026-0344 (`ruzstd` decompression bomb), reached only through Bevy's 3D features. Bevy now builds with `2d`, `ui` and `audio` only; `hello-story` re-verified on macOS.
+
 ## To finish Phase 0 on Windows
 
 1. Push the branch and let CI run (P0-01, P0-02, P0-03); inject one failure to prove it blocks.

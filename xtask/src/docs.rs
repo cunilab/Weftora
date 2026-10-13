@@ -420,23 +420,144 @@ fn decode(value: &str) -> Result<String, String> {
     String::from_utf8(bytes).map_err(|error| error.to_string())
 }
 
-fn destinations(line: &str) -> Vec<&str> {
+fn destination(text: &str) -> Option<&str> {
+    let text = text.trim();
+    if let Some(angle) = text.strip_prefix('<') {
+        angle.find('>').map(|end| &angle[..end])
+    } else {
+        text.split_whitespace().next()
+    }
+}
+
+fn reference_label(label: &str) -> String {
+    label
+        .split_whitespace()
+        .collect::<Vec<_>>()
+        .join(" ")
+        .to_lowercase()
+}
+
+fn escaped(text: &str, index: usize) -> bool {
+    text[..index]
+        .bytes()
+        .rev()
+        .take_while(|byte| *byte == b'\\')
+        .count()
+        % 2
+        == 1
+}
+
+fn closing_bracket(text: &str, start: usize) -> Option<usize> {
+    let mut depth = 1;
+    let mut previous_newline = None;
+    for (offset, ch) in text[start + 1..].char_indices() {
+        let index = start + 1 + offset;
+        if ch == '\n' {
+            if previous_newline.is_some_and(|previous| text[previous..index].trim().is_empty()) {
+                return None;
+            }
+            previous_newline = Some(index + 1);
+        }
+        if escaped(text, index) {
+            continue;
+        }
+        match ch {
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
+}
+
+/// Collect definitions first so references may precede their definitions. Keep
+/// blank lines in place when masking definitions for accurate diagnostics.
+fn link_destinations(path: &Path, text: &str, problems: &mut Vec<String>) -> Vec<(usize, String)> {
+    let mut definitions = HashSet::new();
     let mut result = Vec::new();
-    let mut remaining = line;
-    while let Some(start) = remaining.find("](") {
-        remaining = &remaining[start + 2..];
-        let Some(end) = closing_parenthesis(remaining) else {
-            break;
+    let mut body = String::new();
+    for (index, line) in text.lines().enumerate() {
+        let trimmed = line.trim_start();
+        if trimmed.starts_with('[')
+            && let Some(end) = closing_bracket(trimmed, 0)
+            && !trimmed[1..end].starts_with('^')
+            && let Some(target) = trimmed[end + 1..].strip_prefix(':')
+            && let Some(target) = destination(target)
+        {
+            definitions.insert(reference_label(&trimmed[1..end]));
+            result.push((index + 1, target.to_owned()));
+        } else {
+            body.push_str(line);
+        }
+        body.push('\n');
+    }
+
+    let mut offset = 0;
+    while let Some(start) = body[offset..].find('[') {
+        let start = offset + start;
+        offset = start + 1;
+        if escaped(&body, start) {
+            continue;
+        }
+        let Some(end) = closing_bracket(&body, start) else {
+            continue;
         };
-        let destination = remaining[..end].trim();
-        if let Some(angle) = destination.strip_prefix('<') {
-            if let Some(end) = angle.find('>') {
-                result.push(&angle[..end]);
+        let label = &body[start + 1..end];
+        if label.starts_with('^') {
+            continue;
+        }
+        let line = body[..start].bytes().filter(|byte| *byte == b'\n').count() + 1;
+        let after = end + 1;
+        let suffix = &body[after..];
+        let next = after;
+        if suffix.starts_with('(') {
+            if let Some(close) = closing_parenthesis(&body[next + 1..])
+                && let Some(target) = destination(&body[next + 1..next + 1 + close])
+            {
+                result.push((line, target.to_owned()));
+            }
+            // Keep scanning the label for nested images or links. The opening
+            // bracket has already been passed, so this destination is collected
+            // only once.
+            continue;
+        }
+        let full_reference = body[after..].starts_with('[');
+        let reference = if full_reference {
+            if let Some(close) = closing_bracket(&body, after) {
+                offset = close + 1;
+                let reference = &body[after + 1..close];
+                if reference.is_empty() {
+                    label
+                } else {
+                    reference
+                }
+            } else {
+                continue;
             }
         } else {
-            result.push(destination.split_whitespace().next().unwrap_or(""));
+            label
+        };
+        let normalized = reference_label(reference);
+        if normalized.is_empty() || reference.starts_with('^') {
+            continue;
         }
-        remaining = &remaining[end + 1..];
+        if definitions.contains(&normalized) {
+            if !full_reference {
+                offset = end + 1;
+            }
+        } else if full_reference {
+            problem(
+                problems,
+                path,
+                line,
+                format!("unresolved reference label {reference:?}"),
+            );
+        }
     }
     result
 }
@@ -453,66 +574,64 @@ fn check_links(
         lines[line - 1] = content;
     }
     let text = strip_inline_code(&lines.join("\n"));
-    for (index, prose) in text.lines().enumerate() {
-        let line = index + 1;
-        for destination in destinations(prose) {
-            if ["http://", "https://", "mailto:"]
-                .iter()
-                .any(|prefix| destination.starts_with(prefix))
-            {
-                continue;
-            }
-            let (file, anchor) = destination
-                .split_once('#')
-                .map_or((destination, None), |(file, anchor)| (file, Some(anchor)));
-            let file = file.split_once('?').map_or(file, |(file, _)| file);
-            let file = match decode(file) {
-                Ok(file) => file,
-                Err(error) => {
-                    problem(
-                        problems,
-                        path,
-                        line,
-                        format!("invalid link {destination:?}: {error}"),
-                    );
-                    continue;
-                }
-            };
-            let target = if file.is_empty() {
-                path.to_path_buf()
-            } else if let Some(file) = file.strip_prefix('/') {
-                PathBuf::from(file)
-            } else {
-                path.parent().unwrap_or(Path::new("")).join(file)
-            };
-            if !exists(&target) {
+    for (line, destination) in link_destinations(path, &text, problems) {
+        let destination = destination.as_str();
+        if ["http://", "https://", "mailto:"]
+            .iter()
+            .any(|prefix| destination.starts_with(prefix))
+        {
+            continue;
+        }
+        let (file, anchor) = destination
+            .split_once('#')
+            .map_or((destination, None), |(file, anchor)| (file, Some(anchor)));
+        let file = file.split_once('?').map_or(file, |(file, _)| file);
+        let file = match decode(file) {
+            Ok(file) => file,
+            Err(error) => {
                 problem(
                     problems,
                     path,
                     line,
-                    format!(
-                        "broken link {destination:?}: {} does not exist with this exact case",
-                        target.display()
-                    ),
+                    format!("invalid link {destination:?}: {error}"),
                 );
                 continue;
             }
-            if let Some(anchor) = anchor.filter(|anchor| !anchor.is_empty()) {
-                match decode(anchor).and_then(|anchor| read(&target).map(|text| (anchor, text))) {
-                    Ok((anchor, text)) if slugs(&text).contains(&anchor) => {}
-                    Ok((anchor, _)) => problem(
-                        problems,
-                        path,
-                        line,
-                        format!("broken anchor #{anchor} in {}", target.display()),
-                    ),
-                    Err(error) => problem(
-                        problems,
-                        path,
-                        line,
-                        format!("cannot check anchor in {}: {error}", target.display()),
-                    ),
-                }
+        };
+        let target = if file.is_empty() {
+            path.to_path_buf()
+        } else if let Some(file) = file.strip_prefix('/') {
+            PathBuf::from(file)
+        } else {
+            path.parent().unwrap_or(Path::new("")).join(file)
+        };
+        if !exists(&target) {
+            problem(
+                problems,
+                path,
+                line,
+                format!(
+                    "broken link {destination:?}: {} does not exist with this exact case",
+                    target.display()
+                ),
+            );
+            continue;
+        }
+        if let Some(anchor) = anchor.filter(|anchor| !anchor.is_empty()) {
+            match decode(anchor).and_then(|anchor| read(&target).map(|text| (anchor, text))) {
+                Ok((anchor, text)) if slugs(&text).contains(&anchor) => {}
+                Ok((anchor, _)) => problem(
+                    problems,
+                    path,
+                    line,
+                    format!("broken anchor #{anchor} in {}", target.display()),
+                ),
+                Err(error) => problem(
+                    problems,
+                    path,
+                    line,
+                    format!("cannot check anchor in {}: {error}", target.display()),
+                ),
             }
         }
     }
@@ -543,6 +662,110 @@ mod tests {
         );
         problems
     }
+    #[test]
+    fn reference_targets_are_checked() {
+        let problems = links("[guide][g]\n\n[g]: missing.md");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("README.md:3: broken link"));
+        assert!(links("[g]: target.md#missing")[0].contains("broken anchor"));
+        assert!(links("[g]: Target.md")[0].contains("exact case"));
+        assert!(links("[unused]: missing.md")[0].contains("broken link"));
+    }
+
+    #[test]
+    fn all_reference_forms_resolve_case_insensitively() {
+        assert!(links("[guide][G] [g][] [G]\n[g]: <target.md#a-heading> \"title\"").is_empty());
+        assert!(links("[guide][A  LABEL] [a label][] [A LABEL]\n[a label]: target.md").is_empty());
+        assert!(links("[external][e]\n[e]: https://example.com").is_empty());
+    }
+
+    #[test]
+    fn unresolved_references_report_use_lines() {
+        for text in ["[guide][missing]", "[missing][]"] {
+            let problems = links(&format!("\n{text}"));
+            assert_eq!(problems.len(), 1);
+            assert!(problems[0].contains("README.md:2: unresolved reference label"));
+        }
+    }
+
+    #[test]
+    fn undefined_shortcuts_are_literal_text() {
+        assert!(links("[one] [two]").is_empty());
+        assert!(links("[one]\n\n[two]").is_empty());
+        assert_eq!(links("- [x][missing]").len(), 1);
+        assert!(links("[missing]\n\n(target.md)").is_empty());
+        assert!(links("[sic]\n\n| Priority |\n| --- |\n| [P0-01] |\n\n- [x] task\n- [X] task\n- [ ] task\n1. [x] numbered task\n> - [x] quoted task").is_empty());
+    }
+
+    #[test]
+    fn footnotes_are_not_links_or_definitions() {
+        assert!(links("Note[^1] and [text][^1].\n\n[^1]: This is a footnote body.").is_empty());
+        let problems = links("[^1]: This is a footnote with [link](missing.md).");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("broken link \"missing.md\""));
+    }
+
+    #[test]
+    fn literal_brackets_do_not_hide_inner_links() {
+        let problems =
+            links("Unbalanced [ bracket then [good](missing-between.md) then stray ] end");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("broken link \"missing-between.md\""));
+        let problems = links("[ bracket [good](missing.md) ](unterminated");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("broken link \"missing.md\""));
+    }
+
+    #[test]
+    fn labels_cannot_span_blank_lines() {
+        assert!(links("[label\n\ntext](missing.md)").is_empty());
+        assert!(links("[label\n \t\ntext][missing]").is_empty());
+        assert!(links("[text][label\n\ntext]").is_empty());
+        assert!(links("[label\ntext](target.md)").is_empty());
+        let problems = links("[label\n\n[good](missing.md) ]");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("README.md:3: broken link"));
+    }
+
+    #[test]
+    fn references_in_code_and_escaped_brackets_are_ignored() {
+        assert!(links("```\n[g]: missing.md\n[g]\n```\n~~~\n[x][y]\n~~~\n`[g]` \\[literal]\n- [ ] todo\n- [x] done").is_empty());
+        let problems = links("[guide][g]\n```\n[g]: target.md\n```");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("unresolved reference"));
+    }
+
+    #[test]
+    fn multiline_inline_links_keep_line_numbers() {
+        assert!(links("[guide](\n target.md#a-heading\n)").is_empty());
+        let problems = links("[g]: target.md\n\n[bad](\nmissing.md\n)");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("README.md:3: broken link"));
+        assert!(links("[bad](\ntarget.md#missing\n)")[0].contains("broken anchor"));
+    }
+
+    #[test]
+    fn images_inside_links_are_checked_once() {
+        let problems = links("[![badge](missing-badge.png)](missing-page.md)");
+        assert_eq!(problems.len(), 2);
+        assert!(problems[0].contains("broken link \"missing-page.md\""));
+        assert!(problems[1].contains("broken link \"missing-badge.png\""));
+        let problems = links("[![badge](missing-badge.png)](target.md)");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("broken link \"missing-badge.png\""));
+    }
+
+    #[test]
+    fn links_inside_link_text_are_checked_once() {
+        let problems = links("[outer [inner](missing-inner.md)](missing-outer.md)");
+        assert_eq!(problems.len(), 2);
+        assert!(problems[0].contains("broken link \"missing-outer.md\""));
+        assert!(problems[1].contains("broken link \"missing-inner.md\""));
+        let problems = links("[outer [inner](missing-inner.md)](target.md)");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("broken link \"missing-inner.md\""));
+    }
+
     #[test]
     fn valid_header() {
         assert!(headers(GOOD).is_empty());
