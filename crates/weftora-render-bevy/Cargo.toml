@@ -12,7 +12,7 @@ weftora-api.workspace = true
 weftora-core.workspace = true
 weftora-story.workspace = true
 weftora-yarn.workspace = true
-bevy.workspace = true
+bevy = { workspace = true, features = ["wav"] }
 
 [lints]
 workspace = true

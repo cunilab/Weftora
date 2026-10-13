@@ -16,6 +16,7 @@ weftora-core.workspace = true
 weftora-story.workspace = true
 weftora-yarn.workspace = true
 weftora-render-bevy.workspace = true
+sha2 = "0.10"
 
 [lints]
 workspace = true
