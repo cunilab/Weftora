@@ -58,8 +58,16 @@ impl Story {
     pub fn load(root: &Path) -> Result<Story, Vec<Diagnostic>> {
         let manifest_diag =
             |line: Option<u32>, msg: String| Diagnostic::new(MANIFEST_FILE, line, msg);
-        let manifest_path = resolve_in_root(root, MANIFEST_FILE)
-            .map_err(|d| vec![manifest_diag(None, d.message)])?;
+        let manifest_path = resolve_in_root(root, MANIFEST_FILE).map_err(|d| {
+            vec![manifest_diag(
+                None,
+                format!(
+                    "cannot read {MANIFEST_FILE} in `{}`: {}",
+                    root.display(),
+                    d.message
+                ),
+            )]
+        })?;
         let text = match std::fs::read_to_string(manifest_path) {
             Ok(text) => text,
             Err(e) => {
@@ -189,7 +197,8 @@ impl Story {
 }
 
 /// Path policy (Phase 0 subset of architecture §4): `relative` must be a relative path with `/` separators,
-/// no hidden or `..` segments, no drive/UNC/absolute form, and must resolve (after following symlinks) inside `root`.
+/// no hidden, `.` or `..` segments, no drive/UNC/absolute form, and must resolve (after following symlinks) inside `root`.
+/// References must match the canonical on-disk spelling, including case.
 pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnostic> {
     let bad = |msg: &str| Diagnostic::new(relative, None, msg);
     if relative.is_empty() {
@@ -204,8 +213,8 @@ pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnosti
     if relative.starts_with('/') {
         return Err(bad("path must be relative to the Story root, not absolute"));
     }
-    if relative.split('/').any(|seg| seg == "..") {
-        return Err(bad("path must not contain `..` segments"));
+    if relative.split('/').any(|seg| seg == "." || seg == "..") {
+        return Err(bad("path must not contain `.` or `..` segments"));
     }
     if relative.split('/').any(|seg| seg.starts_with('.')) {
         return Err(bad(
@@ -221,6 +230,17 @@ pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnosti
         .map_err(|e| bad(&format!("file cannot be accessed: {e}")))?;
     if !target.starts_with(&root_canon) {
         return Err(bad("path resolves outside the Story root"));
+    }
+    let on_disk = target.strip_prefix(&root_canon).expect("contained path");
+    if !on_disk.components().eq(Path::new(relative).components()) {
+        let spelling = on_disk
+            .components()
+            .map(|component| component.as_os_str().to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/");
+        return Err(bad(&format!(
+            "`{relative}` differs in case from `{spelling}` on disk"
+        )));
     }
     Ok(target)
 }
@@ -326,7 +346,6 @@ mod tests {
             ("d/a.yarn", "d/.intro.yarn"),
             ("a/bg.png", ".assets/bg.png"),
             ("a/bg.png", "a/.bg.png"),
-            ("d/a.yarn", "./d/a.yarn"),
         ] {
             let dir = story_dir(&GOOD.replace(original, hidden));
             let target = dir.path().join(hidden);
@@ -339,6 +358,44 @@ mod tests {
                 "{hidden}: {msgs:?}"
             );
         }
+    }
+
+    #[test]
+    fn rejects_dot_segments_with_traversal_diagnostic() {
+        let dir = story_dir(GOOD);
+        for reference in ["./d/a.yarn", "d/./a.yarn", "d/../d/a.yarn"] {
+            let diagnostic = resolve_in_root(dir.path(), reference).unwrap_err();
+            assert_eq!(
+                diagnostic.message,
+                "path must not contain `.` or `..` segments"
+            );
+        }
+    }
+
+    #[test]
+    fn rejects_case_mismatched_references_on_case_insensitive_filesystems() {
+        let dir = story_dir(GOOD);
+        if !dir.path().join("D/A.YARN").is_file() {
+            return; // The temporary directory is on a case-sensitive filesystem.
+        }
+        for reference in ["D/a.yarn", "d/A.YARN", "D/A.YARN"] {
+            let diagnostic = resolve_in_root(dir.path(), reference).unwrap_err();
+            assert!(diagnostic.message.contains(reference), "{diagnostic}");
+            assert!(
+                diagnostic.message.contains("`d/a.yarn` on disk"),
+                "{diagnostic}"
+            );
+        }
+        fs::write(
+            dir.path().join(MANIFEST_FILE),
+            GOOD.replace("d/a.yarn", "D/A.YARN"),
+        )
+        .unwrap();
+        assert!(
+            messages(&dir)
+                .iter()
+                .any(|message| message.contains("differs in case"))
+        );
     }
 
     #[cfg(unix)]

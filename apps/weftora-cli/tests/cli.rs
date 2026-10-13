@@ -198,6 +198,92 @@ fn check_fails_on_missing_story() {
         .unwrap();
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("manifest.jsonc"));
+    assert!(stderr(&out).contains("/nonexistent/story"));
+}
+
+#[test]
+fn missing_manifest_diagnostic_names_story_root() {
+    let tmp = tempfile::tempdir().unwrap();
+    let out = weftora().arg("check").arg(tmp.path()).output().unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("manifest.jsonc"));
+    assert!(stderr(&out).contains(&tmp.path().display().to_string()));
+}
+
+#[test]
+fn check_rejects_case_mismatched_dialogue_on_case_insensitive_filesystems() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "dialogue/intro.yarn");
+    if !story.join("Dialogue/Intro.yarn").is_file() {
+        return;
+    }
+    let manifest = story.join("manifest.jsonc");
+    let text = fs::read_to_string(&manifest).unwrap();
+    fs::write(
+        manifest,
+        text.replace("dialogue/intro.yarn", "Dialogue/Intro.yarn"),
+    )
+    .unwrap();
+    let out = weftora().arg("check").arg(&story).output().unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    let error = stderr(&out);
+    assert!(
+        error.contains("`Dialogue/Intro.yarn` differs in case from `dialogue/intro.yarn` on disk"),
+        "{error}"
+    );
+}
+
+#[cfg(unix)]
+#[test]
+fn export_copy_failure_removes_partial_output() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    // Sorts after the manifest and dialogue so copying fails after files were written.
+    std::os::unix::fs::symlink(story.join("intro.yarn"), story.join("z-link")).unwrap();
+    let checked = weftora().arg("check").arg(&story).output().unwrap();
+    assert!(checked.status.success(), "{}", stderr(&checked));
+    let player = tmp.path().join("fake-player");
+    fs::write(&player, "player").unwrap();
+    let export = tmp.path().join("export");
+    for existing_empty_directory in [false, true] {
+        if existing_empty_directory {
+            fs::create_dir(&export).unwrap();
+        }
+        let out = weftora()
+            .env("WEFTORA_PLAYER", &player)
+            .arg("export")
+            .arg(&story)
+            .arg("--out")
+            .arg(&export)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        assert!(
+            stderr(&out).contains("symlinks are not exported"),
+            "{}",
+            stderr(&out)
+        );
+        assert!(!export.exists(), "partial export remains");
+    }
+    fs::create_dir(&export).unwrap();
+    let alias = tmp.path().join("export-alias");
+    std::os::unix::fs::symlink(&export, &alias).unwrap();
+    let out = weftora()
+        .env("WEFTORA_PLAYER", &player)
+        .arg("export")
+        .arg(&story)
+        .arg("--out")
+        .arg(alias)
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("symlinks are not exported"));
+    assert!(
+        !export.exists(),
+        "partial export remains behind output alias"
+    );
 }
 
 #[test]

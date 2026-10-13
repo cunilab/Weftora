@@ -193,6 +193,8 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
             "error: output directory and Story root must not overlap (equal, inside, or containing the Story root)",
         ));
     }
+    // Use the resolved destination for both writes and failure cleanup, including symlink aliases.
+    let out = output_root.as_path();
     let checked = check(dir).map_err(Failure::Messages)?;
     let player = player_path()?;
     let io_err = |what: &str, e: io::Error| Failure::one(format!("error: {what}: {e}"));
@@ -216,45 +218,57 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
         Err(e) => return Err(io_err("reading output directory", e)),
     }
 
-    fs::create_dir_all(out).map_err(|e| io_err("creating output directory", e))?;
-    let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
-    fs::copy(&player, out.join(&player_name)).map_err(|e| io_err("copying player", e))?;
+    let mut result = (|| {
+        fs::create_dir_all(out).map_err(|e| io_err("creating output directory", e))?;
+        let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
+        fs::copy(&player, out.join(&player_name)).map_err(|e| io_err("copying player", e))?;
 
-    let story_out = out.join("story");
-    let mut copied = BTreeMap::new();
-    copy_story(dir, &story_out, "", &mut copied)?;
-    verify_copied_references(&checked.story, &copied)?;
+        let story_out = out.join("story");
+        let mut copied = BTreeMap::new();
+        copy_story(dir, &story_out, "", &mut copied)?;
+        verify_copied_references(&checked.story, &copied)?;
 
-    let exe = std::env::current_exe().map_err(|e| io_err("locating weftora", e))?;
-    let manifest = checked.story.manifest();
-    let report = serde_json::json!({
-        "exportFormat": EXPORT_FORMAT,
-        "cli": {
-            "version": VERSION,
-            "sha256": sha256_file(&exe).map_err(|e| io_err("hashing weftora", e))?,
-        },
-        "player": {
-            "file": player_name,
-            "sha256": sha256_file(&player).map_err(|e| io_err("hashing player", e))?,
-        },
-        "story": { "id": manifest.id, "storyVersion": manifest.story_version },
-        "files": copied
-            .iter()
-            .map(|(path, hash)| serde_json::json!({ "path": path, "sha256": hash }))
-            .collect::<Vec<_>>(),
-    });
-    let text = serde_json::to_string_pretty(&report).expect("export report serialises") + "\n";
-    fs::write(out.join("weftora-export.json"), text)
-        .map_err(|e| io_err("writing weftora-export.json", e))?;
+        let exe = std::env::current_exe().map_err(|e| io_err("locating weftora", e))?;
+        let manifest = checked.story.manifest();
+        let report = serde_json::json!({
+            "exportFormat": EXPORT_FORMAT,
+            "cli": {
+                "version": VERSION,
+                "sha256": sha256_file(&exe).map_err(|e| io_err("hashing weftora", e))?,
+            },
+            "player": {
+                "file": player_name,
+                "sha256": sha256_file(&player).map_err(|e| io_err("hashing player", e))?,
+            },
+            "story": { "id": manifest.id, "storyVersion": manifest.story_version },
+            "files": copied
+                .iter()
+                .map(|(path, hash)| serde_json::json!({ "path": path, "sha256": hash }))
+                .collect::<Vec<_>>(),
+        });
+        let text = serde_json::to_string_pretty(&report).expect("export report serialises") + "\n";
+        fs::write(out.join("weftora-export.json"), text)
+            .map_err(|e| io_err("writing weftora-export.json", e))?;
 
-    println!(
-        "exported {} v{} to {} ({} story files)",
-        manifest.id,
-        manifest.story_version,
-        out.display(),
-        copied.len()
-    );
-    Ok(ExitCode::SUCCESS)
+        println!(
+            "exported {} v{} to {} ({} story files)",
+            manifest.id,
+            manifest.story_version,
+            out.display(),
+            copied.len()
+        );
+        Ok(ExitCode::SUCCESS)
+    })();
+    if let Err(Failure::Messages(messages)) = &mut result
+        && let Err(error) = fs::remove_dir_all(out)
+        && error.kind() != io::ErrorKind::NotFound
+    {
+        messages.push(format!(
+            "error: removing failed export `{}`: {error}",
+            out.display()
+        ));
+    }
+    result
 }
 
 /// Resolves existing ancestors through symlinks, retaining the nonexistent suffix.
