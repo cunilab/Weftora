@@ -183,6 +183,16 @@ fn run_command(dir: &Path) -> CliResult {
 }
 
 fn export_command(dir: &Path, out: &Path) -> CliResult {
+    let story_root = dir
+        .canonicalize()
+        .map_err(|e| Failure::one(format!("error: accessing Story root: {e}")))?;
+    let output_root = canonicalize_output(out)
+        .map_err(|e| Failure::one(format!("error: resolving output directory: {e}")))?;
+    if output_root.starts_with(&story_root) || story_root.starts_with(&output_root) {
+        return Err(Failure::one(
+            "error: output directory and Story root must not overlap (equal, inside, or containing the Story root)",
+        ));
+    }
     let checked = check(dir).map_err(Failure::Messages)?;
     let player = player_path()?;
     let io_err = |what: &str, e: io::Error| Failure::one(format!("error: {what}: {e}"));
@@ -213,6 +223,7 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
     let story_out = out.join("story");
     let mut copied = BTreeMap::new();
     copy_story(dir, &story_out, "", &mut copied)?;
+    verify_copied_references(&checked.story, &copied)?;
 
     let exe = std::env::current_exe().map_err(|e| io_err("locating weftora", e))?;
     let manifest = checked.story.manifest();
@@ -244,6 +255,63 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
         copied.len()
     );
     Ok(ExitCode::SUCCESS)
+}
+
+/// Resolves existing ancestors through symlinks, retaining the nonexistent suffix.
+fn canonicalize_output(path: &Path) -> io::Result<PathBuf> {
+    let absolute = std::path::absolute(path)?;
+    let mut ancestor = absolute.as_path();
+    let mut suffix = Vec::new();
+    let mut resolved = loop {
+        match ancestor.canonicalize() {
+            Ok(path) => break path,
+            Err(e) if e.kind() == io::ErrorKind::NotFound => {
+                let component = ancestor.components().next_back().ok_or(e)?;
+                suffix.push(component.as_os_str().to_owned());
+                ancestor = ancestor.parent().ok_or_else(|| {
+                    io::Error::new(io::ErrorKind::NotFound, "no existing output ancestor")
+                })?;
+            }
+            Err(e) => return Err(e),
+        }
+    };
+    for component in suffix.into_iter().rev() {
+        if component == ".." {
+            resolved.pop();
+        } else if component != "." {
+            resolved.push(component);
+            // A `..` after a missing component can lead back to an existing symlink.
+            match resolved.canonicalize() {
+                Ok(path) => resolved = path,
+                Err(e) if e.kind() == io::ErrorKind::NotFound => {}
+                Err(e) => return Err(e),
+            }
+        }
+    }
+    Ok(resolved)
+}
+
+fn verify_copied_references(
+    story: &Story,
+    copied: &BTreeMap<String, String>,
+) -> Result<(), Failure> {
+    let manifest = story.manifest();
+    for reference in std::iter::once(weftora_story::MANIFEST_FILE)
+        .chain(manifest.dialogue.iter().map(String::as_str))
+        .chain(manifest.assets.values().map(String::as_str))
+    {
+        let relative = reference
+            .split('/')
+            .filter(|segment| !segment.is_empty())
+            .collect::<Vec<_>>()
+            .join("/");
+        if !copied.contains_key(&relative) {
+            return Err(Failure::one(format!(
+                "error: export is incomplete: referenced file `{reference}` was not copied"
+            )));
+        }
+    }
+    Ok(())
 }
 
 /// Copies `src` into `dst`, skipping dotfiles and refusing symlinks. `copied` maps Story-relative `/` paths to SHA-256.
@@ -299,4 +367,36 @@ fn sha256_file(path: &Path) -> io::Result<String> {
         .iter()
         .map(|b| format!("{b:02x}"))
         .collect())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn incomplete_export_fails_reference_verification() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-story");
+        let story = Story::load(&root).unwrap();
+        let mut copied = BTreeMap::new();
+        copy_story(
+            &root,
+            &tempfile::tempdir().unwrap().path().join("story"),
+            "",
+            &mut copied,
+        )
+        .unwrap_or_else(|_| panic!("fixture must copy successfully"));
+        assert!(verify_copied_references(&story, &copied).is_ok());
+        for reference in std::iter::once(weftora_story::MANIFEST_FILE)
+            .chain(story.manifest().dialogue.iter().map(String::as_str))
+            .chain(story.manifest().assets.values().map(String::as_str))
+        {
+            let hash = copied.remove(reference).unwrap();
+            let Err(Failure::Messages(messages)) = verify_copied_references(&story, &copied) else {
+                panic!("missing reference must fail export");
+            };
+            assert!(messages[0].contains(reference));
+            assert!(messages[0].contains("was not copied"));
+            copied.insert(reference.to_owned(), hash);
+        }
+    }
 }

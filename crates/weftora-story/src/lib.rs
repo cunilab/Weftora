@@ -58,7 +58,9 @@ impl Story {
     pub fn load(root: &Path) -> Result<Story, Vec<Diagnostic>> {
         let manifest_diag =
             |line: Option<u32>, msg: String| Diagnostic::new(MANIFEST_FILE, line, msg);
-        let text = match std::fs::read_to_string(root.join(MANIFEST_FILE)) {
+        let manifest_path = resolve_in_root(root, MANIFEST_FILE)
+            .map_err(|d| vec![manifest_diag(None, d.message)])?;
+        let text = match std::fs::read_to_string(manifest_path) {
             Ok(text) => text,
             Err(e) => {
                 return Err(vec![manifest_diag(
@@ -187,7 +189,7 @@ impl Story {
 }
 
 /// Path policy (Phase 0 subset of architecture §4): `relative` must be a relative path with `/` separators,
-/// no `..` segments, no drive/UNC/absolute form, and must resolve (after following symlinks) inside `root`.
+/// no hidden or `..` segments, no drive/UNC/absolute form, and must resolve (after following symlinks) inside `root`.
 pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnostic> {
     let bad = |msg: &str| Diagnostic::new(relative, None, msg);
     if relative.is_empty() {
@@ -204,6 +206,11 @@ pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnosti
     }
     if relative.split('/').any(|seg| seg == "..") {
         return Err(bad("path must not contain `..` segments"));
+    }
+    if relative.split('/').any(|seg| seg.starts_with('.')) {
+        return Err(bad(
+            "hidden files and folders are not allowed in Story references",
+        ));
     }
     let root_canon = root
         .canonicalize()
@@ -296,6 +303,42 @@ mod tests {
         }
         assert!(resolve_in_root(dir.path(), "d/a.yarn").is_ok());
         assert!(resolve_in_root(dir.path(), "d/missing.yarn").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_manifest_symlink_escape() {
+        let outside = tempfile::tempdir().unwrap();
+        let external_manifest = outside.path().join(MANIFEST_FILE);
+        fs::write(&external_manifest, GOOD).unwrap();
+        let dir = story_dir(GOOD);
+        fs::remove_file(dir.path().join(MANIFEST_FILE)).unwrap();
+        std::os::unix::fs::symlink(external_manifest, dir.path().join(MANIFEST_FILE)).unwrap();
+        let diagnostics = Story::load(dir.path()).unwrap_err();
+        assert_eq!(diagnostics[0].file, MANIFEST_FILE);
+        assert!(diagnostics[0].message.contains("outside the Story root"));
+    }
+
+    #[test]
+    fn rejects_hidden_references() {
+        for (original, hidden) in [
+            ("d/a.yarn", ".dialogue/intro.yarn"),
+            ("d/a.yarn", "d/.intro.yarn"),
+            ("a/bg.png", ".assets/bg.png"),
+            ("a/bg.png", "a/.bg.png"),
+            ("d/a.yarn", "./d/a.yarn"),
+        ] {
+            let dir = story_dir(&GOOD.replace(original, hidden));
+            let target = dir.path().join(hidden);
+            fs::create_dir_all(target.parent().unwrap()).unwrap();
+            fs::write(target, "content").unwrap();
+            let msgs = messages(&dir);
+            assert!(
+                msgs.iter().any(|msg| msg
+                    .contains("hidden files and folders are not allowed in Story references")),
+                "{hidden}: {msgs:?}"
+            );
+        }
     }
 
     #[cfg(unix)]
