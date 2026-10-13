@@ -1,3 +1,73 @@
+use std::{env, path::Path, process::Command};
+
+const HEADLESS: &[&str] = &["weftora-api", "weftora-core", "weftora-story"];
+const FORBIDDEN: &[&str] = &[
+    "bevy",
+    "weftora-yarn",
+    "weftora-render-bevy",
+    "weftora-player",
+    "weftora-cli",
+    "xtask",
+];
+const FORBIDDEN_PREFIXES: &[&str] = &["bevy_", "yarnspinner", "rhai", "mlua"];
+
+mod deps;
+mod docs;
+
 fn main() {
-    todo!("P0: cargo xtask deps | docs")
+    if let Err(error) = run() {
+        eprintln!("{error}");
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), String> {
+    let args: Vec<_> = env::args().skip(1).collect();
+    let root = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .parent()
+        .ok_or("xtask must be in the workspace root")?;
+    match args.first().map(String::as_str) {
+        Some("deps") if args[1..].iter().all(|arg| arg == "--offline") => {
+            deps::run(root, args[1..].iter().any(|arg| arg == "--offline"))
+        }
+        Some("docs") if args.len() == 1 => docs::run(root),
+        _ => Err("usage: cargo xtask deps [--offline] | cargo xtask docs".into()),
+    }
+}
+
+fn command_output(command: &mut Command) -> Result<Vec<u8>, String> {
+    let output = command
+        .output()
+        .map_err(|error| format!("{command:?}: {error}"))?;
+    if !output.status.success() {
+        return Err(format!(
+            "{command:?} failed ({}):\n{}",
+            output.status,
+            String::from_utf8_lossy(&output.stderr)
+        ));
+    }
+    Ok(output.stdout)
+}
+
+/// Walk repository content without following directory symlinks or build/VCS output.
+fn files(root: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    let mut result = Vec::new();
+    let mut pending = vec![root.to_path_buf()];
+    while let Some(dir) = pending.pop() {
+        for entry in
+            std::fs::read_dir(&dir).map_err(|error| format!("{}: {error}", dir.display()))?
+        {
+            let entry = entry.map_err(|error| error.to_string())?;
+            let kind = entry.file_type().map_err(|error| error.to_string())?;
+            if kind.is_dir() {
+                if entry.file_name() != ".git" && entry.file_name() != "target" {
+                    pending.push(entry.path());
+                }
+            } else {
+                result.push(entry.path());
+            }
+        }
+    }
+    result.sort();
+    Ok(result)
 }
