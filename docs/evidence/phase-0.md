@@ -12,9 +12,9 @@ Results for the [Phase 0 checks](../success-criteria.md#phase-0--spikes-and-walk
 
 | Check | Result | Evidence |
 | --- | --- | --- |
-| P0-01 workspace builds, player reports identity | PASS (macOS); Windows CI NOT_RUN | `cargo check --workspace --locked`; `weftora-player --version` → `weftora-player 0.0.1 (sha256 abcc5d2e…)` |
-| P0-02 headless crates free of Bevy/Yarn/Rhai | PASS (macOS); Windows CI NOT_RUN | `cargo xtask deps`; injected `bevy_platform` (normal, optional and Windows-only) into `weftora-core` → failed with the dependency path |
-| P0-03 CI blocks on the merge gate | NOT_RUN | `.github/workflows/ci.yml` committed; needs a first GitHub run and an injected failure |
+| P0-01 workspace builds, player reports identity | PASS (macOS + Windows CI, [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo check --workspace --locked`; `weftora-player --version` → `weftora-player 0.0.1 (sha256 abcc5d2e…)` |
+| P0-02 headless crates free of Bevy/Yarn/Rhai | PASS (macOS + Windows CI, [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo xtask deps`; injected `bevy_platform` (normal, optional and Windows-only) into `weftora-core` → failed with the dependency path |
+| P0-03 CI blocks on the merge gate | PARTIAL | Required Windows and Dependencies jobs green on PR #2 ([CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)); an injected failure is still needed to show a merge is blocked |
 | P0-04 Yarn spike | PASS (headless, macOS) | `crates/weftora-yarn/tests/hello_story.rs`: both branches traced, `curious` true/false, Rust→Yarn state, syntax error with file+line, missing node, Int beyond ±2^24 rejected. Gaps below |
 | P0-05 Bevy spike | PASS (macOS); Windows NOT_RUN | Window with background, Guide line, two choices, chime; screenshots taken during the run |
 | P0-06 walking skeleton | PASS (macOS); Windows NOT_RUN | `weftora run examples/hello-story`; key `1` → "You looked closer, so the state key "curious" is now true." |
@@ -52,6 +52,6 @@ During the audit `cargo deny` also flagged a newly published vulnerability, RUST
 
 ## To finish Phase 0 on Windows
 
-1. Push the branch and let CI run (P0-01, P0-02, P0-03); inject one failure to prove it blocks.
+1. Inject one failure in a throwaway PR (for example a formatting error) and confirm the required job fails and blocks the merge (P0-03).
 2. On a Windows x64 machine with the release build: `weftora run examples/hello-story`, play both branches, edit a line and confirm the player hash is unchanged (P0-05 to P0-07). Record OS build, GPU, driver and audio device.
 3. `weftora export examples/hello-story --out dist\hello-story`, copy the folder to a Windows machine without Rust, run `weftora-player.exe` (P0-10).
