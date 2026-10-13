@@ -13,7 +13,7 @@ use yarnspinner::runtime::{VariableStorage, VariableStorageError};
 use crate::DialogueError;
 
 /// Largest integer magnitude an `f32` represents exactly.
-const MAX_EXACT_INT: i64 = 1 << 24;
+pub(crate) const MAX_EXACT_INT: i64 = 1 << 24;
 
 /// Yarn's own bookkeeping variables (for example `$Yarn.Internal.Visiting.Node`). They are not Story state,
 /// so they live beside it and are never saved or visible through canonical keys.
@@ -231,12 +231,19 @@ impl VariableStorage for StateStorage {
 
     /// Declared defaults only fill in missing keys; they never overwrite state that Rust or a save already set.
     fn extend(&mut self, values: HashMap<String, YarnValue>) -> Result<()> {
+        let mut first_error = None;
         for (name, value) in values {
-            if !self.contains(&name) {
-                self.set(name, value)?;
+            if !self.contains(&name)
+                && let Err(error) = self.set(name, value)
+                && first_error.is_none()
+            {
+                first_error = Some(error);
             }
         }
-        Ok(())
+        match first_error {
+            Some(error) => Err(error),
+            None => Ok(()),
+        }
     }
 
     fn variables(&self) -> HashMap<String, YarnValue> {
@@ -266,5 +273,50 @@ impl VariableStorage for StateStorage {
 
     fn as_any_mut(&mut self) -> &mut dyn Any {
         self
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use weftora_core::State;
+
+    #[test]
+    fn integer_conversion_checks_extremes_and_exact_boundaries() {
+        for value in [i64::MIN, i64::MAX, -MAX_EXACT_INT - 1, MAX_EXACT_INT + 1] {
+            assert!(to_yarn("$n", &Value::Int(value)).is_err());
+        }
+        for value in [-MAX_EXACT_INT, MAX_EXACT_INT] {
+            assert_eq!(
+                to_yarn("$n", &Value::Int(value)).unwrap(),
+                YarnValue::Number(value as f32)
+            );
+        }
+    }
+
+    #[test]
+    fn invalid_defaults_do_not_skip_valid_defaults() {
+        let state = Arc::new(RwLock::new(State::new()));
+        state
+            .write()
+            .unwrap()
+            .set("existing", Value::Bool(true))
+            .unwrap();
+        let mut storage = StateStorage::new(state.clone());
+        let defaults = HashMap::from([
+            ("$Bad".into(), YarnValue::Boolean(true)),
+            ("missing-dollar".into(), YarnValue::Boolean(true)),
+            ("$a___b".into(), YarnValue::Boolean(true)),
+            ("$existing".into(), YarnValue::Boolean(false)),
+            ("$flag".into(), YarnValue::Boolean(true)),
+            ("$name".into(), YarnValue::String("Ann".into())),
+            ("$world__day".into(), YarnValue::Number(2.0)),
+        ]);
+        assert!(storage.extend(defaults).is_err());
+        let state = state.read().unwrap();
+        assert_eq!(state.get("existing"), Ok(&Value::Bool(true)));
+        assert_eq!(state.get("flag"), Ok(&Value::Bool(true)));
+        assert_eq!(state.get("name"), Ok(&Value::String("Ann".into())));
+        assert_eq!(state.get("world.day"), Ok(&Value::Float(2.0)));
     }
 }

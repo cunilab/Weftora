@@ -22,6 +22,11 @@ mod storage;
 
 use storage::StateStorage;
 
+/// Commands are processed immediately, so they must not sustain execution forever.
+const MAX_CONSECUTIVE_COMMANDS: usize = 1_000;
+const MAX_CONSECUTIVE_CONTINUES: usize = 1_000;
+const MAX_INSTRUCTIONS_BEFORE_BLOCKING: usize = 100_000;
+
 /// A static use of a Yarn command, found by scanning the compiled program.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct CommandSite {
@@ -170,6 +175,7 @@ pub fn compile(sources: &[DialogueSource]) -> Result<CompiledDialogue, Vec<Diagn
 
 /// Checks canonical state values against the compiled Yarn variable types.
 /// Missing values use Yarn defaults; ints and floats both match Yarn numbers.
+/// Ints mapped to declared numbers must be within ±2^24.
 pub fn check_state(dialogue: &CompiledDialogue, state: &State) -> Vec<DialogueError> {
     check_program_state(&dialogue.program, state)
 }
@@ -191,12 +197,24 @@ fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
                     | (Value::String(_), "string")
                     | (Value::Int(_) | Value::Float(_), "number")
             );
-            (!matches).then(|| DialogueError::StateTypeMismatch {
-                key: key.to_string(),
-                variable,
-                actual: value.type_name(),
-                expected,
-            })
+            if !matches {
+                return Some(DialogueError::StateTypeMismatch {
+                    key: key.to_string(),
+                    variable,
+                    actual: value.type_name(),
+                    expected,
+                });
+            }
+            if let Value::Int(value) = value
+                && !(-storage::MAX_EXACT_INT..=storage::MAX_EXACT_INT).contains(value)
+            {
+                return Some(DialogueError::StatePrecision {
+                    key: key.to_string(),
+                    variable,
+                    value: *value,
+                });
+            }
+            None
         })
         .collect()
 }
@@ -266,6 +284,14 @@ pub enum DialogueError {
         actual: &'static str,
         expected: &'static str,
     },
+    #[error(
+        "initialState `{key}` is an int ({value}) outside ±16777216 and cannot be read exactly by Yarn {variable}"
+    )]
+    StatePrecision {
+        key: String,
+        variable: String,
+        value: i64,
+    },
     #[error("dialogue node `{0}` does not exist")]
     MissingNode(String),
     #[error("choice {0} is not one of the offered choices")]
@@ -282,6 +308,10 @@ pub struct DialogueRunner {
     state: SharedState,
     program: Program,
     failure: Option<String>,
+    current_node: String,
+    consecutive_commands: usize,
+    consecutive_continues: usize,
+    instructions_since_blocking: usize,
     queue: VecDeque<DialogueEvent>,
     /// `(id, available)` of the choices offered by the last `Choices` event that was not yet answered.
     pending_choices: Option<Vec<(usize, bool)>>,
@@ -311,6 +341,10 @@ impl DialogueRunner {
             failure: initialization
                 .err()
                 .map(|_| "Yarn runtime panicked during initialization".into()),
+            current_node: String::new(),
+            consecutive_commands: 0,
+            consecutive_continues: 0,
+            instructions_since_blocking: 0,
             queue: VecDeque::new(),
             pending_choices: None,
             started: false,
@@ -344,6 +378,8 @@ impl DialogueRunner {
         })?;
         self.queue.clear();
         self.pending_choices = None;
+        self.current_node = node.to_string();
+        self.reset_progress_budget();
         self.started = true;
         self.ended = false;
         Ok(())
@@ -353,7 +389,7 @@ impl DialogueRunner {
     pub fn next_event(&mut self) -> Result<DialogueEvent, DialogueError> {
         self.ensure_healthy()?;
         if let Some(event) = self.queue.pop_front() {
-            return Ok(event);
+            return self.return_event(event);
         }
         if !self.started {
             return Err(DialogueError::Runtime(
@@ -368,7 +404,28 @@ impl DialogueRunner {
                 "a choice must be made before continuing".into(),
             ));
         }
-        let events = self.runtime_call(Dialogue::continue_)?;
+        let remaining = MAX_INSTRUCTIONS_BEFORE_BLOCKING - self.instructions_since_blocking;
+        let per_call_budget = self.dialogue.instruction_budget();
+        self.dialogue
+            .set_instruction_budget(remaining.min(per_call_budget));
+        let result = self.runtime_call(|dialogue| {
+            dialogue.continue_().map_err(|error| match error {
+                yarnspinner::runtime::DialogueError::InstructionBudgetExceeded {
+                    node_name,
+                    ..
+                } if remaining < per_call_budget => {
+                    yarnspinner::runtime::DialogueError::InstructionBudgetExceeded {
+                        node_name,
+                        budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
+                    }
+                }
+                other => other,
+            })
+        });
+        self.dialogue.set_instruction_budget(per_call_budget);
+        self.instructions_since_blocking += self.dialogue.last_instruction_count();
+        self.consecutive_continues += 1;
+        let events = result?;
         for event in events {
             match event {
                 yarnspinner::runtime::DialogueEvent::Line(line) => {
@@ -404,14 +461,17 @@ impl DialogueRunner {
                     self.ended = true;
                     self.queue.push_back(DialogueEvent::End);
                 }
-                yarnspinner::runtime::DialogueEvent::NodeStart(_)
-                | yarnspinner::runtime::DialogueEvent::NodeComplete(_)
+                yarnspinner::runtime::DialogueEvent::NodeStart(node) => {
+                    self.current_node = node;
+                }
+                yarnspinner::runtime::DialogueEvent::NodeComplete(_)
                 | yarnspinner::runtime::DialogueEvent::LineHints(_) => {}
             }
         }
-        self.queue
-            .pop_front()
-            .ok_or_else(|| DialogueError::Runtime("dialogue produced no event".into()))
+        match self.queue.pop_front() {
+            Some(event) => self.return_event(event),
+            None => self.fail(DialogueError::Runtime("dialogue produced no event".into())),
+        }
     }
 
     /// Selects one of the choices from the last [`DialogueEvent::Choices`].
@@ -427,6 +487,48 @@ impl DialogueRunner {
         self.runtime_call(|dialogue| dialogue.set_selected_option(OptionId(index)).map(|_| ()))?;
         self.pending_choices = None;
         Ok(())
+    }
+
+    fn reset_progress_budget(&mut self) {
+        self.consecutive_commands = 0;
+        self.consecutive_continues = 0;
+        self.instructions_since_blocking = 0;
+    }
+
+    fn return_event(&mut self, event: DialogueEvent) -> Result<DialogueEvent, DialogueError> {
+        match &event {
+            DialogueEvent::Command(_) => {
+                self.consecutive_commands += 1;
+                let exceeded = if self.consecutive_commands > MAX_CONSECUTIVE_COMMANDS {
+                    Some(format!(
+                        "consecutive command budget ({MAX_CONSECUTIVE_COMMANDS})"
+                    ))
+                } else if self.consecutive_continues > MAX_CONSECUTIVE_CONTINUES {
+                    Some(format!(
+                        "consecutive continue budget ({MAX_CONSECUTIVE_CONTINUES})"
+                    ))
+                } else {
+                    None
+                };
+                if let Some(budget) = exceeded {
+                    return self.fail(DialogueError::Runtime(format!(
+                        "{budget} exceeded in node `{}`",
+                        self.current_node
+                    )));
+                }
+            }
+            DialogueEvent::Line { .. } | DialogueEvent::Choices(_) | DialogueEvent::End => {
+                self.reset_progress_budget();
+            }
+        }
+        Ok(event)
+    }
+
+    fn fail<T>(&mut self, error: DialogueError) -> Result<T, DialogueError> {
+        self.failure = Some(error.to_string());
+        self.queue.clear();
+        self.pending_choices = None;
+        Err(error)
     }
 
     fn ensure_healthy(&self) -> Result<(), DialogueError> {
@@ -449,10 +551,7 @@ impl DialogueRunner {
             Ok(Err(error)) => map_dialogue_error(error),
             Err(_) => DialogueError::Runtime("Yarn runtime panicked; runner has failed".into()),
         };
-        self.failure = Some(error.to_string());
-        self.queue.clear();
-        self.pending_choices = None;
-        Err(error)
+        self.fail(error)
     }
 }
 

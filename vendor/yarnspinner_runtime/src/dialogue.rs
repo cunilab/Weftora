@@ -109,6 +109,16 @@ impl Dialogue {
         self.vm.instruction_budget = budget;
     }
 
+    /// Returns the configured per-continue instruction budget.
+    pub fn instruction_budget(&self) -> usize {
+        self.vm.instruction_budget
+    }
+
+    /// Instructions attempted by the last continue call, including on error.
+    pub fn last_instruction_count(&self) -> usize {
+        self.vm.last_instruction_count
+    }
+
     /// Creates a new [`Dialogue`] instance with the given [`VariableStorage`] and [`TextProvider`].
     /// - The [`TextProvider`] is used to retrieve the text of lines and options.
     /// - The [`VariableStorage`] is used to store and retrieve variables.

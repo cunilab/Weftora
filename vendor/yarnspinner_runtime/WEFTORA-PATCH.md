@@ -11,6 +11,14 @@ events, and returns `DialogueError::InstructionBudgetExceeded` with the node
 name and budget. Both continue APIs share this VM loop. Weftora treats runtime
 failures as terminal to avoid resuming partially executed state.
 
+`Dialogue::instruction_budget` and `Dialogue::last_instruction_count` expose
+configuration and instruction accounting. The VM records instructions attempted
+by each continue call, including on error. Weftora uses this count to carry a
+100,000-instruction budget across consecutive commands, resetting only when a
+Line, Choices, or End is returned. It also caps consecutive commands and
+non-blocking continue calls at 1,000. This prevents command/jump loops from
+escaping the per-call VM budget. The per-call budget is restored after each call.
+
 Why: a node containing only `<<jump Start>>` never reaches a presentation event
 and previously hung the caller indefinitely. A wall-clock timeout cannot safely
 interrupt the synchronous VM.

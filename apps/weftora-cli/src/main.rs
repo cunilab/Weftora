@@ -342,4 +342,33 @@ mod check_tests {
             ["manifest.jsonc: initialState `flag` is a string but Yarn declares $flag as bool"]
         );
     }
+
+    #[test]
+    fn check_reports_initial_state_integer_precision() {
+        let story = tempfile::tempdir().unwrap();
+        fs::write(
+            story.path().join("manifest.jsonc"),
+            r#"{
+            "manifestSchema": 0, "id": "dev.weftora.precision",
+            "storyVersion": "0.1.0", "title": "Precision",
+            "entrypoint": "Start", "dialogue": ["main.yarn"],
+            "initialState": {"world.day": -9223372036854775808}
+        }"#,
+        )
+        .unwrap();
+        fs::write(
+            story.path().join("main.yarn"),
+            "title: Start\n---\n<<declare $world__day = 0>>\nHello\n===\n",
+        )
+        .unwrap();
+        let errors = check(story.path())
+            .err()
+            .expect("out-of-range int must fail check");
+        assert_eq!(
+            errors,
+            [
+                "manifest.jsonc: initialState `world.day` is an int (-9223372036854775808) outside ±16777216 and cannot be read exactly by Yarn $world__day"
+            ]
+        );
+    }
 }

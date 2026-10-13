@@ -20,6 +20,7 @@ pub(crate) struct VirtualMachine {
     pub(crate) variable_storage: Box<dyn VariableStorage>,
     pub(crate) line_hints_enabled: bool,
     pub(crate) instruction_budget: usize,
+    pub(crate) last_instruction_count: usize,
     current_node_name: Option<String>,
     state: State,
     execution_state: ExecutionState,
@@ -39,6 +40,7 @@ impl VirtualMachine {
     ) -> Self {
         Self {
             instruction_budget: 100_000,
+            last_instruction_count: 0,
             library,
             variable_storage,
             line_parser,
@@ -184,6 +186,7 @@ impl VirtualMachine {
         &mut self,
         mut instruction_fn: impl FnMut(&mut Self, &Instruction) -> crate::Result<()>,
     ) -> crate::Result<Vec<DialogueEvent>> {
+        self.last_instruction_count = 0;
         self.assert_can_continue()?;
         self.set_execution_state(ExecutionState::Running);
 
@@ -199,6 +202,7 @@ impl VirtualMachine {
                 });
             }
             remaining -= 1;
+            self.last_instruction_count += 1;
             let current_node = self.current_node.clone().unwrap();
             let current_instruction = &current_node.instructions[self.state.program_counter];
             instruction_fn(self, current_instruction)?;
