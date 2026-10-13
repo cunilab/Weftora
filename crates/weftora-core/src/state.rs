@@ -18,6 +18,17 @@ impl State {
         Self::default()
     }
 
+    /// Builds a state from initial values (e.g. a manifest's `initialState`), validating every key and value.
+    pub fn with_values<'a>(
+        values: impl IntoIterator<Item = (&'a String, &'a Value)>,
+    ) -> Result<Self, StateError> {
+        let mut state = Self::new();
+        for (key, value) in values {
+            state.set(key, value.clone())?;
+        }
+        Ok(state)
+    }
+
     pub fn get(&self, key: &str) -> Result<&Value, StateError> {
         todo!("P0: return the value or StateError::MissingKey; key = {key}")
     }
