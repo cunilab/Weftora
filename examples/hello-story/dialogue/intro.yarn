@@ -1,0 +1,22 @@
+title: Start
+---
+<<declare $curious = false>>
+<<background bg.room>>
+<<sound sfx.chime>>
+Guide: Welcome to Weftora. Everything you see comes from a Story folder, not from Rust code.
+Guide: Want to see a choice change the game state?
+-> Yes, show me.
+    <<set $curious = true>>
+-> Not right now.
+    <<set $curious = false>>
+<<jump Result>>
+===
+title: Result
+---
+<<if $curious>>
+    Guide: You looked closer, so the state key "curious" is now true.
+<<else>>
+    Guide: Fair enough. The state key "curious" stays false.
+<<endif>>
+Guide: That is the whole walking skeleton. Edit dialogue/intro.yarn and run it again.
+===

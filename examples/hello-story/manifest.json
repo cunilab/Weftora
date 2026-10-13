@@ -1,0 +1,15 @@
+{
+  "manifestSchema": 0,
+  "id": "dev.weftora.hello-story",
+  "storyVersion": "0.1.0",
+  "title": "Hello Story",
+  "entrypoint": "Start",
+  "dialogue": ["dialogue/intro.yarn"],
+  "assets": {
+    "bg.room": "assets/room.png",
+    "sfx.chime": "assets/chime.wav"
+  },
+  "initialState": {
+    "curious": false
+  }
+}

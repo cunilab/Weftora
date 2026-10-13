@@ -1,0 +1,21 @@
+[package]
+name = "weftora-player"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[[bin]]
+name = "weftora-player"
+path = "src/main.rs"
+
+[dependencies]
+weftora-api.workspace = true
+weftora-core.workspace = true
+weftora-story.workspace = true
+weftora-yarn.workspace = true
+weftora-render-bevy.workspace = true
+
+[lints]
+workspace = true

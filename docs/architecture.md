@@ -165,9 +165,10 @@ input → screen button / Yarn choice → command → actions or Rhai
 - Use the **Bevy-independent `yarnspinner` crates** inside `weftora-yarn`. Do not use `bevy_yarnspinner`: it ties Weftora's Bevy upgrades to a third-party crate's release schedule. The Rust port is community-maintained and labelled work-in-progress; Phase 0 tests it and records the fallback.
 - Fallback options, in order: patch or fork the Rust port; bundle the official Yarn Spinner command-line compiler with the CLI and run its compiled output on the Rust runtime (output compatibility must be verified first); switch dialogue language (new ADR).
 - Yarn variables are a view onto canonical state, not a separate store. Missing defaults and write timing are specified and tested.
+- Variable names (provisional, Phase 0): Yarn `$name` maps to state key `name`; `__` inside a Yarn name stands for `.` in the key, so `$world__day` is `world.day`.
 - Type mapping: Yarn (Rust port) has only `bool`, `string` and a 32-bit float `number`. `bool` and `string` map directly; `float` maps to `number`; `int` maps to `number` only within ±2^24 and reading a larger value from Yarn is a Story error, not silent rounding. Lists and maps are **not** exposed to Yarn; Stories expose scalar views of them through Yarn functions backed by declarative actions or Rhai.
 - Before Phase 4, Yarn commands map to Engine primitive commands only. From Phase 4, Story-defined commands (declarative or Rhai) can also be called from Yarn.
-- `weftora check` compiles Yarn and reports errors with file and node. `weftora run` recompiles changed files. `weftora export` ships compiled dialogue with its own `dialogueArtifactFormat` version, compiler identity and content hash. The player never contains the compiler and refuses unknown artifact formats.
+- `weftora check` compiles Yarn and reports errors with file and node. `weftora run` recompiles changed files. `weftora export` ships compiled dialogue with its own `dialogueArtifactFormat` version, compiler identity and content hash. The player never contains the compiler and refuses unknown artifact formats. (Phase 0 shortcut: the player compiles Yarn at startup; P2-03 removes this.)
 
 ## 7. Rules scripting (Rhai)
 
@@ -245,7 +246,7 @@ Passing compilation never proves author-visible behaviour; the [success criteria
 3. **Release package container.** Folder vs. archive (Phase 6).
 4. **Yarn ↔ state mapping details**, including list/map values (Phases 2 and 4).
 5. **Licence**, after the dependency licence audit (Phase 6).
-6. **Exact dependency versions.** Pinned only after Phase 0 spikes pass. As of October 2026 the latest Bevy is 0.19.x and the latest Yarn Spinner for Rust release found is 0.8.0 (March 2026); pairing must be verified, not assumed.
+6. **Exact dependency versions.** Phase 0 builds against Bevy 0.20.0 and `yarnspinner` 0.9.0 (crates.io, October 2026; `yarnspinner` has Bevy off by default). They are confirmed or replaced by the Phase 0 spikes and pinned in Phase 2 (P2-07).
 
 ## References
 

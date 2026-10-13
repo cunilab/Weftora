@@ -1,0 +1,18 @@
+[package]
+name = "weftora-render-bevy"
+description = "Bevy adapter: window, background, text, choices and audio for the Weftora player."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+weftora-api.workspace = true
+weftora-core.workspace = true
+weftora-story.workspace = true
+weftora-yarn.workspace = true
+bevy.workspace = true
+
+[lints]
+workspace = true
