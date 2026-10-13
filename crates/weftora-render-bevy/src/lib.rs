@@ -183,19 +183,33 @@ fn read_asset(story: &Story, id: &str) -> Result<(String, Vec<u8>), String> {
     Ok((ext, bytes))
 }
 
+/// Match Bevy's decoder construction, but return failures before playback is spawned.
+fn validate_audio(id: &str, bytes: &Arc<[u8]>) -> Result<(), String> {
+    rodio::Decoder::builder()
+        .with_byte_len(bytes.len() as u64)
+        .with_data(std::io::Cursor::new(Arc::clone(bytes)))
+        .build()
+        .map(|_| ())
+        .map_err(|error| format!("asset `{id}` is not readable audio: {error}"))
+}
+
+fn decode_image(id: &str, ext: &str, bytes: &[u8]) -> Result<Image, String> {
+    Image::from_buffer(
+        bytes,
+        ImageType::Extension(ext),
+        CompressedImageFormats::NONE,
+        true,
+        ImageSampler::Default,
+        RenderAssetUsages::default(),
+    )
+    .map_err(|error| format!("asset `{id}` is not a readable image: {error}"))
+}
+
 fn perform(action: &Action, story: &Story, media: &mut Media) -> Result<(), String> {
     match action {
         Action::SetBackground(id) => {
             let (ext, bytes) = read_asset(story, id)?;
-            let image = Image::from_buffer(
-                &bytes,
-                ImageType::Extension(&ext),
-                CompressedImageFormats::NONE,
-                true,
-                ImageSampler::Default,
-                RenderAssetUsages::default(),
-            )
-            .map_err(|e| format!("asset `{id}` is not a readable image: {e}"))?;
+            let image = decode_image(id, &ext, &bytes)?;
             let handle = media.images.add(image);
             for (mut node, mut visibility) in &mut media.background {
                 node.image = handle.clone();
@@ -204,9 +218,9 @@ fn perform(action: &Action, story: &Story, media: &mut Media) -> Result<(), Stri
         }
         Action::PlaySound(id) => {
             let (_, bytes) = read_asset(story, id)?;
-            let handle = media.sounds.add(AudioSource {
-                bytes: Arc::from(bytes),
-            });
+            let bytes = Arc::from(bytes);
+            validate_audio(id, &bytes)?;
+            let handle = media.sounds.add(AudioSource { bytes });
             media
                 .commands
                 .spawn((AudioPlayer::new(handle), PlaybackSettings::DESPAWN));
@@ -298,4 +312,38 @@ fn label(text: impl Into<String>, size: f32, color: Color) -> impl Bundle {
         },
         TextColor(color),
     )
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const WAV: &[u8] = include_bytes!("../../../examples/hello-story/assets/chime.wav");
+    const PNG: &[u8] = include_bytes!("../../../examples/hello-story/assets/room.png");
+
+    #[test]
+    fn valid_wav_passes_audio_validation() {
+        assert!(validate_audio("chime", &Arc::from(WAV)).is_ok());
+    }
+
+    #[test]
+    fn invalid_audio_returns_asset_specific_error() {
+        for bytes in [PNG, &[]] {
+            let error = validate_audio("bad-sound", &Arc::from(bytes)).unwrap_err();
+            assert!(error.contains("asset `bad-sound` is not readable audio"));
+        }
+    }
+
+    #[test]
+    fn valid_png_decodes() {
+        assert!(decode_image("room", "png", PNG).is_ok());
+    }
+
+    #[test]
+    fn invalid_images_return_asset_specific_error() {
+        for (ext, bytes) in [("png", WAV), ("png", &[][..]), ("unsupported", PNG)] {
+            let error = decode_image("bad-background", ext, bytes).unwrap_err();
+            assert!(error.contains("asset `bad-background` is not a readable image"));
+        }
+    }
 }

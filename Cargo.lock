@@ -6072,6 +6072,7 @@ name = "weftora-render-bevy"
 version = "0.0.1"
 dependencies = [
  "bevy",
+ "rodio",
  "weftora-api",
  "weftora-core",
  "weftora-story",
