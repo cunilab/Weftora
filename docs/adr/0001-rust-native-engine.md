@@ -40,14 +40,14 @@ To limit the main risks:
 
 ## Budget and reversal gates
 
-The maintainer sets a calendar budget for each gate when Phase 0 starts and records it here. Exceeding a budget by more than 50% forces a written go/no-go review. Silently continuing is not allowed.
+The maintainer sets a calendar budget for each gate and records it here before that phase starts. Exceeding a budget by more than 50% forces a written go/no-go review. Silently continuing is not allowed.
 
-| Gate | Must be true | If not |
-| --- | --- | --- |
-| End of Phase 0 | `weftora run examples/hello-story` shows text and a choice that changes state, on Windows, through `yarnspinner` + Bevy | Try the Yarn fallbacks; if the stack itself fails, revisit Godot |
-| End of Phase 2 | Full Yarn integration, views, audio and declarative UI work on Windows; performance baseline is inside or near budget | Revisit the UI renderer or the stack |
-| End of Phase 3 | An author changes Story A without touching the player binary; saves survive a Story patch | Stop and re-plan before building rules |
-| End of Phase 6 | A non-Rust user creates and exports a game on a clean Windows machine | Do not release; fix or re-scope |
+| Gate | Budget | Must be true | If not |
+| --- | --- | --- | --- |
+| End of Phase 0 | 3 weeks from the day PR #1 merges (review forced after 4.5 weeks) | `weftora run examples/hello-story` shows text and a choice that changes state, on Windows, through `yarnspinner` + Bevy | Try the Yarn fallbacks; if the stack itself fails, revisit Godot |
+| End of Phase 2 | Set at the Phase 0 go/no-go review | Full Yarn integration, views, audio and declarative UI work on Windows; performance baseline is inside or near budget | Revisit the UI renderer or the stack |
+| End of Phase 3 | Set before Phase 3 starts | An author changes Story A without touching the player binary; saves survive a Story patch | Stop and re-plan before building rules |
+| End of Phase 6 | Set before Phase 6 starts | A non-Rust user creates and exports a game on a clean Windows machine | Do not release; fix or re-scope |
 
 **Revisit the whole decision** if Story rules start needing game-specific Rust, if the Yarn author contract cannot be met, or if maintenance cost clearly exceeds a host-engine option. Changing stack needs a new ADR that supersedes this one.
 
