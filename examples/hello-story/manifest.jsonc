@@ -1,0 +1,22 @@
+// Hello Story: the Phase 0 walking-skeleton Story.
+// Format: JSONC (JSON with comments and trailing commas), see docs/adr/0004-story-authoring-format.md.
+{
+  "manifestSchema": 0, // 0 = unstable Phase 0 schema
+  "id": "dev.weftora.hello-story",
+  "storyVersion": "0.1.0",
+  "title": "Hello Story",
+
+  // Yarn node the game starts at.
+  "entrypoint": "Start",
+  "dialogue": ["dialogue/intro.yarn"],
+
+  // Asset IDs used by Yarn commands such as <<background bg.room>>.
+  "assets": {
+    "bg.room": "assets/room.png",
+    "sfx.chime": "assets/chime.wav",
+  },
+
+  "initialState": {
+    "curious": false,
+  },
+}

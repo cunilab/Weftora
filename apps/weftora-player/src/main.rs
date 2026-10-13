@@ -73,8 +73,13 @@ type Loaded = (
 
 fn load(dir: &std::path::Path) -> Result<Loaded, Vec<Diagnostic>> {
     let story = Story::load(dir)?;
-    let state = State::with_values(story.manifest().initial_state.iter())
-        .map_err(|e| vec![Diagnostic::new("manifest.json", None, e.to_string())])?;
+    let state = State::with_values(story.manifest().initial_state.iter()).map_err(|e| {
+        vec![Diagnostic::new(
+            weftora_story::MANIFEST_FILE,
+            None,
+            e.to_string(),
+        )]
+    })?;
     let state = Arc::new(RwLock::new(state));
     let sources = story.dialogue_sources()?;
     let dialogue = weftora_yarn::compile(&sources)?;

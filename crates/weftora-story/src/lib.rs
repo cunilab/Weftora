@@ -2,6 +2,8 @@
 //!
 //! Must never depend on Bevy, Yarn Spinner, Rhai or any Story.
 
+pub mod jsonc;
+
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
@@ -12,9 +14,10 @@ use weftora_core::State;
 /// The only manifest schema Phase 0 understands. `0` is explicitly unstable (ADR 0002).
 pub const SUPPORTED_MANIFEST_SCHEMA: u32 = 0;
 
-const MANIFEST_FILE: &str = "manifest.json";
+/// Manifest file name at the Story root (JSONC, ADR 0004).
+pub const MANIFEST_FILE: &str = "manifest.jsonc";
 
-/// Provisional Phase 0 manifest (`manifest.json` at the Story root).
+/// Provisional Phase 0 manifest (`manifest.jsonc` at the Story root).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Manifest {
@@ -64,7 +67,7 @@ impl Story {
                 )]);
             }
         };
-        let manifest: Manifest = match serde_json::from_str(&text) {
+        let manifest: Manifest = match jsonc::from_str(&text) {
             Ok(m) => m,
             Err(e) => {
                 let line = u32::try_from(e.line()).ok().filter(|l| *l > 0);
@@ -232,7 +235,7 @@ mod tests {
         fs::create_dir_all(dir.path().join("a")).unwrap();
         fs::write(dir.path().join("d/a.yarn"), "title: Start\n---\n===\n").unwrap();
         fs::write(dir.path().join("a/bg.png"), "x").unwrap();
-        fs::write(dir.path().join("manifest.json"), manifest).unwrap();
+        fs::write(dir.path().join(MANIFEST_FILE), manifest).unwrap();
         dir
     }
 
@@ -258,7 +261,7 @@ mod tests {
     fn json_error_has_line() {
         let dir = story_dir("{\n  \"manifestSchema\": 0,\n  oops\n}");
         let d = Story::load(dir.path()).unwrap_err();
-        assert_eq!(d[0].file, "manifest.json");
+        assert_eq!(d[0].file, MANIFEST_FILE);
         assert_eq!(d[0].line, Some(3));
     }
 
@@ -271,7 +274,7 @@ mod tests {
         );
         let msgs = messages(&dir);
         assert_eq!(msgs.len(), 8, "{msgs:#?}");
-        assert!(msgs.iter().all(|m| m.starts_with("manifest.json: ")));
+        assert!(msgs.iter().all(|m| m.starts_with("manifest.jsonc: ")));
     }
 
     #[test]

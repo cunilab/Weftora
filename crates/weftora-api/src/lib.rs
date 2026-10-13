@@ -61,7 +61,7 @@ pub enum StateError {
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct Diagnostic {
     /// Path relative to the Story root, using `/` separators, e.g. `dialogue/intro.yarn`.
-    /// `manifest.json` for manifest problems; empty only when no file applies.
+    /// `manifest.jsonc` for manifest problems; empty only when no file applies.
     pub file: String,
     /// 1-based line number when known.
     pub line: Option<u32>,

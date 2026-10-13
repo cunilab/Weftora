@@ -83,7 +83,7 @@ Development format is a plain folder. The release container (folder or archive) 
 
 ```text
 examples/hello-story/
-├── manifest.json
+├── manifest.jsonc
 ├── data/          characters, locations, initial state, catalogs
 ├── dialogue/      Yarn source
 ├── events/        trigger / condition / action definitions
@@ -94,9 +94,11 @@ examples/hello-story/
 └── assets/        images, audio, fonts (must be licensed for redistribution)
 ```
 
+Story files other than Yarn are JSONC: JSON with comments and trailing commas ([ADR 0004](./adr/0004-story-authoring-format.md)).
+
 Manifest v1 proposal (values are illustrative):
 
-```json
+```jsonc
 {
   "manifestSchema": 1,
   "id": "com.example.hello-story",
@@ -108,11 +110,11 @@ Manifest v1 proposal (values are illustrative):
   "saveSchema": 2,
   "entrypoint": "intro",
   "catalogs": {
-    "data": ["data/catalog.json"],
-    "dialogue": ["dialogue/catalog.json"],
-    "events": ["events/catalog.json"],
-    "screens": ["screens/catalog.json"],
-    "assets": ["assets/catalog.json"]
+    "data": ["data/catalog.jsonc"],
+    "dialogue": ["dialogue/catalog.jsonc"],
+    "events": ["events/catalog.jsonc"],
+    "screens": ["screens/catalog.jsonc"],
+    "assets": ["assets/catalog.jsonc"]
   }
 }
 ```
@@ -190,9 +192,9 @@ Presentation layers: background, character, CG, overlay, UI. Operations: show, h
 
 Whether the declarative UI renders through Bevy UI or another library is an open question decided in Phase 2.
 
-Illustrative screen definition (format provisional):
+Illustrative screen definition:
 
-```json
+```jsonc
 {
   "id": "ui.main_menu",
   "type": "screen",
@@ -241,7 +243,7 @@ Passing compilation never proves author-visible behaviour; the [success criteria
 
 ## 11. Open questions
 
-1. **Authoring file format.** JSON is shown above but is verbose and has no comments. Candidates: JSON with comments (JSONC), TOML, RON or YAML. Decide in Phase 0 with the first real Story files; schema validation is generated from Rust types in any case.
+1. ~~Authoring file format~~ — decided: JSONC ([ADR 0004](./adr/0004-story-authoring-format.md)).
 2. **UI renderer.** Bevy UI vs. an alternative for the declarative screen renderer (Phase 2).
 3. **Release package container.** Folder vs. archive (Phase 6).
 4. **Yarn ↔ state mapping details**, including list/map values (Phases 2 and 4).

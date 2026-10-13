@@ -66,7 +66,7 @@ fn check_fails_on_missing_story() {
         .output()
         .unwrap();
     assert_eq!(out.status.code(), Some(1));
-    assert!(stderr(&out).contains("manifest.json"));
+    assert!(stderr(&out).contains("manifest.jsonc"));
 }
 
 #[test]
@@ -91,7 +91,7 @@ fn export_copies_player_and_story() {
         fs::read(out_dir.join(player_name)).unwrap(),
         b"not a real player"
     );
-    assert!(out_dir.join("story/manifest.json").is_file());
+    assert!(out_dir.join("story/manifest.jsonc").is_file());
     assert!(out_dir.join("story/dialogue/intro.yarn").is_file());
     assert!(out_dir.join("story/assets/room.png").is_file());
 
@@ -116,7 +116,7 @@ fn export_copies_player_and_story() {
             "assets/chime.wav",
             "assets/room.png",
             "dialogue/intro.yarn",
-            "manifest.json"
+            "manifest.jsonc"
         ]
     );
 

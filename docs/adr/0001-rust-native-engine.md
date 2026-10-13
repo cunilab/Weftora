@@ -51,6 +51,10 @@ At the end of each gate phase the maintainer writes a short go/no-go decision in
 
 **Revisit the whole decision** if Story rules start needing game-specific Rust, if the Yarn author contract cannot be met, or if maintenance cost clearly exceeds a host-engine option. Changing stack needs a new ADR that supersedes this one.
 
+## Phase 0 go-no-go decision
+
+**2026-10-13 — provisional GO.** On the macOS development host, `weftora run examples/hello-story` drives the prebuilt player through the `yarnspinner` 0.9 + Bevy 0.20 stack: background, lines, a choice that changes canonical state, sound, and an exported folder that runs on its own. No Yarn fallback was needed; the gaps found are listed in the [Phase 0 evidence](../evidence/phase-0.md). The decision becomes final when the Windows checks in that page pass; a Windows failure in rendering, audio or export reopens this review.
+
 ## Consequences
 
 - Rust memory safety does not prove story correctness; behaviour is proven by tests.

@@ -91,7 +91,7 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
     let entrypoint = &story.manifest().entrypoint;
     if !dialogue.node_names().contains(entrypoint) {
         errors.push(format!(
-            "manifest.json: entrypoint `{entrypoint}` is not a node in the dialogue files"
+            "manifest.jsonc: entrypoint `{entrypoint}` is not a node in the dialogue files"
         ));
     }
     for site in dialogue.command_sites() {
