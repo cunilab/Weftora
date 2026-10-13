@@ -7,8 +7,8 @@ status: proposed
 # Phase 0 Windows Evidence
 
 Windows x64 results for the [Phase 0 checks](../success-criteria.md#phase-0--spikes-and-walking-skeleton) that
-the [Phase 0 evidence page](./phase-0.md) recorded as `NOT_RUN`. These runs close P0-01, P0-02, P0-05, P0-06 and
-P0-07 on Windows. P0-03 and P0-10 stay open; see [what is still outstanding](#what-is-still-outstanding).
+the [Phase 0 evidence page](./phase-0.md) recorded as `NOT_RUN`. These runs close P0-01, P0-02, P0-03, P0-05,
+P0-06 and P0-07 on Windows. P0-10 stays open; see [what is still outstanding](#what-is-still-outstanding).
 
 All artefacts on this page are committed under
 [`artifacts/phase-0-windows/`](./artifacts/phase-0-windows) so every claim below is a link to a
@@ -119,6 +119,83 @@ Traces: [`p06-branchA-trace.txt`](./artifacts/phase-0-windows/p06-branchA-trace.
 The Yarn file was restored afterwards and `git status --porcelain` in the worktree was empty. Full trace:
 [`p07-trace.txt`](./artifacts/phase-0-windows/p07-trace.txt).
 
+## P0-03 CI blocks a merge
+
+**P0-03 passes.** A red required job blocks the merge, and the administrator escape hatch is refused too.
+
+The check needed an enforcement mechanism first. Before this run `main` had **no branch protection and no
+rulesets** — the `(required)` text in `ci.yml` is a job label that GitHub does not read. PR #2 confirmed the gap:
+it read `mergeStateStatus: UNSTABLE`, meaning "not all checks green, merge still allowed". Two repository rulesets
+were created ([`p03-rulesets.txt`](./artifacts/phase-0-windows/p03-rulesets.txt)):
+
+| ID | Name | Rules | Bypass |
+| --- | --- | --- | --- |
+| `25017317` | `main: must use PR, squash, CI` | `pull_request` (0 approvals, `allowed_merge_methods: ["squash"]`), `required_status_checks` (`Windows (required)`, `Dependencies (required)`), `non_fast_forward` | none |
+| `25017474` | `main: review required (admins exempt)` | `pull_request` (1 approval, `require_last_push_approval`) | `OrganizationAdmin` |
+
+They are split in two because GitHub bypass is **per ruleset, not per rule**: a single ruleset with an admin
+bypass would have let admins skip the pull-request and status-check rules as well. Rule layering then does the
+rest — a non-admin is subject to both rulesets, an admin only to `25017317`.
+
+Architecture [§10](../architecture.md#10-drift-protection) names six merge-gate items; they run inside those two
+jobs (`fmt`, `clippy`, `test`, `xtask deps`, `xtask docs` in *Windows*; `cargo deny check` in *Dependencies*). So
+two probes — one per job — cover all six.
+
+### Probe A — Windows red, Dependencies green
+
+A deliberately mis-formatted `p003_fmt_probe` in `crates/weftora-api/src/lib.rs`; `cargo fmt --all -- --check`
+is the Windows job's first step.
+
+| Check | Result |
+| --- | --- |
+| Windows (required) | **FAILURE** |
+| Dependencies (required) | SUCCESS |
+| macOS headless (non-blocking) | SUCCESS |
+| `mergeStateStatus` | **BLOCKED** |
+
+```
+$ gh pr merge 3 --squash
+X Pull request cunilab/Weftora#3 is not mergeable: the base branch policy prohibits the merge.   (exit 1)
+
+$ gh pr merge 3 --squash --admin
+GraphQL: Repository rule violations found
+Required status check "Windows (required)" is failing.                                            (exit 1)
+```
+
+### Probe B — Dependencies red, Windows green
+
+`MIT`, `Apache-2.0` and `Apache-2.0 WITH LLVM-exception` removed from `deny.toml`'s licence allow list.
+
+| Check | Result |
+| --- | --- |
+| Windows (required) | SUCCESS (all five steps green) |
+| Dependencies (required) | **FAILURE** |
+| macOS headless (non-blocking) | SUCCESS |
+| `mergeStateStatus` | **BLOCKED** |
+
+```
+$ gh pr merge 4 --squash
+X Pull request cunilab/Weftora#4 is not mergeable: the base branch policy prohibits the merge.   (exit 1)
+
+$ gh pr merge 4 --squash --admin
+GraphQL: Repository rule violations found
+Required status check "Dependencies (required)" is failing.                                      (exit 1)
+```
+
+Full traces: [`p03-fmt-merge-blocked.txt`](./artifacts/phase-0-windows/p03-fmt-merge-blocked.txt),
+[`p03-deny-merge-blocked.txt`](./artifacts/phase-0-windows/p03-deny-merge-blocked.txt).
+Runs: [38441749677](https://github.com/cunilab/Weftora/actions/runs/38441749677) (A),
+[38442678898](https://github.com/cunilab/Weftora/actions/runs/38442678898) (B).
+
+Both probes were throwaway PRs from branches deleted afterwards; neither was merged.
+
+**One caveat, recorded rather than hidden.** Two of the review rules' *semantics* are not provable from this
+repository today. Both collaborators are `OrganizationAdmin`, so both bypass `25017474` and the 1-approval rule
+currently binds nobody — it only bites once a non-admin collaborator is added. And `reviewDecision` kept reporting
+`REVIEW_REQUIRED` on an admin's own PR even with bypass active; GitHub does not fold the viewer's bypass into the
+PR's reported state (cli/cli#13388). Neither affects the merge gate itself, which `25017317` enforces with no
+bypass actors — hence the `--admin` refusals above.
+
 ## P0-10 export
 
 `weftora export examples\hello-story --out …` exited `0` and wrote exactly 7 files — `weftora-player.exe`,
@@ -160,7 +237,6 @@ run.
 
 | Check | State | Why |
 | --- | --- | --- |
-| P0-03 CI blocks a merge | PARTIAL | Needs a deliberately failing commit in a throwaway PR to prove the required job blocks the merge. Not run — no push was made to the repository. |
 | P0-10 export on a Rust-free machine | PARTIAL | Export proven self-contained and runnable with Rust scrubbed from the environment; a machine with Rust truly *uninstalled* still needs a second VM or an elevated shell to provision Windows Sandbox. |
 
-With P0-03 and P0-10 still partial, [Phase 0 remains not passed](./phase-0.md).
+With P0-10 the only check left open, [Phase 0 is one machine away from passing](./phase-0.md).

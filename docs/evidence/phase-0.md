@@ -18,7 +18,7 @@ Windows x64 results are recorded separately with their own artefacts: **[Phase 0
 | --- | --- | --- |
 | P0-01 workspace builds, player reports identity | PASS (macOS + Windows CI + [Windows local](./phase-0-windows.md), [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo check --workspace --locked`; release `weftora-player --version` → `weftora-player 0.0.1 (sha256 8fee0455…)`, matching the on-disk SHA-256 |
 | P0-02 headless crates free of Bevy/Yarn/Rhai | PASS (macOS + Windows CI + [Windows local](./phase-0-windows.md), [CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)) | `cargo xtask deps`; injected `bevy_platform` (normal, optional and Windows-only) into `weftora-core` → failed with the dependency path |
-| P0-03 CI blocks on the merge gate | PARTIAL | Required Windows and Dependencies jobs green on PR #2 ([CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)); an injected failure is still needed to show a merge is blocked |
+| P0-03 CI blocks on the merge gate | PASS | Required Windows and Dependencies jobs green on PR #2 ([CI run](https://github.com/cunilab/Weftora/actions/runs/38408131942)); then two throwaway PRs, one red on each required job, both refused at merge — including with `--admin`. This needed enforcement that did not exist: `main` had no branch protection, so the `(required)` job names in `ci.yml` were labels only. Two rulesets now enforce it ([evidence](./phase-0-windows.md#p0-03-ci-blocks-a-merge)) |
 | P0-04 Yarn spike | PASS (headless, macOS) | `crates/weftora-yarn/tests/hello_story.rs`: both branches traced, `curious` true/false, Rust→Yarn state, syntax error with file+line, missing node, Int beyond ±2^24 rejected. Gaps below |
 | P0-05 Bevy spike | PASS (macOS + [Windows](./phase-0-windows.md)) | Window with background, Guide line, two choices, chime. Windows: Vulkan on the RTX 4050; sound path proven by a controlled error on a corrupt `chime.wav`, no panic |
 | P0-06 walking skeleton | PASS (macOS + [Windows](./phase-0-windows.md)) | `weftora run examples/hello-story`; key `1` → "You looked closer, so the state key "curious" is now true."; key `2` → "…stays false." Both branches on Windows, 6 distinct frames each |
@@ -56,8 +56,7 @@ During the audit `cargo deny` also flagged a newly published vulnerability, RUST
 
 ## To finish Phase 0 on Windows
 
-P0-01, P0-02, P0-05, P0-06 and P0-07 are now **done on Windows** — see the
-[Windows evidence page](./phase-0-windows.md) and its committed artefacts. Two checks remain:
+P0-01, P0-02, P0-03, P0-05, P0-06 and P0-07 are now **done on Windows** — see the
+[Windows evidence page](./phase-0-windows.md) and its committed artefacts. One check remains:
 
-1. Inject one failure in a throwaway PR (for example a formatting error) and confirm the required job fails and blocks the merge (P0-03).
-2. `weftora export examples/hello-story --out dist\hello-story`, copy the folder to a Windows machine **without Rust or Cargo installed**, run `weftora-player.exe` (P0-10). The export itself is proven self-contained on Windows; what is missing is a genuinely Rust-free host — either a second machine/VM, or an elevated shell to provision Windows Sandbox (installed here, but with no container base image and enabling it needs elevation).
+1. `weftora export examples/hello-story --out dist\hello-story`, copy the folder to a Windows machine **without Rust or Cargo installed**, run `weftora-player.exe` (P0-10). The export itself is proven self-contained on Windows; what is missing is a genuinely Rust-free host — either a second machine/VM, or an elevated shell to provision Windows Sandbox (installed here, but with no container base image and enabling it needs elevation).
