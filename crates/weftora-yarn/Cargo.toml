@@ -13,6 +13,8 @@ weftora-core.workspace = true
 weftora-story.workspace = true
 yarnspinner.workspace = true
 thiserror.workspace = true
+# Only for the `HashMap` type that yarnspinner's `VariableStorage` trait names; keep in step with yarnspinner.
+bevy_platform = { version = "0.19", default-features = false, features = ["alloc"] }
 
 [lints]
 workspace = true

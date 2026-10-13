@@ -53,6 +53,8 @@ pub enum StateError {
     NonFinite,
     #[error("invalid state key `{0}`: use lowercase letters, digits, `_` and `.` separators")]
     InvalidKey(String),
+    #[error("integer overflow while adding to state key `{0}`")]
+    Overflow(String),
 }
 
 /// An author-facing error or warning that points into a Story file.

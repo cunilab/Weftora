@@ -7,9 +7,12 @@ use std::path::{Path, PathBuf};
 
 use serde::Deserialize;
 use weftora_api::{Diagnostic, Value};
+use weftora_core::State;
 
 /// The only manifest schema Phase 0 understands. `0` is explicitly unstable (ADR 0002).
 pub const SUPPORTED_MANIFEST_SCHEMA: u32 = 0;
+
+const MANIFEST_FILE: &str = "manifest.json";
 
 /// Provisional Phase 0 manifest (`manifest.json` at the Story root).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
@@ -50,7 +53,84 @@ pub struct DialogueSource {
 impl Story {
     /// Loads and validates the Story at `root`. All problems are returned together; nothing is partially loaded.
     pub fn load(root: &Path) -> Result<Story, Vec<Diagnostic>> {
-        todo!("P0: {root:?}")
+        let manifest_diag =
+            |line: Option<u32>, msg: String| Diagnostic::new(MANIFEST_FILE, line, msg);
+        let text = match std::fs::read_to_string(root.join(MANIFEST_FILE)) {
+            Ok(text) => text,
+            Err(e) => {
+                return Err(vec![manifest_diag(
+                    None,
+                    format!("cannot read {MANIFEST_FILE} in `{}`: {e}", root.display()),
+                )]);
+            }
+        };
+        let manifest: Manifest = match serde_json::from_str(&text) {
+            Ok(m) => m,
+            Err(e) => {
+                let line = u32::try_from(e.line()).ok().filter(|l| *l > 0);
+                return Err(vec![manifest_diag(line, e.to_string())]);
+            }
+        };
+
+        let mut diags = Vec::new();
+        if manifest.manifest_schema != SUPPORTED_MANIFEST_SCHEMA {
+            diags.push(manifest_diag(
+                None,
+                format!(
+                    "unsupported manifestSchema {} (this engine supports {SUPPORTED_MANIFEST_SCHEMA})",
+                    manifest.manifest_schema
+                ),
+            ));
+        }
+        for (name, value) in [
+            ("id", &manifest.id),
+            ("title", &manifest.title),
+            ("entrypoint", &manifest.entrypoint),
+        ] {
+            if value.trim().is_empty() {
+                diags.push(manifest_diag(None, format!("`{name}` must not be empty")));
+            }
+        }
+        if manifest.dialogue.is_empty() {
+            diags.push(manifest_diag(
+                None,
+                "`dialogue` must list at least one Yarn file".into(),
+            ));
+        }
+
+        let mut check_file = |what: String, relative: &str| match resolve_in_root(root, relative) {
+            Ok(path) if path.is_file() => {}
+            Ok(_) => diags.push(manifest_diag(
+                None,
+                format!("{what} `{relative}` is not a file"),
+            )),
+            Err(d) => diags.push(manifest_diag(
+                None,
+                format!("{what} `{relative}`: {}", d.message),
+            )),
+        };
+        for path in &manifest.dialogue {
+            check_file("dialogue".into(), path);
+        }
+        for (id, path) in &manifest.assets {
+            check_file(format!("asset `{id}`"), path);
+        }
+
+        let mut scratch = State::new();
+        for (key, value) in &manifest.initial_state {
+            if let Err(e) = scratch.set(key, value.clone()) {
+                diags.push(manifest_diag(None, format!("initialState `{key}`: {e}")));
+            }
+        }
+
+        if diags.is_empty() {
+            Ok(Story {
+                root: root.to_path_buf(),
+                manifest,
+            })
+        } else {
+            Err(diags)
+        }
     }
 
     pub fn root(&self) -> &Path {
@@ -68,17 +148,167 @@ impl Story {
 
     /// Resolves an asset ID declared in the manifest to its file.
     pub fn asset_path(&self, asset_id: &str) -> Result<PathBuf, Diagnostic> {
-        todo!("P0: {asset_id}")
+        let relative = self.manifest.assets.get(asset_id).ok_or_else(|| {
+            Diagnostic::new(
+                MANIFEST_FILE,
+                None,
+                format!("unknown asset ID `{asset_id}`"),
+            )
+        })?;
+        self.resolve(relative)
     }
 
     /// Reads every Yarn file listed in the manifest.
     pub fn dialogue_sources(&self) -> Result<Vec<DialogueSource>, Vec<Diagnostic>> {
-        todo!("P0")
+        let mut sources = Vec::new();
+        let mut diags = Vec::new();
+        for file in &self.manifest.dialogue {
+            let read = self
+                .resolve(file)
+                .map_err(|d| d.message)
+                .and_then(|p| std::fs::read_to_string(p).map_err(|e| e.to_string()));
+            match read {
+                Ok(contents) => sources.push(DialogueSource {
+                    file: file.clone(),
+                    contents,
+                }),
+                Err(msg) => diags.push(Diagnostic::new(file.clone(), None, msg)),
+            }
+        }
+        if diags.is_empty() {
+            Ok(sources)
+        } else {
+            Err(diags)
+        }
     }
 }
 
 /// Path policy (Phase 0 subset of architecture §4): `relative` must be a relative path with `/` separators,
 /// no `..` segments, no drive/UNC/absolute form, and must resolve (after following symlinks) inside `root`.
 pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnostic> {
-    todo!("P0: {root:?} {relative}")
+    let bad = |msg: &str| Diagnostic::new(relative, None, msg);
+    if relative.is_empty() {
+        return Err(bad("path is empty"));
+    }
+    if relative.contains('\\') {
+        return Err(bad("path must use `/` separators, not backslashes"));
+    }
+    if relative.contains(':') {
+        return Err(bad("path must not contain `:` (drive letters, streams)"));
+    }
+    if relative.starts_with('/') {
+        return Err(bad("path must be relative to the Story root, not absolute"));
+    }
+    if relative.split('/').any(|seg| seg == "..") {
+        return Err(bad("path must not contain `..` segments"));
+    }
+    let root_canon = root
+        .canonicalize()
+        .map_err(|e| bad(&format!("cannot access Story root: {e}")))?;
+    let target = root_canon
+        .join(relative)
+        .canonicalize()
+        .map_err(|e| bad(&format!("file cannot be accessed: {e}")))?;
+    if !target.starts_with(&root_canon) {
+        return Err(bad("path resolves outside the Story root"));
+    }
+    Ok(target)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::fs;
+
+    const GOOD: &str = r#"{
+        "manifestSchema": 0, "id": "a.b", "storyVersion": "1", "title": "T",
+        "entrypoint": "Start", "dialogue": ["d/a.yarn"],
+        "assets": {"bg": "a/bg.png"}, "initialState": {"x.y": 1}
+    }"#;
+
+    fn story_dir(manifest: &str) -> tempfile::TempDir {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("d")).unwrap();
+        fs::create_dir_all(dir.path().join("a")).unwrap();
+        fs::write(dir.path().join("d/a.yarn"), "title: Start\n---\n===\n").unwrap();
+        fs::write(dir.path().join("a/bg.png"), "x").unwrap();
+        fs::write(dir.path().join("manifest.json"), manifest).unwrap();
+        dir
+    }
+
+    fn messages(dir: &tempfile::TempDir) -> Vec<String> {
+        Story::load(dir.path())
+            .unwrap_err()
+            .iter()
+            .map(|d| d.to_string())
+            .collect()
+    }
+
+    #[test]
+    fn loads_good_story() {
+        let dir = story_dir(GOOD);
+        let story = Story::load(dir.path()).unwrap();
+        assert!(story.asset_path("bg").unwrap().ends_with("a/bg.png"));
+        assert!(story.asset_path("nope").is_err());
+        let src = story.dialogue_sources().unwrap();
+        assert_eq!(src[0].file, "d/a.yarn");
+    }
+
+    #[test]
+    fn json_error_has_line() {
+        let dir = story_dir("{\n  \"manifestSchema\": 0,\n  oops\n}");
+        let d = Story::load(dir.path()).unwrap_err();
+        assert_eq!(d[0].file, "manifest.json");
+        assert_eq!(d[0].line, Some(3));
+    }
+
+    #[test]
+    fn collects_all_diagnostics() {
+        let dir = story_dir(
+            r#"{"manifestSchema": 1, "id": "", "storyVersion": "1", "title": "",
+            "entrypoint": "", "dialogue": [], "assets": {"a": "missing.png", "b": "../x"},
+            "initialState": {"Bad": 1}}"#,
+        );
+        let msgs = messages(&dir);
+        assert_eq!(msgs.len(), 8, "{msgs:#?}");
+        assert!(msgs.iter().all(|m| m.starts_with("manifest.json: ")));
+    }
+
+    #[test]
+    fn rejects_bad_paths() {
+        let dir = story_dir(GOOD);
+        for bad in [
+            "",
+            "/etc/passwd",
+            "a\\b",
+            "C:/x",
+            "C:\\x",
+            "\\\\srv\\s",
+            "../x",
+            "a/../b",
+            "a/b:stream",
+            "d/../../x",
+        ] {
+            assert!(resolve_in_root(dir.path(), bad).is_err(), "{bad:?}");
+        }
+        assert!(resolve_in_root(dir.path(), "d/a.yarn").is_ok());
+        assert!(resolve_in_root(dir.path(), "d/missing.yarn").is_err());
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn rejects_symlink_escape() {
+        let outside = tempfile::tempdir().unwrap();
+        fs::write(outside.path().join("secret.txt"), "s").unwrap();
+        let dir = story_dir(GOOD);
+        std::os::unix::fs::symlink(outside.path(), dir.path().join("link")).unwrap();
+        std::os::unix::fs::symlink(
+            outside.path().join("secret.txt"),
+            dir.path().join("file-link"),
+        )
+        .unwrap();
+        let d = resolve_in_root(dir.path(), "link/secret.txt").unwrap_err();
+        assert!(d.message.contains("outside"), "{d}");
+        assert!(resolve_in_root(dir.path(), "file-link").is_err());
+    }
 }

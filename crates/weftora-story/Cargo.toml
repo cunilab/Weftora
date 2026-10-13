@@ -9,6 +9,7 @@ publish.workspace = true
 
 [dependencies]
 weftora-api.workspace = true
+weftora-core.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 
