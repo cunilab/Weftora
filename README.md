@@ -1,69 +1,43 @@
-# Visual Game Engine
+# Weftora
 
-A reusable Unity foundation for visual novels, narrative games, and life-sim games.
+Weftora is a standalone engine for narrative and story-driven 2D games: visual novels, life-sims, and anything in between. It is written in Rust, but **game authors never write Rust**. They write Yarn dialogue, data, rules and screens, and run them on a prebuilt player.
 
-> **Engine = reusable technology. Story = replaceable game logic, flow, data, and assets.**
+> **Status:** design proposal. No code exists yet. Everything below is planned, not implemented.
 
-## Stack
-
-- Unity 6 LTS
-- C#
-- Yarn Spinner
-- Free/open-source dependencies where practical
-
-## Architecture
+## How it is meant to work
 
 ```text
-Story
-  ├── Rules
-  ├── Flow
-  ├── Yarn
-  ├── Data
-  ├── UI
-  └── Assets
-      ↓
-Engine
-  ├── State
-  ├── Commands
-  ├── Signals
-  ├── Modules
-  ├── Content / Assets
-  ├── Presentation
-  ├── UI / Audio
-  ├── Yarn Adapter
-  ├── Save / Load
-  └── Debug / Validation
-      ↓
-Unity
+Author edits a Story folder (Yarn, data, screens, images, audio)
+        │
+   weftora check     → validate content, compile dialogue, report errors with file/line
+        │
+   weftora run       → play it on the prebuilt Weftora player
+        │
+   weftora export    → standalone game folder: prebuilt player + Story
 ```
 
-The Engine must never depend on Story.
+- **Engine** — the compiled player and tools: state, commands, signals, rules execution, rendering, UI, audio, saves, validation, export.
+- **Story** — everything that makes a particular game: dialogue, characters, rules, events, screens, themes, assets.
+- Changing a Story never requires rebuilding the Engine. One player binary runs many different games.
 
-## Main Rule
+## Targets
 
-If a feature can reasonably change between games, it belongs in **Story**.
+Windows x64 is the first and only release target until the foundation release. Development also works on macOS and Linux, but they are not supported releases. See the [platform plan](./docs/platforms.md).
 
-Examples:
+## Planned repository layout
 
-- relationship rules
-- time rules
-- inventory
-- economy
-- locations
-- events
-- jobs
-- shops
-- quests
-- phone systems
-- characters and dialogue
-
-The Engine only provides generic mechanisms those systems can use.
+```text
+crates/     Engine libraries (internal to Weftora)
+apps/       weftora-player, weftora CLI
+examples/   sample Stories (content, not Rust)
+docs/       architecture, decisions, criteria
+```
 
 ## Documentation
 
-- [PRD](./PRD.md)
-- [Roadmap](./ROADMAP.md)
-
-## Status
-
-Early foundation and architecture stage.
+- [Product requirements](./PRD.md): what Weftora must do and what it won't do.
+- [Roadmap](./ROADMAP.md): phases, starting with a playable skeleton.
+- [Architecture](./docs/architecture.md): crates, boundaries and the Story package format.
+- [Success criteria](./docs/success-criteria.md): pass/fail checks for each phase.
+- [Decisions (ADRs)](./docs/adr/): why Rust, how versioning works, and the rules language.
+- [Docs index](./docs/README.md)
