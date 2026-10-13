@@ -1,5 +1,13 @@
+[graph]
+all-features = true
+
 [advisories]
-# cargo-deny's default policy rejects known vulnerabilities.
+version = 2
+unmaintained = "all"
+ignore = [
+    { id = "RUSTSEC-2024-0384", reason = "instant: via antlr-rust in yarnspinner_compiler; compiler leaves the player in Phase 2 (P2-03); no upgrade available" },
+    { id = "RUSTSEC-2026-0192", reason = "ttf-parser: via winit's Linux Wayland decorations (sctk-adwaita), not used on Windows; no upgrade available" },
+]
 
 [licenses]
 confidence-threshold = 0.9

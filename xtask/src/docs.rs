@@ -1,26 +1,13 @@
-use crate::{command_output, files};
+use crate::{files, markdown_files};
 use std::{
     collections::{BTreeMap, HashMap, HashSet},
-    path::{Path, PathBuf},
-    process::Command,
+    path::{Component, Path, PathBuf},
 };
 
 pub fn run(root: &Path) -> Result<(), String> {
-    let tracked = command_output(
-        Command::new("git")
-            .current_dir(root)
-            .args(["ls-files", "-z"]),
-    )?;
     let mut documents = BTreeMap::new();
-    for name in tracked
-        .split(|byte| *byte == 0)
-        .filter(|name| !name.is_empty())
-    {
-        let name = std::str::from_utf8(name).map_err(|error| error.to_string())?;
-        let path = PathBuf::from(name);
-        if path.extension().is_some_and(|ext| ext == "md") {
-            documents.insert(path, false);
-        }
+    for path in markdown_files(root)? {
+        documents.insert(path, false);
     }
     for path in files(&root.join("docs"))?
         .into_iter()
@@ -55,7 +42,7 @@ pub fn run(root: &Path) -> Result<(), String> {
         check_links(
             &path,
             &text,
-            &|target| root.join(target).exists(),
+            &|target| exists_case_sensitive(root, target),
             &|target| std::fs::read_to_string(root.join(target)).map_err(|error| error.to_string()),
             &mut problems,
         );
@@ -66,6 +53,33 @@ pub fn run(root: &Path) -> Result<(), String> {
     } else {
         Err(problems.join("\n"))
     }
+}
+
+/// Check each spelling before advancing, even on case-insensitive filesystems.
+fn exists_case_sensitive(root: &Path, target: &Path) -> bool {
+    let mut directory = root.to_path_buf();
+    for component in target.components() {
+        match component {
+            Component::CurDir => {}
+            Component::ParentDir => {
+                directory.pop();
+            }
+            Component::Normal(name) => {
+                let Ok(entries) = std::fs::read_dir(&directory) else {
+                    return false;
+                };
+                if !entries
+                    .filter_map(Result::ok)
+                    .any(|entry| entry.file_name() == name)
+                {
+                    return false;
+                }
+                directory.push(name);
+            }
+            Component::RootDir | Component::Prefix(_) => return false,
+        }
+    }
+    directory.exists()
 }
 
 fn problem(problems: &mut Vec<String>, path: &Path, line: usize, message: impl AsRef<str>) {
@@ -222,21 +236,16 @@ fn prose(text: &str) -> Vec<(usize, &str)> {
     let mut fence: Option<(char, usize)> = None;
     for (index, line) in text.lines().enumerate() {
         let trimmed = line.trim_start();
-        let indent = line.len() - trimmed.len();
         let first = trimmed.chars().next();
         let marker = first.filter(|ch| *ch == '`' || *ch == '~');
         let count = marker.map_or(0, |ch| {
             trimmed.chars().take_while(|next| *next == ch).count()
         });
         if let Some((ch, length)) = fence {
-            if indent <= 3
-                && marker == Some(ch)
-                && count >= length
-                && trimmed[count..].trim().is_empty()
-            {
+            if marker == Some(ch) && count >= length && trimmed[count..].trim().is_empty() {
                 fence = None;
             }
-        } else if indent <= 3 && count >= 3 {
+        } else if count >= 3 {
             fence = Some((marker.unwrap(), count));
         } else {
             result.push((index + 1, line));
@@ -246,7 +255,19 @@ fn prose(text: &str) -> Vec<(usize, &str)> {
 }
 
 fn headings(text: &str) -> Vec<(usize, String)> {
-    let lines = prose(text);
+    let header_end = if text.lines().next() == Some("---") {
+        text.lines()
+            .enumerate()
+            .skip(1)
+            .find_map(|(index, line)| (line == "---").then_some(index + 1))
+            .unwrap_or(text.lines().count())
+    } else {
+        0
+    };
+    let lines: Vec<_> = prose(text)
+        .into_iter()
+        .filter(|(line, _)| *line > header_end)
+        .collect();
     let mut result = Vec::new();
     for (index, (_, line)) in lines.iter().enumerate() {
         let trimmed = line.trim_start();
@@ -281,7 +302,7 @@ fn headings(text: &str) -> Vec<(usize, String)> {
 fn slugs(text: &str) -> HashSet<String> {
     let mut result = HashSet::new();
     for (_, heading) in headings(text) {
-        let base: String = heading
+        let base: String = heading_link_text(&heading)
             .to_lowercase()
             .chars()
             .filter(|ch| ch.is_alphanumeric() || matches!(ch, ' ' | '-' | '_'))
@@ -296,6 +317,89 @@ fn slugs(text: &str) -> HashSet<String> {
         result.insert(slug);
     }
     result
+}
+
+/// Render inline link labels without including destinations in heading slugs.
+fn heading_link_text(heading: &str) -> String {
+    let mut result = String::new();
+    let mut remaining = heading;
+    while let Some(start) = remaining.find('[') {
+        result.push_str(&remaining[..start]);
+        remaining = &remaining[start..];
+        if let Some(label_end) = remaining.find("](")
+            && let Some(end) = closing_parenthesis(&remaining[label_end + 2..])
+        {
+            result.push_str(&remaining[1..label_end]);
+            remaining = &remaining[label_end + 2 + end + 1..];
+        } else {
+            result.push('[');
+            remaining = &remaining[1..];
+        }
+    }
+    result.push_str(remaining);
+    result
+}
+
+/// Equal-length backtick runs delimit code spans; unmatched runs remain literal.
+/// Preserve newlines so diagnostics still refer to the original source lines.
+fn strip_inline_code(text: &str) -> String {
+    let mut result = String::new();
+    let mut remaining = text;
+    while let Some(start) = remaining.find('`') {
+        result.push_str(&remaining[..start]);
+        remaining = &remaining[start..];
+        let length = remaining.bytes().take_while(|byte| *byte == b'`').count();
+        let mut offset = length;
+        let mut end = None;
+        while let Some(next) = remaining[offset..].find('`') {
+            let next = offset + next;
+            let run = remaining[next..]
+                .bytes()
+                .take_while(|byte| *byte == b'`')
+                .count();
+            if run == length {
+                end = Some(next + run);
+                break;
+            }
+            offset = next + run;
+        }
+        if let Some(end) = end {
+            result.extend(
+                remaining[..end]
+                    .chars()
+                    .map(|ch| if ch == '\n' { '\n' } else { ' ' }),
+            );
+            remaining = &remaining[end..];
+        } else {
+            result.push_str(&remaining[..length]);
+            remaining = &remaining[length..];
+        }
+    }
+    result.push_str(remaining);
+    result
+}
+
+fn closing_parenthesis(text: &str) -> Option<usize> {
+    let mut depth = 1;
+    let mut escaped = false;
+    for (index, ch) in text.char_indices() {
+        if escaped {
+            escaped = false;
+            continue;
+        }
+        match ch {
+            '\\' => escaped = true,
+            '(' => depth += 1,
+            ')' => {
+                depth -= 1;
+                if depth == 0 {
+                    return Some(index);
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 fn decode(value: &str) -> Result<String, String> {
@@ -321,30 +425,7 @@ fn destinations(line: &str) -> Vec<&str> {
     let mut remaining = line;
     while let Some(start) = remaining.find("](") {
         remaining = &remaining[start + 2..];
-        let mut depth = 1;
-        let mut escaped = false;
-        let mut end = None;
-        for (i, ch) in remaining.char_indices() {
-            if escaped {
-                escaped = false;
-                continue;
-            }
-            if ch == '\\' {
-                escaped = true;
-                continue;
-            }
-            if ch == '(' {
-                depth += 1;
-            }
-            if ch == ')' {
-                depth -= 1;
-                if depth == 0 {
-                    end = Some(i);
-                    break;
-                }
-            }
-        }
-        let Some(end) = end else {
+        let Some(end) = closing_parenthesis(remaining) else {
             break;
         };
         let destination = remaining[..end].trim();
@@ -367,7 +448,13 @@ fn check_links(
     read: &impl Fn(&Path) -> Result<String, String>,
     problems: &mut Vec<String>,
 ) {
-    for (line, prose) in prose(text) {
+    let mut lines = vec![""; text.lines().count()];
+    for (line, content) in prose(text) {
+        lines[line - 1] = content;
+    }
+    let text = strip_inline_code(&lines.join("\n"));
+    for (index, prose) in text.lines().enumerate() {
+        let line = index + 1;
         for destination in destinations(prose) {
             if ["http://", "https://", "mailto:"]
                 .iter()
@@ -378,6 +465,7 @@ fn check_links(
             let (file, anchor) = destination
                 .split_once('#')
                 .map_or((destination, None), |(file, anchor)| (file, Some(anchor)));
+            let file = file.split_once('?').map_or(file, |(file, _)| file);
             let file = match decode(file) {
                 Ok(file) => file,
                 Err(error) => {
@@ -392,6 +480,8 @@ fn check_links(
             };
             let target = if file.is_empty() {
                 path.to_path_buf()
+            } else if let Some(file) = file.strip_prefix('/') {
+                PathBuf::from(file)
             } else {
                 path.parent().unwrap_or(Path::new("")).join(file)
             };
@@ -401,7 +491,7 @@ fn check_links(
                     path,
                     line,
                     format!(
-                        "broken link {destination:?}: {} does not exist",
+                        "broken link {destination:?}: {} does not exist with this exact case",
                         target.display()
                     ),
                 );
@@ -501,5 +591,78 @@ mod tests {
             links("```\n[bad](missing.md)\n```\n[bad](missing.md)").len(),
             1
         );
+    }
+
+    #[test]
+    fn link_paths_require_exact_case_for_every_component() {
+        let root = Path::new(env!("CARGO_MANIFEST_DIR"));
+        assert!(exists_case_sensitive(root, Path::new("src/docs.rs")));
+        assert!(exists_case_sensitive(root, Path::new("src/../src/docs.rs")));
+        for path in ["Src/docs.rs", "src/Docs.rs", "Src/../src/docs.rs"] {
+            assert!(
+                !exists_case_sensitive(root, Path::new(path)),
+                "accepted {path}"
+            );
+        }
+    }
+
+    #[test]
+    fn inline_code_links_ignored() {
+        assert!(
+            links("`[bad](missing.md)` ``[bad](missing.md) ` nested`` [ok](target.md)").is_empty()
+        );
+        assert!(links("``[bad](missing.md)\n[bad](missing.md)``").is_empty());
+        let problems = links("`[bad](missing.md)`\n[bad](missing.md)");
+        assert_eq!(problems.len(), 1);
+        assert!(problems[0].contains("README.md:2:"));
+        assert_eq!(links("` unmatched [bad](missing.md)").len(), 1);
+    }
+
+    #[test]
+    fn deeply_indented_list_fences_ignored() {
+        let text = "- list\n        ````md\n        [bad](missing.md)\n        ```\n        ~~~~\n        [bad](missing.md)\n        ````\n        ~~~md\n        [bad](missing.md)\n        ~~~\n[ok](target.md)";
+        assert!(links(text).is_empty());
+        assert_eq!(links(&format!("{text}\n[bad](missing.md)")).len(), 1);
+    }
+
+    #[test]
+    fn front_matter_is_not_a_heading() {
+        let text = "---\n# Fake H1\ntitle: Actual\n===\n---\n\n# Actual\n";
+        assert_eq!(headings(text), vec![(1, "Actual".into())]);
+        assert_eq!(slugs(text), HashSet::from(["actual".into()]));
+    }
+
+    #[test]
+    fn heading_link_labels_define_slugs() {
+        let text = "# Read [the guide](guide.md) now\n## [A Heading!](file(with-parentheses).md)\n";
+        assert_eq!(
+            slugs(text),
+            HashSet::from(["read-the-guide-now".into(), "a-heading".into()])
+        );
+        let mut problems = Vec::new();
+        check_links(
+            Path::new("README.md"),
+            "[a](target.md#read-the-guide-now)",
+            &|_| true,
+            &|_| Ok(text.into()),
+            &mut problems,
+        );
+        assert!(problems.is_empty());
+    }
+
+    #[test]
+    fn query_strings_and_repo_root_links_resolve() {
+        assert!(links("[a](target.md?raw=1#a-heading) [b](target.md?raw=1)").is_empty());
+        let mut problems = Vec::new();
+        check_links(
+            Path::new("docs/nested/source.md"),
+            "[a](/target.md?raw=1#a-heading) [b](/target.md)",
+            &|path| path == Path::new("target.md"),
+            &|_| Ok("# A Heading!".into()),
+            &mut problems,
+        );
+        assert!(problems.is_empty());
+        assert!(links("[bad](missing.md?raw=1)")[0].contains("broken link"));
+        assert!(links("[bad](/target.md?raw=1#missing)")[0].contains("broken anchor"));
     }
 }

@@ -49,6 +49,47 @@ fn command_output(command: &mut Command) -> Result<Vec<u8>, String> {
     Ok(output.stdout)
 }
 
+/// Include new, nonignored documents as well as files already in the Git index.
+fn markdown_files(root: &Path) -> Result<Vec<std::path::PathBuf>, String> {
+    let output = Command::new("git")
+        .current_dir(root)
+        .args([
+            "ls-files",
+            "--cached",
+            "--others",
+            "--exclude-standard",
+            "-z",
+            "--",
+            "*.md",
+        ])
+        .output();
+    if let Ok(output) = output
+        && output.status.success()
+    {
+        let mut paths = Vec::new();
+        for name in output
+            .stdout
+            .split(|byte| *byte == 0)
+            .filter(|name| !name.is_empty())
+        {
+            let name = std::str::from_utf8(name).map_err(|error| error.to_string())?;
+            paths.push(std::path::PathBuf::from(name));
+        }
+        paths.sort();
+        paths.dedup();
+        return Ok(paths);
+    }
+    files(root)?
+        .into_iter()
+        .filter(|path| path.extension().is_some_and(|ext| ext == "md"))
+        .map(|path| {
+            path.strip_prefix(root)
+                .map(Path::to_path_buf)
+                .map_err(|error| error.to_string())
+        })
+        .collect()
+}
+
 /// Walk repository content without following directory symlinks or build/VCS output.
 fn files(root: &Path) -> Result<Vec<std::path::PathBuf>, String> {
     let mut result = Vec::new();

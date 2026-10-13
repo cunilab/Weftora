@@ -7,13 +7,7 @@ use std::{
 };
 
 pub fn run(root: &Path, offline: bool) -> Result<(), String> {
-    let mut command = Command::new("cargo");
-    command
-        .current_dir(root)
-        .args(["metadata", "--format-version", "1", "--locked"]);
-    if offline {
-        command.arg("--offline");
-    }
+    let mut command = metadata_command(root, offline);
     let metadata: Value = serde_json::from_slice(&command_output(&mut command)?)
         .map_err(|error| format!("invalid cargo metadata: {error}"))?;
     let mut problems = check_graph(&metadata)?;
@@ -33,6 +27,21 @@ pub fn run(root: &Path, offline: bool) -> Result<(), String> {
     } else {
         Err(problems.join("\n"))
     }
+}
+
+fn metadata_command(root: &Path, offline: bool) -> Command {
+    let mut command = Command::new("cargo");
+    command.current_dir(root).args([
+        "metadata",
+        "--format-version",
+        "1",
+        "--locked",
+        "--all-features",
+    ]);
+    if offline {
+        command.arg("--offline");
+    }
+    command
 }
 
 fn under_examples(path: &Path) -> bool {
@@ -132,6 +141,16 @@ fn check_graph(metadata: &Value) -> Result<Vec<String>, String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn optional_dependencies_are_resolved() {
+        // Optional edges only enter resolve.nodes when their features are enabled.
+        for offline in [false, true] {
+            let command = metadata_command(Path::new("/repo"), offline);
+            let args: Vec<_> = command.get_args().collect();
+            assert!(args.contains(&std::ffi::OsStr::new("--all-features")));
+            assert_eq!(args.contains(&std::ffi::OsStr::new("--offline")), offline);
+        }
+    }
     fn fixture() -> Value {
         serde_json::from_str(r#"{
             "workspace_root":"/repo",
