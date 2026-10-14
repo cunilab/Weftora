@@ -25,6 +25,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [Declarative UI v1](./ui.md) | WFT-UI-001 | Screen schema, bindings, actions and input |
 | [Phase 0 evidence](./evidence/phase-0.md) | WFT-EVID-001 | Phase 0 check results and P0-10 deferral |
 | [Phase 2 Windows manual verification](./evidence/phase-2-windows.md) | WFT-EVID-005 | Blank maintainer-owned native test records and steps |
+| [Phase 2 Windows agent-run evidence](./evidence/phase-2-windows-agent.md) | WFT-EVID-006 | Agent-executed native window, frame, replay and perf observations; excludes audio and clean-machine checks |
 | [Phase 2 implementation evidence](./evidence/phase-2.md) | WFT-EVID-004 | Compiled-dialogue slice and remaining Phase 2 checks |
 | [Phase 1 evidence](./evidence/phase-1.md) | WFT-EVID-003 | Headless kernel checks and Windows CI evidence |
 | [Phase 0 Windows evidence](./evidence/phase-0-windows.md) | WFT-EVID-002 | Windows verification artifacts and export evidence limits |

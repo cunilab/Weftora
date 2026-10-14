@@ -1,0 +1,34 @@
+### presentation-demo headless replay (presentation command dispatch)
+{"args":["bg.day"],"event":"command","name":"background"}
+{"args":["left","0.25","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["right","0.75","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["left","actor.alice","500"],"event":"command","name":"show"}
+{"args":["right","actor.bob","500"],"event":"command","name":"show"}
+{"args":["audio.music","1000"],"event":"command","name":"music"}
+{"args":["audio.ambience","1000"],"event":"command","name":"ambience"}
+{"args":["audio.voice","250"],"event":"command","name":"voice"}
+{"args":["audio.effect","250"],"event":"command","name":"effect"}
+{"character":"Guide","event":"line","text":"Day background and two characters fade in. Music and ambience loop; voice and effect are one-shots. Open Volume to mute each channel or master."}
+{"args":["left","0.4","0.4","1.4","0.6","1500"],"event":"command","name":"move"}
+{"args":["background","bg.night","1500"],"event":"command","name":"show"}
+{"character":"Guide","event":"line","text":"The background crossfades to night. The left character moves, scales and becomes partly transparent over 1.5 seconds."}
+{"args":["cg","cg.sun","1000"],"event":"command","name":"show"}
+{"character":"Guide","event":"line","text":"The CG fades over the character layer. Advance after one second."}
+{"args":["overlay","overlay.tint","1000"],"event":"command","name":"show"}
+{"character":"Guide","event":"line","text":"A decorative tint overlay fades above the CG. It does not block clicks. The Volume overlay is separate and modal."}
+{"args":["overlay","1000"],"event":"command","name":"hide"}
+{"args":["cg","1000"],"event":"command","name":"hide"}
+{"args":["left","0.25","0.5","1","1","1000"],"event":"command","name":"move"}
+{"args":["audio.effect","500"],"event":"command","name":"effect"}
+{"character":"Guide","event":"line","text":"CG and tint fade out; the character returns. The effect fades in. Music and ambience continue so channel volume can be checked."}
+{"args":["none","1500"],"event":"command","name":"music"}
+{"args":["none","1500"],"event":"command","name":"ambience"}
+{"args":["audio.voice","500"],"event":"command","name":"voice"}
+{"args":["audio.effect","500"],"event":"command","name":"effect"}
+{"character":"Guide","event":"line","text":"Music and ambience fade out; voice and effects fade in. Advance immediately to hear them fade out too."}
+{"args":["none","750"],"event":"command","name":"voice"}
+{"args":["none","750"],"event":"command","name":"effect"}
+{"args":["left","1000"],"event":"command","name":"hide"}
+{"args":["right","1000"],"event":"command","name":"hide"}
+{"character":"Guide","event":"line","text":"Both characters and the remaining audio fade out. Background stays. Native actual results belong to maintainer issue 5."}
+{"changes":[],"event":"end","lifecycle":["boot","load","init:story","ready","play","shutdown:story","shutdown"],"signals":[],"state":{"settings.audio.ambience":1.0,"settings.audio.effects":1.0,"settings.audio.master":0.5,"settings.audio.music":1.0,"settings.audio.voice":1.0}}

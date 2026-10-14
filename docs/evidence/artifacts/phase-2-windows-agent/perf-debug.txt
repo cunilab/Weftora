@@ -1,0 +1,14 @@
+# Debug build perf measurement (same harness), for comparison only.
+# Same definitions as perf-release.txt.
+
+
+Run WindowReady StartupMs IdleWorkingSetMiB IdlePrivateMiB Responding
+--- ----------- --------- ----------------- -------------- ----------
+  1        True       506             411.5          644.3       True
+  2        True       511             383.4          626.9       True
+  3        True       485               410          642.1       True
+
+
+startup_ms: min=485 median=506 max=511 (n=3, all window-ready=True)
+idle_workingset_mib: avg=401.6 min=383.4 max=411.5
+

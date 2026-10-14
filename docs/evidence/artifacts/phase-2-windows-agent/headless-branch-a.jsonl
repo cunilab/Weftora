@@ -1,0 +1,10 @@
+### hello-story branch A (choose 0 -> curious true)
+{"args":["bg.room"],"event":"command","name":"background"}
+{"args":["sfx.chime"],"event":"command","name":"sound"}
+{"character":"Guide","event":"line","text":"Welcome to Weftora. Everything you see comes from a Story folder, not from Rust code."}
+{"character":"Guide","event":"line","text":"Want to see a choice change the game state?"}
+{"event":"choices","options":[{"available":true,"index":0,"text":"Yes, show me."},{"available":true,"index":1,"text":"Not right now."}]}
+{"event":"choose","index":0}
+{"character":"Guide","event":"line","text":"You looked closer, so the state key \"curious\" is now true."}
+{"character":"Guide","event":"line","text":"That is the whole walking skeleton. Edit dialogue/intro.yarn and run it again."}
+{"changes":[{"after":true,"before":false,"key":"curious","scope":"persistent"}],"event":"end","lifecycle":["boot","load","init:story","ready","play","shutdown:story","shutdown"],"signals":[{"id":"state.changed","value":"curious"}],"state":{"curious":true}}

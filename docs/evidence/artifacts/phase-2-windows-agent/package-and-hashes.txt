@@ -1,0 +1,50 @@
+commit: c9f2aa03716e30057a4d8baa135018b5a8a45063
+build: release (--locked), Rust 1.98.0, Windows x64
+
+built cli sha256:    912dc804a4de43006ad690a4bc44b3f78f75d06708d5f034c8e015e69c0268c6
+built player sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+
+=== export hello-story (exit=0) ===
+exported dev.weftora.hello-story v0.1.0 to \\?\C:\Users\andre\AppData\Local\Temp\opencode\weftora-evidence\pkg-hello (9 story files)
+--- package files (relative, bytes) ---
+weftora-export.json	1888
+weftora-player.exe	77508096
+compiled\dialogue.json	3342
+story\manifest.jsonc	808
+story\README.md	2046
+story\assets\audio.jsonc	55
+story\assets\chime.wav	52964
+story\assets\images.jsonc	52
+story\assets\room.png	168289
+story\dialogue\intro.yarn	619
+story\ui\details.jsonc	922
+story\ui\dialogue.jsonc	1245
+exported player sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+
+=== export presentation-demo (exit=0) ===
+exported dev.weftora.presentation-demo v0.1.0 to \\?\C:\Users\andre\AppData\Local\Temp\opencode\weftora-evidence\pkg-demo (17 story files)
+--- package files (relative, bytes) ---
+weftora-export.json	2923
+weftora-player.exe	77508096
+compiled\dialogue.json	7422
+story\main.yarn	1518
+story\manifest.jsonc	1040
+story\README.md	1046
+story\assets\alice.png	652
+story\assets\ambience.wav	44144
+story\assets\audio.jsonc	271
+story\assets\bob.png	652
+story\assets\cg.png	4758
+story\assets\day.png	4758
+story\assets\effect.wav	44144
+story\assets\images.jsonc	374
+story\assets\music.wav	44144
+story\assets\night.png	4758
+story\assets\overlay.png	4759
+story\assets\voice.wav	44144
+story\ui\dialogue.jsonc	1663
+story\ui\volume.jsonc	8676
+exported player sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+
+=== same player binary across both exports ===
+equal=True
