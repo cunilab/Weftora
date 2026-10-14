@@ -120,7 +120,7 @@ fn check_command(dir: &Path) -> CliResult {
         manifest.id,
         manifest.story_version,
         checked.dialogue.node_names().len(),
-        manifest.assets.len(),
+        checked.story.asset_count(),
         checked.dialogue.commands().len()
     );
     Ok(ExitCode::SUCCESS)
@@ -400,7 +400,7 @@ fn verify_copied_references(
     let manifest = story.manifest();
     for reference in std::iter::once(weftora_story::MANIFEST_FILE)
         .chain(manifest.dialogue.iter().map(String::as_str))
-        .chain(manifest.assets.values().map(String::as_str))
+        .chain(story.asset_references().map(|(_, path)| path))
         .chain(manifest.catalogs.values().flatten().map(String::as_str))
     {
         let relative = reference
@@ -492,7 +492,7 @@ mod tests {
         assert!(verify_copied_references(&story, &copied).is_ok());
         for reference in std::iter::once(weftora_story::MANIFEST_FILE)
             .chain(story.manifest().dialogue.iter().map(String::as_str))
-            .chain(story.manifest().assets.values().map(String::as_str))
+            .chain(story.asset_references().map(|(_, path)| path))
             .chain(
                 story
                     .manifest()

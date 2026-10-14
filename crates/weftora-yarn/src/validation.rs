@@ -83,11 +83,13 @@ fn command_problem(
             command.name
         ));
     }
-    if !story.manifest().assets.contains_key(id) {
-        return Some(format!(
-            "`{}` uses undeclared asset ID `{id}`",
-            command.name
-        ));
+    let kind = match command.name.as_str() {
+        "background" => weftora_story::AssetKind::Image,
+        "sound" => weftora_story::AssetKind::Audio,
+        _ => unreachable!("validated command schema"),
+    };
+    if let Err(error) = story.asset_path_of(kind, id) {
+        return Some(format!("`{}`: {}", command.name, error.message));
     }
     None
 }

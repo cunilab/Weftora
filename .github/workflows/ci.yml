@@ -26,6 +26,19 @@ jobs:
       - run: cargo xtask deps
       - run: cargo tree -p weftora-player --edges normal,build --locked
       - run: cargo xtask docs
+      - name: Build Windows preview
+        run: cargo build -p weftora-cli -p weftora-player --locked
+      - name: Package and validate Windows preview
+        shell: pwsh
+        run: |
+          .\target\debug\weftora.exe export examples/hello-story --out target/windows-preview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          .\target\windows-preview\weftora-player.exe target/windows-preview/story --validate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weftora-windows-preview-${{ github.sha }}
+          path: target/windows-preview/
+          retention-days: 14
 
   deny:
     name: Dependencies (required)

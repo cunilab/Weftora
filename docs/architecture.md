@@ -118,7 +118,7 @@ Manifest v1 (Phase 1):
 }
 ```
 
-Version fields and comparator syntax are defined in [ADR 0002](./adr/0002-versioning-compatibility.md). The current Engine API is `0.1.0`; the supported capability is `dialogue.yarn/1`. Legacy schema 0 remains loadable with its original fields; new fields require schema 1. Save and compiled-dialogue fields arrive in Phases 3 and 2 respectively.
+Version fields and comparator syntax are defined in [ADR 0002](./adr/0002-versioning-compatibility.md). The current Engine API is `0.1.0`; supported capabilities include `dialogue.yarn/1` and `assets.catalog/1`. Legacy schema 0 remains loadable with its original fields; new fields require schema 1. Save and compiled-dialogue fields arrive in Phases 3 and 2 respectively.
 
 Phase 1 data catalogs are JSONC arrays of records with a non-empty string `id`. IDs are unique across all files in the category. Duplicate JSON object keys are errors, including duplicate asset IDs. Catalog diagnostics name the file and JSON pointer (for example `/2/id`); parse errors include a line. Duplicate IDs name both declaration locations. Missing lookups use the caller's file and location; Phase 1 exposes this as a lookup API, without inventing a general content-reference schema. Other catalog categories arrive with the features that use them.
 
@@ -202,7 +202,7 @@ Stories define screens as data: layout, widgets, theme, bindings to state and ac
 
 Presentation layers: background, character, CG, overlay, UI. Operations: show, hide, position, scale, opacity, fade, move, crossfade, shake.
 
-Whether the declarative UI renders through Bevy UI or another library is an open question decided in Phase 2.
+The Phase 2 renderer choice is Bevy UI inside the existing presentation adapter; see [ADR 0005](./adr/0005-declarative-ui-renderer.md). The declarative widget/binding/focus implementation and Windows evidence remain outstanding.
 
 Illustrative screen definition:
 
@@ -256,7 +256,7 @@ Passing compilation never proves author-visible behaviour; the [success criteria
 ## 11. Open questions
 
 1. ~~Authoring file format~~ — decided: JSONC ([ADR 0004](./adr/0004-story-authoring-format.md)).
-2. **UI renderer.** Bevy UI vs. an alternative for the declarative screen renderer (Phase 2).
+2. **UI implementation.** The Bevy UI choice is recorded in [ADR 0005](./adr/0005-declarative-ui-renderer.md); widget/binding/focus behavior still needs Phase 2 Windows evidence.
 3. **Release package container.** Folder vs. archive (Phase 6).
 4. **Yarn ↔ state mapping details**, including list/map values (Phases 2 and 4).
 5. **Licence**, after the dependency licence audit (Phase 6).
@@ -267,3 +267,11 @@ Passing compilation never proves author-visible behaviour; the [success criteria
 - [Bevy](https://bevyengine.org/)
 - [Yarn Spinner for Rust](https://github.com/YarnSpinnerTool/YarnSpinner-Rust)
 - [Rhai](https://rhai.rs/)
+
+### Phase 2 asset catalogs
+
+Manifest v1 accepts `catalogs.images`, `catalogs.audio` and `catalogs.fonts` alongside `catalogs.data`. Each media file is a JSONC array of strict `{ "id": "bg.room", "path": "assets/room.png" }` entries. IDs share a global media namespace with legacy manifest `assets`; `data` IDs stay separate. Legacy entries load first, then categories in sorted order and files/rows in declaration order, so duplicate diagnostics consistently name the earlier source. Reusing a media file path under different IDs is legal.
+
+`assets.catalog/1` advertises this additive feature without changing the Engine API range. Stories using any typed catalog category must declare it in `requires.capabilities`; omission is rejected. All media paths pass the same confinement, existence and package-limit checks as other Story references. The renderer rechecks path policy and uses a bounded binary read; `background` expects images and `sound` expects audio. Legacy manifest assets have no declared kind and accept either command; runtime image/audio decoding remains responsible for validating their bytes.
+
+Font entries currently resolve and are path-checked, but no new font consumer or font decoding claim is made yet. Catalog resolution is not Windows rendering/audio/font evidence. Exports preserve the catalog source files and every referenced media path and verify the copied package before reporting success.

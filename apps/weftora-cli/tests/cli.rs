@@ -181,7 +181,9 @@ fn check_fails_on_broken_story() {
     assert_eq!(out.status.code(), Some(1));
     let err = stderr(&out);
     assert!(
-        err.contains("dialogue/main.yarn:3: `background` uses undeclared asset ID `bg.missing`"),
+        err.contains(
+            "dialogue/main.yarn:3: `background`: images reference: missing catalog ID `bg.missing`"
+        ),
         "{err}"
     );
     assert!(
@@ -383,7 +385,9 @@ fn export_copies_player_and_story() {
         paths,
         [
             "README.md",
+            "assets/audio.jsonc",
             "assets/chime.wav",
+            "assets/images.jsonc",
             "assets/room.png",
             "dialogue/intro.yarn",
             "manifest.jsonc"
@@ -591,4 +595,55 @@ fn preview_passes_a_live_artifact_and_cleans_it_without_story_writes() {
         .map(|e| e.unwrap().file_name())
         .collect();
     assert_eq!(before, after);
+}
+
+#[test]
+fn typed_command_mismatch_preserves_yarn_context_and_never_activates() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    let manifest_path = story.join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["manifestSchema"] = 1.into();
+    manifest["storyVersion"] = "0.1.0".into();
+    manifest["requires"] =
+        serde_json::json!({"engineApi":">=0.1.0 <0.2.0","capabilities":["assets.catalog/1"]});
+    manifest["catalogs"] = serde_json::json!({"images":["images.jsonc"]});
+    fs::write(manifest_path, manifest.to_string()).unwrap();
+    fs::write(story.join("image.bin"), b"typed lookup only").unwrap();
+    fs::write(
+        story.join("images.jsonc"),
+        r#"[{"id":"bg.room","path":"image.bin"}]"#,
+    )
+    .unwrap();
+    fs::write(
+        story.join("intro.yarn"),
+        "title: Start\n---\n<<sound bg.room>>\nHello.\n===\n",
+    )
+    .unwrap();
+    let check = weftora().arg("check").arg(&story).output().unwrap();
+    let run = weftora()
+        .arg("run")
+        .arg(&story)
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert_eq!(run.status.code(), Some(1));
+    assert_eq!(check.stderr, run.stderr);
+    assert!(run.stdout.is_empty());
+    assert!(stderr(&check).contains(
+        "intro.yarn:3: `sound`: asset `bg.room` belongs to images, expected audio (node `Start`)"
+    ));
+    let out = tmp.path().join("export");
+    let export = weftora()
+        .arg("export")
+        .arg(&story)
+        .arg("--out")
+        .arg(&out)
+        .output()
+        .unwrap();
+    assert_eq!(export.status.code(), Some(1));
+    assert!(!out.exists());
 }

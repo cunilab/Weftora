@@ -50,9 +50,17 @@ A fresh direct source-folder launch now needs the CLI to compile a preview; the 
 | P2-04 views and transitions | NOT_RUN |
 | P2-05 audio channels/fades/volume | NOT_RUN |
 | P2-06 declarative UI and focus | NOT_RUN |
-| P2-07 pinned adapters and licence inventory | PARTIAL; Yarn subcrates are exact-pinned, full Phase 2 inventory not yet recorded |
+| P2-07 pinned adapters and licence inventory | Exact Bevy/Yarn pins and [declared licence inventory](./artifacts/phase-2-adapter-licenses.tsv); asset-branch Windows CI pending |
 | P2-08 Windows performance baseline | NOT_RUN |
-| P2-09 image/audio/font catalogs | NOT_RUN |
-| P2-10 UI renderer ADR | NOT_RUN |
+| P2-09 image/audio/font catalogs | IMPLEMENTED on the asset-catalog branch; resolution/path/type/duplicate tests pending Windows evidence; fonts have no renderer consumer yet |
+| P2-10 UI renderer ADR | Decision recorded in [ADR 0005](../adr/0005-declarative-ui-renderer.md); awaiting review |
 
 Structural bytecode validation is not a complete stack/type verifier. Runtime stack/options and string-memory growth need bounded failure handling ([issue #8](https://github.com/cunilab/Weftora/issues/8)). Existing instruction budgets remain active; OOM is not caught by panic containment. No phase requirement is waived. P0-10 remains deferred under [issue #5](https://github.com/cunilab/Weftora/issues/5).
+
+## Asset-catalog slice
+
+Typed image/audio/font catalog entries are strict `{id,path}` records. A single asset catalog rejects cross-kind and legacy collisions with both source locations; generic data catalogs retain their own namespace. Shared CLI and renderer lookup checks declared kinds; legacy assets remain untyped and use runtime decoding. The sample keeps its original asset IDs, Yarn sources and golden traces while moving declarations into catalog files. Font fixtures prove ID/path resolution using placeholder bytes only, not font decoding or rendering. Bounded binary reads also reject media that grow past the per-file limit after inventory.
+
+Windows manual tests are maintainer-owned and intentionally blank in [the Windows record](./phase-2-windows.md), tracked by [issue #5](https://github.com/cunilab/Weftora/issues/5). Agents do not request Windows access. The CI preview package is provided for those tests; its `--validate` step is automated activation validation, not proof of rendering, audio or input behavior.
+
+The [licence inventory](./artifacts/phase-2-adapter-licenses.tsv) records all 619 packages in `cargo metadata --locked --all-features --offline`, including target-specific dependencies, their locked versions and declared SPDX licence metadata. It does not audit every licence file or replace the Phase 6 licence/advisory gate. No package lacked declared licence metadata in this snapshot.

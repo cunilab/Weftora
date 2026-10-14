@@ -1,6 +1,6 @@
 //! Bevy presentation adapter for the Weftora player (Phase 0 spike).
 //!
-//! Story assets are read from the Story folder with `std::fs` through [`Story::asset_path`] and turned into
+//! Story assets are read from the Story folder with `std::fs` through [`Story::asset_path_of`] and turned into
 //! Bevy assets here, so Bevy never opens a path outside the Story. The dialogue-to-screen logic lives in
 //! [`presenter`] and has no Bevy types; the systems below only translate input and draw its output.
 
@@ -17,7 +17,7 @@ use bevy::prelude::*;
 use bevy::ui_widgets::{Activate, Button, observe};
 use bevy::window::WindowResolution;
 use weftora_core::SharedState;
-use weftora_story::Story;
+use weftora_story::{AssetKind, Story};
 use weftora_yarn::{CompiledDialogue, DialogueRunner};
 
 use presenter::{Action, END_TEXT, Presenter, Screen};
@@ -171,9 +171,9 @@ const DIGIT_KEYS: [KeyCode; 9] = [
     KeyCode::Digit9,
 ];
 
-fn read_asset(story: &Story, id: &str) -> Result<(String, Vec<u8>), String> {
-    let path = story.asset_path(id).map_err(|d| d.to_string())?;
-    let bytes = std::fs::read(&path)
+fn read_asset(story: &Story, id: &str, kind: AssetKind) -> Result<(String, Vec<u8>), String> {
+    let path = story.asset_path_of(kind, id).map_err(|d| d.to_string())?;
+    let bytes = weftora_story::paths::read_bytes(path.clone())
         .map_err(|e| format!("cannot read asset `{id}` ({}): {e}", path.display()))?;
     let ext = path
         .extension()
@@ -208,7 +208,7 @@ fn decode_image(id: &str, ext: &str, bytes: &[u8]) -> Result<Image, String> {
 fn perform(action: &Action, story: &Story, media: &mut Media) -> Result<(), String> {
     match action {
         Action::SetBackground(id) => {
-            let (ext, bytes) = read_asset(story, id)?;
+            let (ext, bytes) = read_asset(story, id, AssetKind::Image)?;
             let image = decode_image(id, &ext, &bytes)?;
             let handle = media.images.add(image);
             for (mut node, mut visibility) in &mut media.background {
@@ -217,7 +217,7 @@ fn perform(action: &Action, story: &Story, media: &mut Media) -> Result<(), Stri
             }
         }
         Action::PlaySound(id) => {
-            let (_, bytes) = read_asset(story, id)?;
+            let (_, bytes) = read_asset(story, id, AssetKind::Audio)?;
             let bytes = Arc::from(bytes);
             validate_audio(id, &bytes)?;
             let handle = media.sounds.add(AudioSource { bytes });

@@ -20,3 +20,5 @@ Headless mode emits deterministic JSON-lines commands, dialogue, choices, final 
 Try editing a line in `dialogue/intro.yarn` and running again. The player binary does not change.
 
 Assets (`assets/room.png`, `assets/chime.wav`) are generated placeholders released under CC0.
+
+The image and audio IDs are declared in `assets/images.jsonc` and `assets/audio.jsonc` under manifest `catalogs`. Legacy `assets: {id: path}` still loads, but has no declared media type. Catalog IDs share one namespace; image/audio/font category mismatches are rejected before gameplay.

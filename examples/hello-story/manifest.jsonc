@@ -6,7 +6,7 @@
   "storyVersion": "0.1.0",
   "requires": {
     "engineApi": ">=0.1.0 <0.2.0",
-    "capabilities": ["dialogue.yarn/1"],
+    "capabilities": ["dialogue.yarn/1", "assets.catalog/1"],
   },
   "title": "Hello Story",
 
@@ -14,10 +14,10 @@
   "entrypoint": "Start",
   "dialogue": ["dialogue/intro.yarn"],
 
-  // Asset IDs used by Yarn commands such as <<background bg.room>>.
-  "assets": {
-    "bg.room": "assets/room.png",
-    "sfx.chime": "assets/chime.wav",
+  // Typed asset IDs used by the same Yarn background/sound commands.
+  "catalogs": {
+    "images": ["assets/images.jsonc"],
+    "audio": ["assets/audio.jsonc"],
   },
 
   "initialState": {
