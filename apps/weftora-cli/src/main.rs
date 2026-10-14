@@ -152,9 +152,7 @@ fn command_problem(
     if let Err(error) = registry.validate(&command.name, &arguments) {
         return Some(error.to_string());
     }
-    let Some(id) = command.args.first() else {
-        return None;
-    };
+    let id = command.args.first()?;
     if id.contains('{') {
         return Some(format!(
             "`{}` needs a literal asset ID, expressions are not supported",
