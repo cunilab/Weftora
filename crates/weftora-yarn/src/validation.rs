@@ -6,11 +6,18 @@ use weftora_story::Story;
 pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic> {
     let mut errors = Vec::new();
     match story.initial_state() {
-        Ok(state) => errors.extend(
-            check_state(dialogue, &state)
-                .into_iter()
-                .map(|error| Diagnostic::new("manifest.jsonc", None, error.to_string())),
-        ),
+        Ok(state) => {
+            errors.extend(
+                check_state(dialogue, &state)
+                    .into_iter()
+                    .map(|error| Diagnostic::new("manifest.jsonc", None, error.to_string())),
+            );
+            if media_enabled(story)
+                && let Err(e) = weftora_core::presentation::volumes(&state)
+            {
+                errors.push(Diagnostic::new("manifest.jsonc", None, e));
+            }
+        }
         Err(error) => errors.push(Diagnostic::new(
             "manifest.jsonc",
             None,
@@ -25,7 +32,6 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             format!("entrypoint `{entrypoint}` is not a node in the dialogue files"),
         ));
     }
-    let registry = presentation_commands();
     for site in dialogue.command_sites() {
         if !story.manifest().dialogue.contains(&site.file) {
             errors.push(Diagnostic::new(
@@ -38,7 +44,7 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             ));
             continue;
         }
-        if let Some(message) = command_problem(story, &registry, &site.command) {
+        if let Some(message) = command_problem(story, &site.command) {
             errors.push(Diagnostic::new(
                 &site.file,
                 site.line,
@@ -46,7 +52,7 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             ));
         }
     }
-    if errors.is_empty() && !story.manifest().screens.is_empty() {
+    if errors.is_empty() && (!story.manifest().screens.is_empty() || media_enabled(story)) {
         // Validate bindings against manifest state plus the same Yarn default initialization as play.
         let state = std::sync::Arc::new(std::sync::RwLock::new(
             story.initial_state().expect("checked above"),
@@ -56,6 +62,11 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             errors.push(Diagnostic::new("manifest.jsonc", None, message));
         } else {
             let mut state = state.write().expect("validation owns its state lock");
+            if media_enabled(story)
+                && let Err(e) = weftora_core::presentation::volumes(&state)
+            {
+                errors.push(Diagnostic::new("manifest.jsonc", None, e));
+            }
             for (_, screen) in story.screens() {
                 errors.extend(screen.state_errors(&state));
                 for (path, widget) in screen.widgets() {
@@ -67,6 +78,15 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
                         errors.extend(check_state(dialogue, &state).into_iter().map(|e| {
                             Diagnostic::new(&screen.file, None, format!("{path}/action/value: {e}"))
                         }));
+                        if media_enabled(story)
+                            && let Err(e) = weftora_core::presentation::volumes(&state)
+                        {
+                            errors.push(Diagnostic::new(
+                                &screen.file,
+                                None,
+                                format!("{path}/action/value: {e}"),
+                            ));
+                        }
                         state
                             .set(key, previous)
                             .expect("restore checked scratch state");
@@ -80,47 +100,66 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
     errors
 }
 
+pub fn media_enabled(story: &Story) -> bool {
+    story
+        .manifest()
+        .requires
+        .as_ref()
+        .is_some_and(|r| r.capabilities.iter().any(|c| c == "presentation.media/1"))
+}
+
 pub fn presentation_commands() -> weftora_core::command::CommandRegistry {
-    use weftora_core::command::{CommandRegistry, ValueType};
+    use weftora_core::command::{CommandError, CommandRegistry, ValueType};
     let mut registry = CommandRegistry::default();
-    for name in ["background", "sound"] {
+    for &(name, arity) in weftora_core::presentation::COMMANDS {
         registry
-            .register(name, vec![ValueType::String], ValueType::Bool, |_| {
-                Box::pin(async { Ok(weftora_api::Value::Bool(true)) })
-            })
+            .register(
+                name,
+                vec![ValueType::String; arity],
+                ValueType::Bool,
+                move |arguments| {
+                    let command = weftora_api::StoryCommand {
+                        name: name.into(),
+                        args: arguments
+                            .into_iter()
+                            .map(|v| match v {
+                                weftora_api::Value::String(s) => s,
+                                _ => unreachable!("registry checked strings"),
+                            })
+                            .collect(),
+                    };
+                    Box::pin(async move {
+                        weftora_core::presentation::Request::parse(&command)
+                            .map(|_| weftora_api::Value::Bool(true))
+                            .map_err(CommandError::Failed)
+                    })
+                },
+            )
             .expect("unique built-in command IDs");
     }
     registry
 }
 
-fn command_problem(
-    story: &Story,
-    registry: &weftora_core::command::CommandRegistry,
-    command: &weftora_api::StoryCommand,
-) -> Option<String> {
-    let arguments: Vec<_> = command
-        .args
-        .iter()
-        .cloned()
-        .map(weftora_api::Value::String)
-        .collect();
-    if let Err(error) = registry.validate(&command.name, &arguments) {
-        return Some(error.to_string());
-    }
-    let id = command.args.first()?;
-    if id.contains('{') {
+fn command_problem(story: &Story, command: &weftora_api::StoryCommand) -> Option<String> {
+    let request = match weftora_core::presentation::Request::parse(command) {
+        Ok(r) => r,
+        Err(e) => return Some(e),
+    };
+    if request.requires_media() && !media_enabled(story) {
         return Some(format!(
-            "`{}` needs a literal asset ID, expressions are not supported",
+            "`{}` requires `presentation.media/1` in requires.capabilities",
             command.name
         ));
     }
-    let kind = match command.name.as_str() {
-        "background" => weftora_story::AssetKind::Image,
-        "sound" => weftora_story::AssetKind::Audio,
-        _ => unreachable!("validated command schema"),
-    };
-    if let Err(error) = story.asset_path_of(kind, id) {
-        return Some(format!("`{}`: {}", command.name, error.message));
+    for (id, kind) in [
+        (request.image(), weftora_story::AssetKind::Image),
+        (request.audio(), weftora_story::AssetKind::Audio),
+    ] {
+        if let Some(id) = id
+            && let Err(e) = story.asset_path_of(kind, id)
+        {
+            return Some(format!("`{}`: {}", command.name, e.message));
+        }
     }
     None
 }

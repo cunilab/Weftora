@@ -23,7 +23,7 @@ mod validation;
 pub use artifact::{
     ARTIFACT_FILE, ARTIFACT_FORMAT, COMPILER_ID, COMPILER_VERSION, MAX_ARTIFACT_BYTES, input_hash,
 };
-pub use validation::{check_story, presentation_commands};
+pub use validation::{check_story, media_enabled, presentation_commands};
 
 use storage::StateStorage;
 

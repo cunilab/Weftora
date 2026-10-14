@@ -1,6 +1,6 @@
 //! Bevy-free presentation logic: turns dialogue events into what the screen shows and what to do next.
 
-use weftora_api::StoryCommand;
+pub use weftora_core::presentation::Request as Action;
 use weftora_yarn::{DialogueError, DialogueEvent, DialogueRunner};
 
 /// The calls the presenter needs from a dialogue runner. Implemented by [`DialogueRunner`]; tests use a fake.
@@ -39,13 +39,6 @@ pub enum Screen {
     Choices(Vec<ChoiceView>),
     End,
     Error(String),
-}
-
-/// A side effect the renderer must perform.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub enum Action {
-    SetBackground(String),
-    PlaySound(String),
 }
 
 pub const END_TEXT: &str = "The End \u{2014} press Esc to quit";
@@ -141,7 +134,7 @@ impl<S: EventSource> Presenter<S> {
                         self.screen = Screen::Choices(visible);
                     }
                 }
-                Ok(DialogueEvent::Command(command)) => match command_action(&command) {
+                Ok(DialogueEvent::Command(command)) => match Action::parse(&command) {
                     Ok(action) => {
                         actions.push(action);
                         continue;
@@ -157,25 +150,11 @@ impl<S: EventSource> Presenter<S> {
     }
 }
 
-fn command_action(command: &StoryCommand) -> Result<Action, String> {
-    let (name, args) = (command.name.as_str(), &command.args);
-    match (name, args.as_slice()) {
-        ("background", [id]) => Ok(Action::SetBackground(id.clone())),
-        ("sound", [id]) => Ok(Action::PlaySound(id.clone())),
-        ("background" | "sound", _) => Err(format!(
-            "command `{name}` takes exactly 1 argument (an asset ID), got {}",
-            args.len()
-        )),
-        _ => Err(format!(
-            "unknown command `{name}` (supported: background, sound)"
-        )),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
     use std::collections::VecDeque;
+    use weftora_api::StoryCommand;
     use weftora_yarn::Choice;
 
     #[derive(Default)]
@@ -250,8 +229,8 @@ mod tests {
         assert_eq!(
             actions,
             [
-                Action::SetBackground("bg.room".into()),
-                Action::PlaySound("sfx.chime".into())
+                Action::Background("bg.room".into()),
+                Action::Sound("sfx.chime".into())
             ]
         );
         assert_eq!(
@@ -319,7 +298,7 @@ mod tests {
     fn bad_commands_become_error_screens() {
         for (name, args, needle) in [
             ("teleport", vec!["x"], "unknown command `teleport`"),
-            ("background", vec![], "exactly 1 argument"),
+            ("background", vec![], "argument count: expected 1"),
             ("sound", vec!["a", "b"], "got 2"),
         ] {
             let (mut p, _) = Presenter::new(fake(vec![cmd(name, &args)]), "S");

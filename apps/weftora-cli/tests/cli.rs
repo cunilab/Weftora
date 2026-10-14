@@ -711,3 +711,218 @@ fn screen_state_validation_uses_yarn_defaults_and_blocks_activation() {
     assert!(stderr(&check).contains("/root/children/2/action/value:"));
     assert!(stderr(&check).contains("outside ±16777216"));
 }
+
+#[test]
+fn media_parser_check_and_headless_share_author_diagnostics() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    let path = story.join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    manifest["manifestSchema"] = 1.into();
+    manifest["storyVersion"] = "0.1.0".into();
+    manifest["requires"] = serde_json::json!({"engineApi":">=0.1.0 <0.2.0","capabilities":["assets.catalog/1","presentation.media/1"]});
+    manifest["catalogs"] = serde_json::json!({"images":["images.jsonc"],"audio":["audio.jsonc"]});
+    fs::write(&path, manifest.to_string()).unwrap();
+    fs::write(
+        story.join("media.bin"),
+        b"lookup fixture, not decoder evidence",
+    )
+    .unwrap();
+    fs::write(
+        story.join("images.jsonc"),
+        r#"[{"id":"image","path":"media.bin"}]"#,
+    )
+    .unwrap();
+    fs::write(
+        story.join("audio.jsonc"),
+        r#"[{"id":"audio","path":"media.bin"}]"#,
+    )
+    .unwrap();
+    for (command, needle) in [
+        ("show left image 10001", "duration must be"),
+        ("move left 0.5 0.5 0 1 0", "scale must be greater"),
+        ("show missing image 0", "unknown view slot"),
+        ("music image 0", "belongs to images, expected audio"),
+        ("show left audio 0", "belongs to audio, expected images"),
+        ("voice absent 100", "missing catalog ID"),
+    ] {
+        fs::write(
+            story.join("intro.yarn"),
+            format!("title: Start\n---\n<<{command}>>\nHello.\n===\n"),
+        )
+        .unwrap();
+        let check = weftora().arg("check").arg(&story).output().unwrap();
+        let run = weftora()
+            .arg("run")
+            .arg(&story)
+            .arg("--headless")
+            .output()
+            .unwrap();
+        assert_eq!(check.status.code(), Some(1));
+        assert_eq!(check.stderr, run.stderr);
+        assert!(run.stdout.is_empty());
+        let error = stderr(&check);
+        assert!(error.contains("intro.yarn:3:"), "{error}");
+        assert!(error.contains("node `Start`"), "{error}");
+        assert!(error.contains(needle), "{error}");
+    }
+    fs::write(
+        story.join("intro.yarn"),
+        "title: Start\n---\n<<show left image 0>>\nHello.\n===\n",
+    )
+    .unwrap();
+    manifest["requires"]["capabilities"] = serde_json::json!(["assets.catalog/1"]);
+    fs::write(path, manifest.to_string()).unwrap();
+    let check = weftora().arg("check").arg(&story).output().unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert!(stderr(&check).contains("requires `presentation.media/1`"));
+}
+
+#[test]
+fn media_demo_replays_identically_and_exported_artifact_validates() {
+    let demo = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/presentation-demo");
+    let mut expected = None;
+    for _ in 0..3 {
+        let output = weftora()
+            .arg("run")
+            .arg(&demo)
+            .arg("--headless")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}", stderr(&output));
+        if let Some(expected) = &expected {
+            assert_eq!(&output.stdout, expected);
+        } else {
+            expected = Some(output.stdout.clone());
+        }
+    }
+    let tmp = tempfile::tempdir().unwrap();
+    let player = tmp.path().join("player");
+    fs::write(&player, b"export fixture only").unwrap();
+    let export = tmp.path().join("export");
+    let output = weftora()
+        .env("WEFTORA_PLAYER", player)
+        .arg("export")
+        .arg(&demo)
+        .arg("--out")
+        .arg(&export)
+        .output()
+        .unwrap();
+    assert!(output.status.success(), "{}", stderr(&output));
+    let story = weftora_story::Story::load(&export.join("story")).unwrap();
+    let compiled =
+        weftora_yarn::CompiledDialogue::load_artifact(&export.join(weftora_yarn::ARTIFACT_FILE))
+            .unwrap();
+    compiled
+        .verify_sources(&story.dialogue_sources().unwrap())
+        .unwrap();
+    assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+}
+
+#[test]
+fn invalid_user_volume_scope_type_range_and_ui_literals_fail_before_activation() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    let path = story.join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    manifest["manifestSchema"] = 1.into();
+    manifest["storyVersion"] = "0.1.0".into();
+    manifest["requires"] = serde_json::json!({"engineApi":">=0.1.0 <0.2.0","capabilities":["presentation.media/1","ui.screens/1"]});
+    manifest["screens"] = serde_json::json!(["ui.jsonc"]);
+    manifest["initialScreen"] = "dialogue".into();
+    let mut screen = serde_json::json!({"screenSchema":1,"root":{"type":"screen","id":"dialogue","children":[{"type":"choiceList","id":"choices"},{"type":"button","id":"volume","text":"Set","action":{"do":"state.set","key":"settings.audio.master","value":0.5}}]}});
+    for (default, scope, needle) in [
+        (serde_json::json!(1.1), "settings", "float in 0..=1"),
+        (serde_json::json!(1), "settings", "float in 0..=1"),
+        (serde_json::json!(1.0), "persistent", "settings scope"),
+    ] {
+        manifest["state"] =
+            serde_json::json!({"settings.audio.master":{"default":default,"scope":scope}});
+        fs::write(&path, manifest.to_string()).unwrap();
+        fs::write(story.join("ui.jsonc"), screen.to_string()).unwrap();
+        let check = weftora().arg("check").arg(&story).output().unwrap();
+        assert_eq!(check.status.code(), Some(1));
+        assert!(stderr(&check).contains(needle), "{}", stderr(&check));
+    }
+    manifest["state"] =
+        serde_json::json!({"settings.audio.master":{"default":1.0,"scope":"settings"}});
+    fs::write(path, manifest.to_string()).unwrap();
+    screen["root"]["children"][1]["action"]["value"] = serde_json::json!(-0.5);
+    fs::write(story.join("ui.jsonc"), screen.to_string()).unwrap();
+    let check = weftora().arg("check").arg(&story).output().unwrap();
+    let run = weftora()
+        .arg("run")
+        .arg(&story)
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert_eq!(check.stderr, run.stderr);
+    assert!(run.stdout.is_empty());
+    assert!(stderr(&check).contains("ui.jsonc: /root/children/1/action/value:"));
+}
+
+#[test]
+fn yarn_created_volume_settings_are_rejected_without_screens_and_live_values_fail_headless() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    let path = story.join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    manifest["manifestSchema"] = 1.into();
+    manifest["storyVersion"] = "0.1.0".into();
+    manifest["requires"] =
+        serde_json::json!({"engineApi":">=0.1.0 <0.2.0","capabilities":["presentation.media/1"]});
+    fs::write(&path, manifest.to_string()).unwrap();
+    for statement in [
+        "declare $settings__audio__master = 0.5",
+        "set $settings__audio__music = 0.5",
+    ] {
+        fs::write(
+            story.join("intro.yarn"),
+            format!("title: Start\n---\n<<{statement}>>\nHello.\n===\n"),
+        )
+        .unwrap();
+        let check = weftora().arg("check").arg(&story).output().unwrap();
+        let run = weftora()
+            .arg("run")
+            .arg(&story)
+            .arg("--headless")
+            .output()
+            .unwrap();
+        assert_eq!(check.status.code(), Some(1));
+        assert_eq!(run.status.code(), Some(1));
+        assert_eq!(check.stderr, run.stderr);
+        assert!(run.stdout.is_empty());
+        assert!(
+            stderr(&check).contains("must use settings scope"),
+            "{}",
+            stderr(&check)
+        );
+    }
+    manifest["state"] =
+        serde_json::json!({"settings.audio.master":{"default":1.0,"scope":"settings"}});
+    fs::write(path, manifest.to_string()).unwrap();
+    fs::write(
+        story.join("intro.yarn"),
+        "title: Start\n---\nReady.\n<<set $settings__audio__master = 2>>\nAfter.\n===\n",
+    )
+    .unwrap();
+    let check = weftora().arg("check").arg(&story).output().unwrap();
+    assert!(check.status.success(), "{}", stderr(&check));
+    let run = weftora()
+        .arg("run")
+        .arg(&story)
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(run.status.code(), Some(1));
+    assert!(stderr(&run).contains("float in 0..=1"));
+    assert!(String::from_utf8_lossy(&run.stdout).contains("Ready."));
+    assert!(!String::from_utf8_lossy(&run.stdout).contains("After."));
+}

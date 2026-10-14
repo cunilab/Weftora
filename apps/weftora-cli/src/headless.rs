@@ -111,6 +111,8 @@ pub fn run(dir: &Path, choices: &[usize]) -> CliResult {
 
 type Replay = (std::collections::BTreeMap<String, Value>, Vec<StateChange>);
 fn replay(resources: &mut Resources, choices: &[usize]) -> Result<Replay, Failure> {
+    let media_enabled =
+        weftora_yarn::media_enabled(&resources.checked.as_ref().expect("ready Story").story);
     let state = resources.state.as_ref().expect("ready state");
     let runner = resources.runner.as_mut().expect("ready dialogue");
     let commands = resources.commands.as_ref().expect("ready commands");
@@ -128,6 +130,9 @@ fn replay(resources: &mut Resources, choices: &[usize]) -> Result<Replay, Failur
             let mut state = state
                 .write()
                 .map_err(|_| Failure::one("state lock is poisoned"))?;
+            if media_enabled {
+                weftora_core::presentation::volumes(&state).map_err(Failure::one)?;
+            }
             let pending = state.drain_changes();
             for change in &pending {
                 signals

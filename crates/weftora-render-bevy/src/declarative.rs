@@ -380,7 +380,7 @@ pub(crate) fn sync_layers(
                     height: percent(100),
                     ..default()
                 },
-                GlobalZIndex(10 + order as i32),
+                GlobalZIndex(20 + order as i32),
                 TabGroup {
                     order: order as i32,
                     // Tab from empty focus searches non-modal groups; expose only the top layer.

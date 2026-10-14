@@ -1,0 +1,331 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "overlay",
+    "id": "volume",
+    "background": "#00000090",
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 60
+    },
+    "children": [
+      {
+        "type": "panel",
+        "background": "#202438FF",
+        "layout": {
+          "padding": 20,
+          "gap": 12
+        },
+        "children": [
+          {
+            "type": "text",
+            "text": "Volume",
+            "size": 26
+          },
+          {
+            "type": "list",
+            "layout": {
+              "direction": "row",
+              "gap": 10
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "master"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "settings.audio.master"
+                }
+              },
+              {
+                "type": "button",
+                "id": "master.mute",
+                "text": "Mute",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.master",
+                  "value": 0.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "master.half",
+                "text": "50%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.master",
+                  "value": 0.5
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "master.full",
+                "text": "100%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.master",
+                  "value": 1.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "layout": {
+              "direction": "row",
+              "gap": 10
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "music"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "settings.audio.music"
+                }
+              },
+              {
+                "type": "button",
+                "id": "music.mute",
+                "text": "Mute",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.music",
+                  "value": 0.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "music.half",
+                "text": "50%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.music",
+                  "value": 0.5
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "music.full",
+                "text": "100%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.music",
+                  "value": 1.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "layout": {
+              "direction": "row",
+              "gap": 10
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "effects"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "settings.audio.effects"
+                }
+              },
+              {
+                "type": "button",
+                "id": "effects.mute",
+                "text": "Mute",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.effects",
+                  "value": 0.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "effects.half",
+                "text": "50%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.effects",
+                  "value": 0.5
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "effects.full",
+                "text": "100%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.effects",
+                  "value": 1.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "layout": {
+              "direction": "row",
+              "gap": 10
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "ambience"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "settings.audio.ambience"
+                }
+              },
+              {
+                "type": "button",
+                "id": "ambience.mute",
+                "text": "Mute",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.ambience",
+                  "value": 0.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "ambience.half",
+                "text": "50%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.ambience",
+                  "value": 0.5
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "ambience.full",
+                "text": "100%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.ambience",
+                  "value": 1.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "layout": {
+              "direction": "row",
+              "gap": 10
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "voice"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "settings.audio.voice"
+                }
+              },
+              {
+                "type": "button",
+                "id": "voice.mute",
+                "text": "Mute",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.voice",
+                  "value": 0.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "voice.half",
+                "text": "50%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.voice",
+                  "value": 0.5
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "voice.full",
+                "text": "100%",
+                "action": {
+                  "do": "state.set",
+                  "key": "settings.audio.voice",
+                  "value": 1.0
+                },
+                "layout": {
+                  "padding": 8
+                }
+              }
+            ]
+          },
+          {
+            "type": "button",
+            "id": "close",
+            "text": "Close",
+            "action": {
+              "do": "screen.close"
+            },
+            "layout": {
+              "padding": 8
+            }
+          }
+        ]
+      }
+    ]
+  }
+}
