@@ -603,14 +603,17 @@ fn removed_integer_declaration_keeps_its_type_during_yarn_default_fill() {
 
 #[test]
 fn removed_declaration_mismatch_rejects_all_defaults_before_initialization() {
-    let compiled = compile(&source(
-        "title: Start\n---\n<<declare $flag = 2>>\n<<declare $other = true>>\nHello.\n===\n",
-    ))
-    .unwrap();
-    let state = shared(&[("flag", Value::Bool(true))]);
-    state.write().unwrap().remove("flag").unwrap();
-    assert!(!weftora_yarn::check_state(&compiled, &state.read().unwrap()).is_empty());
-    let mut runner = DialogueRunner::new(&compiled, state.clone());
-    assert!(runner.start("Start").is_err());
-    assert_eq!(state.read().unwrap().iter().count(), 0);
+    for (declaration, literal) in [
+        (Value::Bool(true), "2"),
+        (Value::Int(1), "2.5"),
+        (Value::Int(1), "33554432"),
+    ] {
+        let compiled = compile(&source(&format!("title: Start\n---\n<<declare $flag = {literal}>>\n<<declare $other = true>>\nHello.\n===\n"))).unwrap();
+        let state = shared(&[("flag", declaration)]);
+        state.write().unwrap().remove("flag").unwrap();
+        assert!(!weftora_yarn::check_state(&compiled, &state.read().unwrap()).is_empty());
+        let mut runner = DialogueRunner::new(&compiled, state.clone());
+        assert!(runner.start("Start").is_err());
+        assert_eq!(state.read().unwrap().iter().count(), 0);
+    }
 }
