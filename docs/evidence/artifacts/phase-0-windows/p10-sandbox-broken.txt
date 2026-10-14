@@ -1,0 +1,59 @@
+P0-10: Windows Sandbox on this host is unusable
+================================================
+
+The plan was to run the export inside Windows Sandbox (WSB), which would have given a
+genuinely Rust-free machine. WSB does not boot on this host, and the cause predates this
+work.
+
+Feature enable (elevated, 2026-10-14 02:11)
+-------------------------------------------
+  Enable-WindowsOptionalFeature -Online -FeatureName Containers-DisposableClientVM -All -NoRestart
+  Enable-WindowsOptionalFeature : OK
+  RestartNeeded                : False
+  FeatureState                 : Enabled
+  BaseImages exists            : True
+  BaseImages items             : 0
+
+  Note RestartNeeded=False. The registry said "Enabled" before this call ever ran, so the
+  enable was a no-op on an already-"Enabled" flag.
+
+Reboot performed by the operator (2026-10-14 09:51)
+---------------------------------------------------
+  Last boot           : 10/14/2026 09:51:31
+  CBS RebootPending   : False   (was True before the reboot)
+  WU RebootRequired   : False   (was True before the reboot)
+  Feature state       : Enabled
+  BaseImages items    : 0       <-- still empty AFTER the reboot
+
+Timestamps show the breakage is old, not caused by this enable:
+  BaseImages directory created : 2026-07-20 16:40:47, empty since
+  OS layer 2e148ac0... written : 2026-07-21 11:39:31
+  This enable + reboot         : 2026-10-14
+
+Boot attempt result
+-------------------
+  Launching WindowsSandbox.exe with a valid .wsb: the UI process exits within ~10s and the
+  mapped folder is never written. Hyper-V-Worker-Admin shows the VM starting then dying:
+
+    id=18500 '36d607a1-...' started successfully.
+    id=18515 '36d607a1-...' was shut down for a reset initiated by the guest operating system.
+
+  Operator-visible dialog: "Windows Sandbox failed to initialize. The virtual machine or
+  container exited unexpectedly. (0x80370106)"
+
+  Documented cause for 0x80370106 with empty BaseImages: the base image is never staged,
+  so there is nothing to boot. Recommended fix is a disable -> reboot -> enable -> reboot
+  cycle. Reported by others too (microsoft/Windows-Sandbox#101, #112).
+
+Workarounds tried, all ineffective
+----------------------------------
+  <VGpu>Disable</VGpu> in the .wsb   -- the most-upvoted fix in issue #101; no change.
+  <Networking>Disable</Networking>   -- no change.
+
+  Host GPU state, for the record (the #101 thread pins several cases on drivers):
+    NVIDIA GeForce RTX 4050 Laptop GPU   32.0.16.1062   (2026-06-11)
+    Intel(R) UHD Graphics                32.0.101.5768  (2024-07-24)
+
+Not attempted: the disable -> reboot -> enable -> reboot cycle. It costs two more reboots
+on a state that has been broken since July, with no guarantee of success. The Rust-free
+local-account route (p10-rustfree-account.txt) closed the evidence need without it.

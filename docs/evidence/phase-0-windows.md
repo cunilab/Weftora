@@ -210,11 +210,35 @@ It reported its identity and played the Story through the full frame sequence, r
 frames as the repo-built player:
 [`p10-exported-player-running.png`](./artifacts/phase-0-windows/p10-exported-player-running.png).
 
-**Still partial.** The check's wording is "a Windows machine with no Rust or Cargo **installed**". Windows
-Sandbox is installed on this host but not provisioned —
-`C:\ProgramData\Microsoft\Windows\Containers\BaseImages` is absent and enabling the feature needs an elevated
-shell, which this agent does not have — so a genuinely Rust-free machine was not available. Details:
-[`p10-sandbox-blocked.txt`](./artifacts/phase-0-windows/p10-sandbox-blocked.txt).
+**The sandbox route is dead on this host.** Windows Sandbox was the intended Rust-free machine. It does not
+boot: `BaseImages` has been empty since 2026-07-20, the feature already read `Enabled` before this work began
+(so `Enable-WindowsOptionalFeature` was a no-op reporting `RestartNeeded: False`), and a reboot by the operator
+cleared both `RebootPending` flags without provisioning the base image. Launches die with `0x80370106`, and
+`<VGpu>Disable</VGpu>` — the most-upvoted fix in microsoft/Windows-Sandbox#101 — changed nothing. The breakage
+predates this work by nearly three months. Details:
+[`p10-sandbox-broken.txt`](./artifacts/phase-0-windows/p10-sandbox-broken.txt).
+
+### Running under a Rust-free account instead
+
+With the sandbox unavailable, the export was run under a freshly created local account, `weftora-p010`, which
+has no `.cargo`, no `.rustup`, and does not resolve `cargo`, `rustc` or `rustup`. That is meaningful on this
+host because **Rust is installed per-user only**: `C:\Users\andre\.cargo\bin` appears on *andre's user PATH*
+and nowhere on the machine PATH, there is no HKLM uninstall entry, no `Program Files\Rust`, and the ACL on
+`andre\.cargo` grants nothing to other users.
+
+Under that account the exported player reported its identity (`--version`, exit `0`) and ran the Story with no
+arguments — `Story::load` → yarn compile → Bevy init → Vulkan adapter → `Creating new window Hello Story` →
+renderer running, alive 40s with no panic. The SHA-256 it printed is computed at runtime from its own bytes on
+disk and matches the staged file. Logs:
+[`p10-rustfree-account.txt`](./artifacts/phase-0-windows/p10-rustfree-account.txt).
+
+**Still partial, for two stated reasons.** First, this is a fresh *account*, not a separate *machine*:
+`C:\Users\andre\.cargo` is still on the same disk. The isolation is real at the account boundary but a reviewer
+can object that the host is not literally Rust-free. Second, no frame was captured from that account — the
+player lands in a separate logon session on a non-interactive window station, and `PrintWindow` refuses those
+handles with `ERROR_INVALID_WINDOW_HANDLE` (1400) even when elevated. That is a Windows session boundary, not a
+player fault, and the check's required evidence ("steps, machine description, log") is all present. Closing it
+properly needs either an interactive logon as `weftora-p010` for a captured frame, or a genuinely separate VM.
 
 ## Method: driving the player without stealing focus
 
@@ -237,6 +261,8 @@ run.
 
 | Check | State | Why |
 | --- | --- | --- |
-| P0-10 export on a Rust-free machine | PARTIAL | Export proven self-contained and runnable with Rust scrubbed from the environment; a machine with Rust truly *uninstalled* still needs a second VM or an elevated shell to provision Windows Sandbox. |
+| P0-10 export on a Rust-free machine | PARTIAL | Export is self-contained (7 files, no Cargo residue) and the full render pipeline runs under a Rust-free local account, but that is a fresh *account* on the same disk — not a machine with Rust uninstalled — and no frame was captured from it (session boundary blocks `PrintWindow`). Windows Sandbox, the intended route, has been unbootable on this host since 2026-07-20. |
 
-With P0-10 the only check left open, [Phase 0 is one machine away from passing](./phase-0.md).
+P0-10 is the only check left open, and what remains is a *machine-boundary* question, not a question about the
+export. Either an interactive logon as `weftora-p010` (one operator action, no reboot) or a separate VM closes
+it; [Phase 0 is otherwise passing](./phase-0.md).
