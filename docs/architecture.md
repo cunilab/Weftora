@@ -96,39 +96,44 @@ examples/hello-story/
 
 Story files other than Yarn are JSONC: JSON with comments and trailing commas ([ADR 0004](./adr/0004-story-authoring-format.md)).
 
-Manifest v1 proposal (values are illustrative):
+Manifest v1 (Phase 1):
 
 ```jsonc
 {
   "manifestSchema": 1,
   "id": "com.example.hello-story",
-  "storyVersion": "1.2.1",
+  "storyVersion": "0.1.0",
+  "title": "Hello Story",
   "requires": {
-    "engineApi": ">=0.2.0 <0.3.0",
-    "capabilities": ["dialogue.yarn/1", "ui.basic/1"]
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": ["dialogue.yarn/1"]
   },
-  "saveSchema": 2,
-  "entrypoint": "intro",
-  "catalogs": {
-    "data": ["data/catalog.jsonc"],
-    "dialogue": ["dialogue/catalog.jsonc"],
-    "events": ["events/catalog.jsonc"],
-    "screens": ["screens/catalog.jsonc"],
-    "assets": ["assets/catalog.jsonc"]
-  }
+  "entrypoint": "Start",
+  "dialogue": ["dialogue/intro.yarn"],
+  "assets": {"bg.room": "assets/room.png"},
+  "state": {"world.day": {"default": 1, "scope": "persistent"}},
+  "initialState": {"world.day": 2},
+  "catalogs": {"data": ["data/items.jsonc"]}
 }
 ```
 
-Version fields are defined in [ADR 0002](./adr/0002-versioning-compatibility.md). Phase 0 uses `manifestSchema: 0`, which is explicitly unstable.
+Version fields and comparator syntax are defined in [ADR 0002](./adr/0002-versioning-compatibility.md). The current Engine API is `0.1.0`; the supported capability is `dialogue.yarn/1`. Legacy schema 0 remains loadable with its original fields; new fields require schema 1. Save and compiled-dialogue fields arrive in Phases 3 and 2 respectively.
+
+Phase 1 data catalogs are JSONC arrays of records with a non-empty string `id`. IDs are unique across all files in the category. Duplicate JSON object keys are errors, including duplicate asset IDs. Catalog diagnostics name the file and JSON pointer (for example `/2/id`); parse errors include a line. Missing lookups use the caller's file and location. Other catalog categories arrive with the features that use them.
 
 **Loader rules**
 
 - IDs are namespaced and unique; duplicates, missing references, unknown commands/widgets and invalid Yarn nodes are rejected with file and location.
 - Unsupported manifest schema, Engine API range or capability is rejected **before** any Story state becomes active. Activation is all-or-nothing.
-- Paths are relative to the Story root. The loader rejects absolute, UNC, drive-relative and `\\?\` paths; `..` traversal; Windows reserved device names with or without an extension (`CON`, `NUL.txt`, `COM1`, …); names ending in a dot or space; `:` (alternate data streams); names that collide case-insensitively; symlinks and junctions that resolve outside the root; and packages over the file-count, file-size or total-size limits. Asset IDs are not a security boundary — the path policy is.
+- Paths are relative to the Story root. The loader rejects absolute, UNC, drive-relative and `\\?\` paths; `..` traversal; Windows reserved device names with or without an extension (`CON`, `NUL.txt`, `COM1`, …); names ending in a dot or space; `:` (alternate data streams); names that collide case-insensitively; symlinks and junctions that resolve outside the root; and packages over the limits: 4,096 files, 8,192 entries including directories, 16 MiB per file, 256 MiB total. Inventory validates every package entry before reading the manifest; text reads enforce the per-file limit again. Case-collision checks use Unicode uppercase spelling conservatively. Asset IDs are not a security boundary — the path policy is.
+- Symlinks and junctions inside a Story are rejected even when their targets remain inside the root. A user-selected root may itself be a symlink. References must match canonical on-disk spelling. Unreferenced dotfiles are counted by inventory but omitted from export.
 - One active Story at a time. Story dependencies or overlays need their own design.
 
 ## 5. Runtime model
+
+### Lifecycle
+
+`weftora-core::lifecycle` starts services in registration order during `boot → load`, then enters `ready`. Only `ready` may enter `play`. Shutdown releases services in reverse order. Failed initialization first tears down the failing service's partial resources, then earlier services; later services never start. Cleanup continues after a teardown error and returns the collected errors. Failure ends in `shutdown`, never a half-ready runtime; restart requires a new lifecycle. Explicit shutdown is idempotent, and dropping a live lifecycle also tears down services. Services own their resources and must make their cleanup safe after a failed init.
 
 ### State
 
@@ -137,11 +142,15 @@ One canonical game state. Keys are namespaced strings (`world.day`, `character.a
 - Phase 1 value types: `bool`, `int` (i64), `float` (finite f64), `string`.
 - Phase 4 adds `list` and `map` (string keys) of those values, required by Story B ([ADR 0003](./adr/0003-story-rules-language.md)).
 - Every key has a scope: `persistent` (saved), `session` (not saved) or `settings` (saved separately from progress).
+- `state` declares typed defaults and scopes; `initialState` applies overrides after defaults. Legacy initial keys and missing Yarn defaults infer a persistent declaration on their first write. Once declared, a key's type cannot change, including after removal. `reset` restores the default; `remove` reports a missing key explicitly.
+- Mutations enqueue notifications in write order with key, scope, old value and new value; no-op and rejected writes emit nothing. Consumers drain the queue at their update boundary. State construction does not emit notifications. Scope snapshots and iteration have stable key order; no save container is introduced yet.
 - Serialisation is deterministic (stable key order) so golden tests and saves are reproducible.
 
 ### Commands and actions
 
 A command has a namespaced ID, a typed argument schema and returns success or a typed error. Engine primitives include `state.set`, `state.add`, `signal.emit`, `dialogue.start`, `view.show`, `view.hide`, `audio.play`, `audio.stop`, `screen.open`, `screen.close`, `save.write`.
+
+The Phase 1 registry validates scalar arguments before creating work and validates result types, including finite floats. Handlers return standard Rust futures; the caller drives polling. Cancelling a pending task drops its future immediately, releasing owned resources; it does not undo earlier writes. Completion and cancellation are terminal and repeat polls return the same result. This is cooperative cancellation, not background threads or an executor.
 
 Stories define their own commands as either an ordered list of actions (declarative) or a Rhai function. Execution semantics:
 
@@ -152,7 +161,7 @@ Stories define their own commands as either an ordered list of actions (declarat
 
 ### Signals and flow
 
-Signals are delivered in a documented deterministic order. Nested emits are queued, not delivered re-entrantly, and a per-frame budget stops signal storms with an explicit error.
+Signals deliver to subscribers in registration order. Handlers return nested signals, which are appended to a FIFO queue after the current signal; there is no re-entrant delivery. Subscription tokens allow unsubscribe between dispatches. The caller supplies a per-dispatch budget: the initial emission, every handler delivery and every nested emission consume one unit. Exhaustion reports an explicit error and discards pending emissions. Handler errors also discard pending emissions; earlier state writes remain. The renderer may allocate a per-frame budget across dispatches later.
 
 Events are `trigger → conditions → actions` with an explicit priority and tie-break (declaration order). The scheduler, not Bevy, decides evaluation order, so headless tests and the real player behave identically.
 

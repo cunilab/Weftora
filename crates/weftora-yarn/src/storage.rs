@@ -232,6 +232,8 @@ impl VariableStorage for StateStorage {
     /// Declared defaults only fill in missing keys; they never overwrite state that Rust or a save already set.
     fn extend(&mut self, values: HashMap<String, YarnValue>) -> Result<()> {
         let mut first_error = None;
+        let mut values: Vec<_> = values.into_iter().collect();
+        values.sort_by(|(a, _), (b, _)| a.cmp(b));
         for (name, value) in values {
             if !self.contains(&name)
                 && let Err(error) = self.set(name, value)

@@ -1,0 +1,9 @@
+{"args":["bg.room"],"event":"command","name":"background"}
+{"args":["sfx.chime"],"event":"command","name":"sound"}
+{"character":"Guide","event":"line","text":"Welcome to Weftora. Everything you see comes from a Story folder, not from Rust code."}
+{"character":"Guide","event":"line","text":"Want to see a choice change the game state?"}
+{"event":"choices","options":[{"available":true,"index":0,"text":"Yes, show me."},{"available":true,"index":1,"text":"Not right now."}]}
+{"event":"choose","index":1}
+{"character":"Guide","event":"line","text":"Fair enough. The state key \"curious\" stays false."}
+{"character":"Guide","event":"line","text":"That is the whole walking skeleton. Edit dialogue/intro.yarn and run it again."}
+{"changes":[],"event":"end","lifecycle":["boot","load","ready","play","shutdown"],"state":{"curious":false}}

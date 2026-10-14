@@ -2,26 +2,36 @@
 //!
 //! Must never depend on Bevy, Yarn Spinner, Rhai or any Story.
 
+pub mod compatibility;
 pub mod jsonc;
+pub mod paths;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
+use compatibility::{CAPABILITIES, ENGINE_API, Requirements};
 use serde::Deserialize;
 use weftora_api::{Diagnostic, Value};
-use weftora_core::State;
+use weftora_core::catalog::Catalog;
+use weftora_core::{State, StateDefinition};
 
-/// The only manifest schema Phase 0 understands. `0` is explicitly unstable (ADR 0002).
-pub const SUPPORTED_MANIFEST_SCHEMA: u32 = 0;
+/// Current manifest schema; legacy Phase 0 schema 0 remains loadable.
+pub const SUPPORTED_MANIFEST_SCHEMA: u32 = 1;
 
 /// Manifest file name at the Story root (JSONC, ADR 0004).
 pub const MANIFEST_FILE: &str = "manifest.jsonc";
 
-/// Provisional Phase 0 manifest (`manifest.jsonc` at the Story root).
+/// Manifest v1, with legacy schema 0 compatibility (`manifest.jsonc` at the Story root).
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Manifest {
     pub manifest_schema: u32,
+    #[serde(default)]
+    pub requires: Option<Requirements>,
+    #[serde(default)]
+    pub state: BTreeMap<String, StateDefinition>,
+    #[serde(default)]
+    pub catalogs: BTreeMap<String, Vec<String>>,
     /// Reverse-domain Story ID, e.g. `com.example.hello-story`.
     pub id: String,
     pub story_version: String,
@@ -43,6 +53,7 @@ pub struct Manifest {
 pub struct Story {
     root: PathBuf,
     manifest: Manifest,
+    catalogs: BTreeMap<String, Catalog<serde_json::Value>>,
 }
 
 /// One Yarn source file read from the Story.
@@ -56,6 +67,13 @@ pub struct DialogueSource {
 impl Story {
     /// Loads and validates the Story at `root`. All problems are returned together; nothing is partially loaded.
     pub fn load(root: &Path) -> Result<Story, Vec<Diagnostic>> {
+        paths::inventory(root).map_err(|mut d| {
+            if d.file.is_empty() {
+                d.file = MANIFEST_FILE.into();
+                d.message = format!("Story root `{}`: {}", root.display(), d.message);
+            }
+            vec![d]
+        })?;
         let manifest_diag =
             |line: Option<u32>, msg: String| Diagnostic::new(MANIFEST_FILE, line, msg);
         let manifest_path = resolve_in_root(root, MANIFEST_FILE).map_err(|d| {
@@ -68,7 +86,7 @@ impl Story {
                 ),
             )]
         })?;
-        let text = match std::fs::read_to_string(manifest_path) {
+        let text = match paths::read_text(manifest_path) {
             Ok(text) => text,
             Err(e) => {
                 return Err(vec![manifest_diag(
@@ -86,13 +104,42 @@ impl Story {
         };
 
         let mut diags = Vec::new();
-        if manifest.manifest_schema != SUPPORTED_MANIFEST_SCHEMA {
+        if manifest.manifest_schema > SUPPORTED_MANIFEST_SCHEMA {
             diags.push(manifest_diag(
                 None,
                 format!(
                     "unsupported manifestSchema {} (this engine supports {SUPPORTED_MANIFEST_SCHEMA})",
                     manifest.manifest_schema
                 ),
+            ));
+        }
+        if manifest.manifest_schema == 1 {
+            match &manifest.requires {
+                Some(requirements) => {
+                    if let Err(errors) =
+                        compatibility::check(requirements, ENGINE_API, CAPABILITIES)
+                    {
+                        diags.extend(errors.into_iter().map(|e| manifest_diag(None, e)));
+                    }
+                }
+                None => diags.push(manifest_diag(
+                    None,
+                    "manifest v1 requires `requires.engineApi`".into(),
+                )),
+            }
+            if let Err(error) = semver::Version::parse(&manifest.story_version) {
+                diags.push(manifest_diag(
+                    None,
+                    format!("invalid storyVersion `{}`: {error}", manifest.story_version),
+                ));
+            }
+        } else if manifest.requires.is_some()
+            || !manifest.state.is_empty()
+            || !manifest.catalogs.is_empty()
+        {
+            diags.push(manifest_diag(
+                None,
+                "requires, state and catalogs need manifestSchema 1".into(),
             ));
         }
         for (name, value) in [
@@ -122,24 +169,94 @@ impl Story {
                 format!("{what} `{relative}`: {}", d.message),
             )),
         };
+        let mut dialogue_paths = std::collections::BTreeSet::new();
         for path in &manifest.dialogue {
             check_file("dialogue".into(), path);
         }
+
         for (id, path) in &manifest.assets {
             check_file(format!("asset `{id}`"), path);
         }
 
-        let mut scratch = State::new();
+        for (index, path) in manifest.dialogue.iter().enumerate() {
+            if !dialogue_paths.insert(path) {
+                diags.push(manifest_diag(
+                    None,
+                    format!("dialogue[{index}]: duplicate source `{path}`"),
+                ));
+            }
+        }
+        let mut scratch = match State::with_definitions(&manifest.state) {
+            Ok(state) => state,
+            Err(error) => {
+                diags.push(manifest_diag(None, format!("state: {error}")));
+                State::new()
+            }
+        };
         for (key, value) in &manifest.initial_state {
             if let Err(e) = scratch.set(key, value.clone()) {
                 diags.push(manifest_diag(None, format!("initialState `{key}`: {e}")));
             }
         }
 
+        let mut catalogs = BTreeMap::new();
+        for (category, files) in &manifest.catalogs {
+            if category != "data" {
+                diags.push(manifest_diag(
+                    None,
+                    format!("unsupported Phase 1 catalog category `{category}` (supports data)"),
+                ));
+                continue;
+            }
+            let mut catalog = Catalog::default();
+            for file in files {
+                let text = match resolve_in_root(root, file)
+                    .map_err(|d| d.message)
+                    .and_then(paths::read_text)
+                {
+                    Ok(text) => text,
+                    Err(error) => {
+                        diags.push(Diagnostic::new(file, None, error));
+                        continue;
+                    }
+                };
+                let entries: Vec<serde_json::Value> = match jsonc::from_str(&text) {
+                    Ok(entries) => entries,
+                    Err(error) => {
+                        diags.push(Diagnostic::new(
+                            file,
+                            u32::try_from(error.line()).ok(),
+                            error.to_string(),
+                        ));
+                        continue;
+                    }
+                };
+                for (index, entry) in entries.into_iter().enumerate() {
+                    let location = format!("/{index}/id");
+                    let Some(id) = entry
+                        .get("id")
+                        .and_then(serde_json::Value::as_str)
+                        .map(str::to_owned)
+                    else {
+                        diags.push(Diagnostic::new(
+                            file,
+                            None,
+                            format!("{location}: missing string catalog ID"),
+                        ));
+                        continue;
+                    };
+                    if let Err(error) = catalog.insert(&id, entry, file, &location) {
+                        diags.push(error);
+                    }
+                }
+            }
+            catalogs.insert(category.clone(), catalog);
+        }
         if diags.is_empty() {
             Ok(Story {
                 root: root.to_path_buf(),
                 manifest,
+                catalogs,
             })
         } else {
             Err(diags)
@@ -152,6 +269,26 @@ impl Story {
 
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
+    }
+
+    /// Defaults and initial overrides are validated before the Story is returned.
+    pub fn initial_state(&self) -> Result<State, weftora_api::StateError> {
+        let mut state = State::with_definitions(&self.manifest.state)?;
+        for (key, value) in &self.manifest.initial_state {
+            state.set(key, value.clone())?;
+        }
+        state.drain_changes();
+        Ok(state)
+    }
+
+    pub fn catalog(&self, category: &str) -> Result<&Catalog<serde_json::Value>, Diagnostic> {
+        self.catalogs.get(category).ok_or_else(|| {
+            Diagnostic::new(
+                MANIFEST_FILE,
+                None,
+                format!("/catalogs/{category}: missing catalog `{category}`"),
+            )
+        })
     }
 
     /// Resolves a Story-relative reference to a file on disk, enforcing the path policy.
@@ -179,7 +316,7 @@ impl Story {
             let read = self
                 .resolve(file)
                 .map_err(|d| d.message)
-                .and_then(|p| std::fs::read_to_string(p).map_err(|e| e.to_string()));
+                .and_then(paths::read_text);
             match read {
                 Ok(contents) => sources.push(DialogueSource {
                     file: file.clone(),
@@ -221,6 +358,7 @@ pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnosti
             "hidden files and folders are not allowed in Story references",
         ));
     }
+    paths::validate_relative(relative).map_err(|e| bad(&e))?;
     let root_canon = root
         .canonicalize()
         .map_err(|e| bad(&format!("cannot access Story root: {e}")))?;
@@ -331,7 +469,7 @@ mod tests {
     #[test]
     fn collects_all_diagnostics() {
         let dir = story_dir(
-            r#"{"manifestSchema": 1, "id": "", "storyVersion": "1", "title": "",
+            r#"{"manifestSchema": 2, "id": "", "storyVersion": "1", "title": "",
             "entrypoint": "", "dialogue": [], "assets": {"a": "missing.png", "b": "../x"},
             "initialState": {"Bad": 1}}"#,
         );

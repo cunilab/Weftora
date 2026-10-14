@@ -37,6 +37,8 @@ Goal: prove the stack end to end with the thinnest possible slice. The phase end
 
 Goal: replace spike code with the real, tested core.
 
+**Status:** implementation and headless fixtures added; Windows verification and gate sign-off are pending. Evidence: [Phase 1 evidence](./docs/evidence/phase-1.md).
+
 - [ ] Lifecycle (boot → load → ready → play → shutdown) with ordered init and reverse teardown.
 - [ ] Canonical typed state: scalar values, defaults, scopes, change notifications.
 - [ ] Command registry: typed arguments, results, errors, async and cancellation.

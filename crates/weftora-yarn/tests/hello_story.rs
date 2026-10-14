@@ -49,9 +49,7 @@ fn guide(text: &str) -> DialogueEvent {
 
 fn run_hello(choice: usize) -> (Vec<DialogueEvent>, SharedState) {
     let (story, compiled) = hello();
-    let state = Arc::new(RwLock::new(
-        State::with_values(&story.manifest().initial_state).unwrap(),
-    ));
+    let state = Arc::new(RwLock::new(story.initial_state().unwrap()));
     let mut runner = DialogueRunner::new(&compiled, state.clone());
     runner.start(&story.manifest().entrypoint).unwrap();
     let mut trace = Vec::new();
@@ -361,7 +359,7 @@ fn self_jump_exhausts_budget_and_fails_runner() {
 }
 
 #[test]
-fn runtime_panic_is_caught_and_runner_cannot_be_restarted() {
+fn canonical_state_rejects_runtime_type_change_without_breaking_dialogue() {
     let compiled = compile(&source(
         "title: Start\n---\n<<declare $flag = true>>\nFirst\n<<if $flag>>\nSecond\n<<endif>>\n===\n",
     )).unwrap();
@@ -372,29 +370,17 @@ fn runtime_panic_is_caught_and_runner_cannot_be_restarted() {
         runner.next_event().unwrap(),
         DialogueEvent::Line { .. }
     ));
-    // Simulate a Rust-side state edit after start, bypassing the initial type check.
-    state
-        .write()
-        .unwrap()
-        .set("flag", Value::String("not-a-bool".into()))
-        .unwrap();
-    let error = runner.next_event().unwrap_err();
-    assert!(matches!(error, DialogueError::Runtime(_)));
-    assert!(error.to_string().contains("runtime panicked"));
-    state
-        .write()
-        .unwrap()
-        .set("flag", Value::Bool(true))
-        .unwrap();
     assert!(matches!(
-        runner.next_event(),
-        Err(DialogueError::Runtime(_))
+        state
+            .write()
+            .unwrap()
+            .set("flag", Value::String("not-a-bool".into())),
+        Err(weftora_api::StateError::TypeMismatch { .. })
     ));
-    assert!(matches!(runner.choose(0), Err(DialogueError::Runtime(_))));
-    assert!(matches!(
-        runner.start("Start"),
-        Err(DialogueError::Runtime(_))
-    ));
+    assert!(
+        matches!(runner.next_event().unwrap(), DialogueEvent::Line { text, .. } if text == "Second")
+    );
+    assert_eq!(runner.next_event().unwrap(), DialogueEvent::End);
 }
 
 #[test]
@@ -535,4 +521,39 @@ fn a_blocking_event_is_allowed_after_exactly_one_thousand_commands() {
         assert_eq!(runner.next_event().unwrap(), cmd("background", "bg"));
     }
     assert_eq!(runner.next_event().unwrap(), DialogueEvent::End);
+}
+
+#[test]
+fn runtime_panic_is_caught_and_runner_cannot_be_restarted() {
+    let compiled = compile(&source(
+        "title: Start\n---\n<<declare $flag = true>>\nFirst\n<<if $flag>>\nSecond\n<<endif>>\n===\n",
+    )).unwrap();
+    let state = shared(&[("flag", Value::Bool(true))]);
+    let mut runner = DialogueRunner::new(&compiled, state.clone());
+    runner.start("Start").unwrap();
+    assert!(matches!(
+        runner.next_event().unwrap(),
+        DialogueEvent::Line { .. }
+    ));
+    // Replacing the entire shared state bypasses per-key type preservation; catch the VM panic at this boundary.
+    *state.write().unwrap() = shared(&[("flag", Value::String("not-a-bool".into()))])
+        .read()
+        .unwrap()
+        .clone();
+    let error = runner.next_event().unwrap_err();
+    assert!(matches!(error, DialogueError::Runtime(_)));
+    assert!(error.to_string().contains("runtime panicked"));
+    *state.write().unwrap() = shared(&[("flag", Value::Bool(true))])
+        .read()
+        .unwrap()
+        .clone();
+    assert!(matches!(
+        runner.next_event(),
+        Err(DialogueError::Runtime(_))
+    ));
+    assert!(matches!(runner.choose(0), Err(DialogueError::Runtime(_))));
+    assert!(matches!(
+        runner.start("Start"),
+        Err(DialogueError::Runtime(_))
+    ));
 }

@@ -237,14 +237,14 @@ fn check_rejects_case_mismatched_dialogue_on_case_insensitive_filesystems() {
 
 #[cfg(unix)]
 #[test]
-fn export_copy_failure_removes_partial_output() {
+fn export_rejects_unused_symlink_before_creating_output() {
     let tmp = tempfile::tempdir().unwrap();
     let story = tmp.path().join("story");
     minimal_story(&story, "intro.yarn");
-    // Sorts after the manifest and dialogue so copying fails after files were written.
+    // Whole-package inventory rejects even unreferenced links before any export writes.
     std::os::unix::fs::symlink(story.join("intro.yarn"), story.join("z-link")).unwrap();
     let checked = weftora().arg("check").arg(&story).output().unwrap();
-    assert!(checked.status.success(), "{}", stderr(&checked));
+    assert_eq!(checked.status.code(), Some(1));
     let player = tmp.path().join("fake-player");
     fs::write(&player, "player").unwrap();
     for (export, existing_empty_directory, new_root) in [
@@ -273,7 +273,7 @@ fn export_copy_failure_removes_partial_output() {
             .unwrap();
         assert_eq!(out.status.code(), Some(1));
         assert!(
-            stderr(&out).contains("symlinks are not exported"),
+            stderr(&out).contains("symlinks are not allowed in Stories"),
             "{}",
             stderr(&out)
         );
@@ -394,4 +394,71 @@ fn run_without_player_reports_clear_error() {
         .unwrap();
     assert_eq!(out.status.code(), Some(1));
     assert!(stderr(&out).contains("player executable not found"));
+}
+
+#[test]
+fn headless_golden_traces_match_in_ten_fresh_runs_per_branch() {
+    for (choice, golden) in [
+        (
+            "0",
+            include_bytes!("fixtures/headless-yes.jsonl").as_slice(),
+        ),
+        ("1", include_bytes!("fixtures/headless-no.jsonl").as_slice()),
+    ] {
+        for _ in 0..10 {
+            let out = weftora()
+                .env("WEFTORA_PLAYER", "missing-player")
+                .args(["run"])
+                .arg(hello())
+                .args(["--headless", "--choices", choice])
+                .output()
+                .unwrap();
+            assert!(out.status.success(), "{}", stderr(&out));
+            assert_eq!(out.stdout, golden);
+        }
+    }
+}
+
+#[test]
+fn check_and_headless_run_reject_the_same_invalid_package() {
+    let tmp = tempfile::tempdir().unwrap();
+    minimal_story(tmp.path(), "main.yarn");
+    let text = fs::read_to_string(tmp.path().join("manifest.jsonc")).unwrap();
+    fs::write(
+        tmp.path().join("manifest.jsonc"),
+        text.replace("main.yarn", "C:/outside.yarn"),
+    )
+    .unwrap();
+    let check = weftora().arg("check").arg(tmp.path()).output().unwrap();
+    let run = weftora()
+        .arg("run")
+        .arg(tmp.path())
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert_eq!(run.status.code(), Some(1));
+    assert_eq!(check.stderr, run.stderr);
+    assert!(run.stdout.is_empty());
+}
+
+#[test]
+fn headless_choices_are_required_valid_and_exhausted() {
+    let out = weftora()
+        .arg("run")
+        .arg(hello())
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(1));
+    assert!(stderr(&out).contains("requires --choices"));
+    for choices in ["999", "0,1", "oops", "-1", ""] {
+        let out = weftora()
+            .arg("run")
+            .arg(hello())
+            .args(["--headless", "--choices", choices])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1), "{choices}: {}", stderr(&out));
+    }
 }

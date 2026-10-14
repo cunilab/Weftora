@@ -1,5 +1,7 @@
 //! The `weftora` command-line tool: check, run and export Story folders.
 
+mod headless;
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
@@ -18,6 +20,7 @@ const USAGE: &str = "usage:
   weftora --version
   weftora check <story-dir>
   weftora run <story-dir>
+  weftora run <story-dir> --headless [--choices <id,id,...>]
   weftora export <story-dir> --out <dir>";
 
 fn main() -> ExitCode {
@@ -31,6 +34,9 @@ fn main() -> ExitCode {
         ["--version"] | ["-V"] => version(),
         ["check", dir] => check_command(Path::new(dir)),
         ["run", dir] => run_command(Path::new(dir)),
+        ["run", dir, "--headless"] => headless::run(Path::new(dir), &[]),
+        ["run", dir, "--headless", "--choices", choices] => headless::parse_choices(choices)
+            .and_then(|choices| headless::run(Path::new(dir), &choices)),
         ["export", dir, "--out", out] | ["export", "--out", out, dir] => {
             export_command(Path::new(dir), Path::new(out))
         }
@@ -88,7 +94,7 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
         compile(&sources).map_err(|d| d.iter().map(ToString::to_string).collect::<Vec<_>>())?;
 
     let mut errors = Vec::new();
-    match weftora_core::State::with_values(&story.manifest().initial_state) {
+    match story.initial_state() {
         Ok(state) => errors.extend(
             check_state(&dialogue, &state)
                 .into_iter()
@@ -390,6 +396,7 @@ fn verify_copied_references(
     for reference in std::iter::once(weftora_story::MANIFEST_FILE)
         .chain(manifest.dialogue.iter().map(String::as_str))
         .chain(manifest.assets.values().map(String::as_str))
+        .chain(manifest.catalogs.values().flatten().map(String::as_str))
     {
         let relative = reference
             .split('/')
@@ -481,6 +488,14 @@ mod tests {
         for reference in std::iter::once(weftora_story::MANIFEST_FILE)
             .chain(story.manifest().dialogue.iter().map(String::as_str))
             .chain(story.manifest().assets.values().map(String::as_str))
+            .chain(
+                story
+                    .manifest()
+                    .catalogs
+                    .values()
+                    .flatten()
+                    .map(String::as_str),
+            )
         {
             let hash = copied.remove(reference).unwrap();
             let Err(Failure::Messages(messages)) = verify_copied_references(&story, &copied) else {

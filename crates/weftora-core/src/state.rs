@@ -5,12 +5,40 @@
 use std::collections::BTreeMap;
 use std::sync::{Arc, RwLock};
 
+use serde::{Deserialize, Serialize};
 use weftora_api::{StateError, Value};
+
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum Scope {
+    #[default]
+    Persistent,
+    Session,
+    Settings,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct StateDefinition {
+    pub default: Value,
+    #[serde(default)]
+    pub scope: Scope,
+}
+
+#[derive(Debug, Clone, PartialEq, Serialize)]
+pub struct StateChange {
+    pub key: String,
+    pub scope: Scope,
+    pub before: Option<Value>,
+    pub after: Option<Value>,
+}
 
 /// Canonical game state. `BTreeMap` keeps iteration and serialisation order stable.
 #[derive(Debug, Default, Clone, PartialEq)]
 pub struct State {
     values: BTreeMap<String, Value>,
+    definitions: BTreeMap<String, StateDefinition>,
+    changes: Vec<StateChange>,
 }
 
 impl State {
@@ -26,6 +54,7 @@ impl State {
         for (key, value) in values {
             state.set(key, value.clone())?;
         }
+        state.changes.clear();
         Ok(state)
     }
 
@@ -35,16 +64,91 @@ impl State {
             .ok_or_else(|| StateError::MissingKey(key.to_string()))
     }
 
-    /// Sets a value. Rejects invalid keys and non-finite floats.
+    /// Declares a typed key with its default and persistence scope.
+    pub fn declare(&mut self, key: &str, definition: StateDefinition) -> Result<(), StateError> {
+        validate_key(key)?;
+        validate_value(&definition.default)?;
+        if self.definitions.contains_key(key) {
+            return Err(StateError::DuplicateKey(key.into()));
+        }
+        self.values.insert(key.into(), definition.default.clone());
+        self.definitions.insert(key.into(), definition);
+        Ok(())
+    }
+
+    pub fn with_definitions<'a>(
+        definitions: impl IntoIterator<Item = (&'a String, &'a StateDefinition)>,
+    ) -> Result<Self, StateError> {
+        let mut state = Self::new();
+        for (key, definition) in definitions {
+            state.declare(key, definition.clone())?;
+        }
+        Ok(state)
+    }
+
+    /// New keys infer a persistent default; an existing declaration fixes the type until state is discarded.
     pub fn set(&mut self, key: &str, value: Value) -> Result<(), StateError> {
         validate_key(key)?;
-        if let Value::Float(f) = &value
-            && !f.is_finite()
-        {
-            return Err(StateError::NonFinite);
+        validate_value(&value)?;
+        if let Some(definition) = self.definitions.get(key) {
+            if definition.default.type_name() != value.type_name() {
+                return Err(StateError::TypeMismatch {
+                    key: key.into(),
+                    expected: definition.default.type_name(),
+                    actual: value.type_name(),
+                });
+            }
+        } else {
+            self.definitions.insert(
+                key.into(),
+                StateDefinition {
+                    default: value.clone(),
+                    scope: Scope::Persistent,
+                },
+            );
         }
-        self.values.insert(key.to_string(), value);
+        let before = self.values.insert(key.into(), value.clone());
+        if before.as_ref() != Some(&value) {
+            self.changes.push(StateChange {
+                key: key.into(),
+                scope: self.definitions[key].scope,
+                before,
+                after: Some(value),
+            });
+        }
         Ok(())
+    }
+
+    pub fn scope(&self, key: &str) -> Result<Scope, StateError> {
+        self.definitions
+            .get(key)
+            .map(|d| d.scope)
+            .ok_or_else(|| StateError::MissingKey(key.into()))
+    }
+
+    /// Restores a declared default, including a key removed earlier.
+    pub fn reset(&mut self, key: &str) -> Result<(), StateError> {
+        let default = self
+            .definitions
+            .get(key)
+            .ok_or_else(|| StateError::MissingKey(key.into()))?
+            .default
+            .clone();
+        self.set(key, default)
+    }
+
+    /// Notifications in mutation order; no-op writes and rejected writes emit nothing.
+    pub fn drain_changes(&mut self) -> Vec<StateChange> {
+        std::mem::take(&mut self.changes)
+    }
+
+    /// A deterministic snapshot for one scope. Save containers arrive in Phase 3.
+    pub fn snapshot(&self, scope: Scope) -> BTreeMap<String, Value> {
+        self.values
+            .iter()
+            .filter(|(key, _)| self.definitions[*key].scope == scope)
+            .map(|(key, value)| (key.clone(), value.clone()))
+            .collect()
     }
 
     /// Adds a number to an existing `Int` or `Float` value. Missing keys and type mismatches are errors.
@@ -75,12 +179,21 @@ impl State {
                 });
             }
         };
-        self.values.insert(key.to_string(), result);
-        Ok(())
+        self.set(key, result)
     }
 
-    pub fn remove(&mut self, key: &str) -> Option<Value> {
-        self.values.remove(key)
+    pub fn remove(&mut self, key: &str) -> Result<Value, StateError> {
+        let before = self
+            .values
+            .remove(key)
+            .ok_or_else(|| StateError::MissingKey(key.into()))?;
+        self.changes.push(StateChange {
+            key: key.into(),
+            scope: self.definitions[key].scope,
+            before: Some(before.clone()),
+            after: None,
+        });
+        Ok(before)
     }
 
     pub fn exists(&self, key: &str) -> bool {
@@ -91,6 +204,15 @@ impl State {
     pub fn iter(&self) -> impl Iterator<Item = (&str, &Value)> {
         self.values.iter().map(|(k, v)| (k.as_str(), v))
     }
+}
+
+fn validate_value(value: &Value) -> Result<(), StateError> {
+    if let Value::Float(f) = value
+        && !f.is_finite()
+    {
+        return Err(StateError::NonFinite);
+    }
+    Ok(())
 }
 
 /// Validates a state key: non-empty dot-separated segments of `[a-z0-9_]`, each starting with a letter or `_`.
@@ -168,7 +290,7 @@ mod tests {
         s.set("a", Value::Int(1)).unwrap();
         assert!(s.exists("a"));
         assert_eq!(s.get("a"), Ok(&Value::Int(1)));
-        assert_eq!(s.remove("a"), Some(Value::Int(1)));
+        assert_eq!(s.remove("a"), Ok(Value::Int(1)));
         assert!(!s.exists("a"));
         assert!(s.set("Bad", Value::Bool(true)).is_err());
         assert_eq!(
