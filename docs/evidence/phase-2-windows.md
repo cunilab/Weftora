@@ -53,6 +53,10 @@ Use the media implementation's `weftora-windows-media-preview-<commit>` CI artif
 5. Advance to music/ambience fade-out. Advance promptly on the voice/effect step to verify their fade-out too. Re-run the Story if a one-shot ended before testing its control. Record actual observations or audio capture; ECS/CI gain arithmetic is not audible evidence.
 6. Verify the final character hides, modal keyboard/mouse handling, resizing and controlled failures for invalid assets/volume. Performance measurements require a release build and the existing blank timing/memory fields.
 
+## Runtime error exit scenario
+
+Use the runtime-fix revision's preview or build that revision. In a copied Story, keep syntax valid and add a declared string initialized to "x"; double it fifteen times before the first line. Static checks can accept the program, but playback must display a controlled string-budget error naming its source file/node. Close the window and record the nonzero process exit status. Also close a valid Story normally and with Escape; both should return zero. Record actual/result/artifact fields below only after testing.
+
 ## Remaining native scenarios
 
 Run these only after the applicable implementation and demo are available. No result is supplied here.

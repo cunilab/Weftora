@@ -8,7 +8,7 @@ mod declarative;
 mod media;
 pub mod presenter;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use bevy::asset::RenderAssetUsages;
 use bevy::audio::AddAudioSource;
@@ -34,9 +34,12 @@ const SPEAKER_COLOR: Color = Color::srgb(0.95, 0.78, 0.35);
 const ERROR_COLOR: Color = Color::srgb(1.0, 0.45, 0.45);
 
 /// Opens the game window and runs `story` until the window closes.
-pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
+pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Result<(), String> {
     let title = story.manifest().title.clone();
     let runner = DialogueRunner::new(&dialogue, Arc::clone(&state));
+    if let Ok(mut state) = state.write() {
+        state.drain_changes();
+    }
     let (presenter, actions) = Presenter::new(runner, &story.manifest().entrypoint.clone());
     let player = Player {
         presenter,
@@ -46,6 +49,8 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
         dirty: true,
     };
 
+    let failure = RuntimeFailure::default();
+    let outcome = failure.0.clone();
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -58,6 +63,7 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
         .add_plugins(TabNavigationPlugin)
         .add_audio_source::<media::LoopAudio>()
         .insert_non_send(player)
+        .insert_resource(failure)
         .init_resource::<Intents>()
         .init_resource::<Ui>()
         .init_resource::<media::Presentation>()
@@ -74,10 +80,29 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
                 media::sync_audio,
                 refresh_panel,
                 hover_buttons,
+                remember_failure,
             )
                 .chain(),
         )
         .run();
+    match outcome
+        .lock()
+        .map_err(|_| "runtime result lock poisoned")?
+        .take()
+    {
+        Some(message) => Err(message),
+        None => Ok(()),
+    }
+}
+
+#[derive(Resource, Default)]
+struct RuntimeFailure(Arc<Mutex<Option<String>>>);
+
+fn remember_failure(player: NonSend<Player>, failure: Res<RuntimeFailure>) {
+    if let Screen::Error(message) = player.presenter.screen() {
+        let mut first = failure.0.lock().unwrap_or_else(|e| e.into_inner());
+        first.get_or_insert_with(|| message.clone());
+    }
 }
 
 /// Presenter plus the Story it reads assets from. Not `Send`: the Yarn runner may not be.
@@ -238,6 +263,9 @@ fn drive(
         && !matches!(before, Screen::Error(_))
     {
         error!("{message}");
+    }
+    if let Ok(mut state) = player.state.write() {
+        state.drain_changes();
     }
     if player.presenter.revision() != before_revision {
         player.dirty = true;
@@ -472,6 +500,7 @@ mod tests {
             pending,
             dirty: true,
         })
+        .init_resource::<RuntimeFailure>()
         .init_resource::<Time>()
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<InputFocus>()
@@ -482,9 +511,39 @@ mod tests {
         .init_resource::<Assets<Image>>()
         .init_resource::<Assets<AudioSource>>()
         .add_message::<AppExit>()
-        .add_systems(Update, drive);
+        .add_systems(Update, (drive, remember_failure).chain());
         app
     }
+    #[test]
+    fn runtime_failure_survives_escape_and_keeps_the_first_error() {
+        let mut app = input_app();
+        app.world_mut()
+            .non_send_mut::<Player>()
+            .presenter
+            .fail("first failure".into());
+        app.world_mut()
+            .non_send_mut::<Player>()
+            .presenter
+            .fail("later failure".into());
+        assert!(
+            matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Error(message) if message == "first failure")
+        );
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<RuntimeFailure>()
+                .0
+                .lock()
+                .unwrap()
+                .as_deref(),
+            Some("first failure")
+        );
+    }
+
     #[test]
     fn duplicate_progress_intents_advance_only_one_line() {
         let mut app = input_app();
@@ -533,11 +592,11 @@ mod tests {
             player.state.read().unwrap().get("curious"),
             Ok(&weftora_api::Value::Bool(true))
         );
-        assert_eq!(player.state.write().unwrap().drain_changes().len(), 1);
+        assert!(player.state.write().unwrap().drain_changes().is_empty());
     }
     pub(super) fn hello_app() -> App {
         let mut app = input_app();
-        let compiled =
+        let mut compiled =
             CompiledDialogue::from_artifact_bytes(include_bytes!("../tests/fixtures/hello.json"))
                 .unwrap();
         let player = &mut *app.world_mut().non_send_mut::<Player>();

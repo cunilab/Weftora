@@ -104,6 +104,9 @@ impl<S: EventSource> Presenter<S> {
 
     /// Reports a renderer-side failure (for example an asset that could not be loaded) on screen.
     pub fn fail(&mut self, message: String) {
+        if matches!(self.screen, Screen::Error(_)) {
+            return;
+        }
         self.screen = Screen::Error(message);
         self.revision = self.revision.wrapping_add(1);
     }

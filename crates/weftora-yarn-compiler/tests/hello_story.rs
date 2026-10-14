@@ -335,7 +335,7 @@ fn integer_precision_boundaries_never_panic() {
 }
 
 #[test]
-fn self_jump_exhausts_budget_and_fails_runner() {
+fn self_jump_exhausts_event_budget_and_fails_runner() {
     let compiled = compile(&source("title: Start\n---\n<<jump Start>>\n===\n")).unwrap();
     let mut runner = DialogueRunner::new(&compiled, shared(&[]));
     runner.start("Start").unwrap();
@@ -344,7 +344,7 @@ fn self_jump_exhausts_budget_and_fails_runner() {
     assert!(
         error
             .to_string()
-            .contains("instruction budget (100000) exceeded in node `Start`")
+            .contains("events budget (1024) exceeded in node 'Start'")
     );
     assert!(matches!(
         runner.next_event(),
@@ -414,12 +414,11 @@ fn command_jump_loop_fails_after_one_thousand_commands() {
 fn instruction_budget_is_cumulative_across_commands() {
     // This small node does substantial bounded work before each command. Each
     // call is below the VM budget, but their combined instruction count is not.
-    let compiled = compile(&source(
-        "title: Start\n---\n<<declare $n = 0>>\n<<set $n = $n + 1>>\n\
-         <<if $n >= 100>>\n<<set $n = 0>>\n<<background bg>>\n<<endif>>\n\
-         <<jump Start>>\n===\n",
-    ))
-    .unwrap();
+    let contents = format!(
+        "title: Start\n---\n{}<<background bg>>\n<<jump Start>>\n===\n",
+        "<<if true>>\n<<endif>>\n".repeat(400)
+    );
+    let compiled = compile(&source(&contents)).unwrap();
     let mut runner = DialogueRunner::new(&compiled, shared(&[]));
     runner.start("Start").unwrap();
     let mut commands = 0;

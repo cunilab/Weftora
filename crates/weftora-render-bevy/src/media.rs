@@ -382,7 +382,7 @@ mod tests {
         let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
             .join("../../examples/presentation-demo");
         let story = Story::load(&root).unwrap();
-        let compiled = weftora_yarn::CompiledDialogue::from_artifact_bytes(include_bytes!(
+        let mut compiled = weftora_yarn::CompiledDialogue::from_artifact_bytes(include_bytes!(
             "../tests/fixtures/presentation.json"
         ))
         .unwrap();
@@ -508,12 +508,9 @@ mod tests {
         app.world_mut()
             .non_send_mut::<Player>()
             .presenter
-            .fail("earlier asset failure".into());
+            .fail("later asset failure".into());
         app.update();
-        assert_eq!(
-            app.world().non_send::<Player>().presenter.screen(),
-            &Screen::Error("earlier asset failure".into())
-        );
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &screen);
     }
     #[test]
     fn crossfade_completion_despawns_outgoing_entity_and_releases_cache() {

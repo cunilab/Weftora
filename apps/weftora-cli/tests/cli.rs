@@ -353,7 +353,7 @@ fn export_copies_player_and_story() {
     assert_eq!(report["exportFormat"], 1);
     let artifact = out_dir.join(weftora_yarn::ARTIFACT_FILE);
     let bytes = fs::read(&artifact).unwrap();
-    let compiled = weftora_yarn::CompiledDialogue::from_artifact_bytes(&bytes).unwrap();
+    let mut compiled = weftora_yarn::CompiledDialogue::from_artifact_bytes(&bytes).unwrap();
     let exported_story = weftora_story::Story::load(&out_dir.join("story")).unwrap();
     compiled
         .verify_sources(&exported_story.dialogue_sources().unwrap())
@@ -812,7 +812,7 @@ fn media_demo_replays_identically_and_exported_artifact_validates() {
         .unwrap();
     assert!(output.status.success(), "{}", stderr(&output));
     let story = weftora_story::Story::load(&export.join("story")).unwrap();
-    let compiled =
+    let mut compiled =
         weftora_yarn::CompiledDialogue::load_artifact(&export.join(weftora_yarn::ARTIFACT_FILE))
             .unwrap();
     compiled
@@ -925,4 +925,92 @@ fn yarn_created_volume_settings_are_rejected_without_screens_and_live_values_fai
     assert!(stderr(&run).contains("float in 0..=1"));
     assert!(String::from_utf8_lossy(&run.stdout).contains("Ready."));
     assert!(!String::from_utf8_lossy(&run.stdout).contains("After."));
+}
+
+#[test]
+fn yarn_syntax_missing_node_and_unknown_command_have_matching_file_node_errors() {
+    for (source, expected) in [
+        (
+            "title: Start\n---\n<<if true>>\nHello\n===\n",
+            "node 'Start'",
+        ),
+        (
+            "title: Start\n---\n<<jump Missing>>\n===\n",
+            "referenced by node 'Start'",
+        ),
+        ("title: Start\n---\n<<unknown_command>>\n===\n", "node"),
+    ] {
+        let dir = tempfile::tempdir().unwrap();
+        minimal_story(dir.path(), "dialogue/main.yarn");
+        fs::write(dir.path().join("dialogue/main.yarn"), source).unwrap();
+        let check = weftora().arg("check").arg(dir.path()).output().unwrap();
+        let run = weftora()
+            .arg("run")
+            .arg(dir.path())
+            .arg("--headless")
+            .output()
+            .unwrap();
+        assert_eq!(check.status.code(), Some(1));
+        assert_eq!(run.status.code(), Some(1));
+        assert_eq!(check.stderr, run.stderr);
+        assert!(run.stdout.is_empty());
+        let message = stderr(&check);
+        assert!(message.contains("dialogue/main.yarn"), "{message}");
+        assert!(message.contains(expected), "{message}");
+        assert!(!message.contains("panicked at"), "{message}");
+    }
+}
+
+#[test]
+fn oversized_initial_string_is_rejected_before_activation() {
+    let dir = tempfile::tempdir().unwrap();
+    minimal_story(dir.path(), "main.yarn");
+    fs::write(
+        dir.path().join("main.yarn"),
+        "title: Start\n---\n<<declare $text = \"x\">>\n{$text}\n===\n",
+    )
+    .unwrap();
+    let path = dir.path().join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&path).unwrap()).unwrap();
+    manifest["initialState"] = serde_json::json!({"text": "x".repeat(16385)});
+    fs::write(path, manifest.to_string()).unwrap();
+    let check = weftora().arg("check").arg(dir.path()).output().unwrap();
+    let run = weftora()
+        .arg("run")
+        .arg(dir.path())
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert_eq!(check.stderr, run.stderr);
+    assert!(stderr(&check).contains("string budget"));
+    assert!(run.stdout.is_empty());
+}
+
+#[test]
+fn headless_change_history_is_bounded_across_blocking_lines() {
+    let dir = tempfile::tempdir().unwrap();
+    minimal_story(dir.path(), "main.yarn");
+    // Even without the guard this finite fixture retains less than 40 MiB of change payloads.
+    let source = format!(
+        "title: Start\n---\n<<declare $text = \"\">>\n<<declare $n = 0>>\n<<set $text = \"{}\">>\n<<set $text = \"{}\">>\n<<set $n = $n + 1>>\nTick\n<<if $n < 600>>\n<<jump Start>>\n<<endif>>\n===\n",
+        "a".repeat(16384),
+        "b".repeat(16384)
+    );
+    fs::write(dir.path().join("main.yarn"), source).unwrap();
+    let result = weftora()
+        .arg("run")
+        .arg(dir.path())
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(result.status.code(), Some(1));
+    assert!(
+        stderr(&result).contains("headless change budget exceeded"),
+        "{}",
+        stderr(&result)
+    );
+    assert!(!stderr(&result).contains("panicked at"));
+    assert!(String::from_utf8(result.stdout).unwrap().lines().count() < 600);
 }

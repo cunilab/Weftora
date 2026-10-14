@@ -22,6 +22,7 @@ mod language;
 mod line;
 pub mod markup;
 mod pluralization;
+pub mod resource_limits;
 mod text_provider;
 mod variable_storage;
 mod virtual_machine;
