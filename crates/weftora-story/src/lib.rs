@@ -65,7 +65,7 @@ pub struct DialogueSource {
 }
 
 impl Story {
-    /// Loads and validates the Story at `root`. All problems are returned together; nothing is partially loaded.
+    /// Loads and validates the Story at `root`. Semantic problems are collected after parsing; nothing is partially loaded.
     pub fn load(root: &Path) -> Result<Story, Vec<Diagnostic>> {
         paths::inventory(root).map_err(|mut d| {
             if d.file.is_empty() {
@@ -95,6 +95,26 @@ impl Story {
                 )]);
             }
         };
+        #[derive(Deserialize)]
+        #[serde(rename_all = "camelCase")]
+        struct Header {
+            manifest_schema: u32,
+        }
+        let header: Header = jsonc::from_str(&text).map_err(|error| {
+            vec![manifest_diag(
+                u32::try_from(error.line()).ok().filter(|line| *line > 0),
+                error.to_string(),
+            )]
+        })?;
+        if header.manifest_schema > SUPPORTED_MANIFEST_SCHEMA {
+            return Err(vec![manifest_diag(
+                None,
+                format!(
+                    "unsupported manifestSchema {} (this engine supports {SUPPORTED_MANIFEST_SCHEMA})",
+                    header.manifest_schema
+                ),
+            )]);
+        }
         let manifest: Manifest = match jsonc::from_str(&text) {
             Ok(m) => m,
             Err(e) => {
@@ -104,15 +124,6 @@ impl Story {
         };
 
         let mut diags = Vec::new();
-        if manifest.manifest_schema > SUPPORTED_MANIFEST_SCHEMA {
-            diags.push(manifest_diag(
-                None,
-                format!(
-                    "unsupported manifestSchema {} (this engine supports {SUPPORTED_MANIFEST_SCHEMA})",
-                    manifest.manifest_schema
-                ),
-            ));
-        }
         if manifest.manifest_schema == 1 {
             match &manifest.requires {
                 Some(requirements) => {
@@ -186,13 +197,12 @@ impl Story {
                 ));
             }
         }
-        let mut scratch = match State::with_definitions(&manifest.state) {
-            Ok(state) => state,
-            Err(error) => {
-                diags.push(manifest_diag(None, format!("state: {error}")));
-                State::new()
+        let mut scratch = State::new();
+        for (key, definition) in &manifest.state {
+            if let Err(error) = scratch.declare(key, definition.clone()) {
+                diags.push(manifest_diag(None, format!("state `{key}`: {error}")));
             }
-        };
+        }
         for (key, value) in &manifest.initial_state {
             if let Err(e) = scratch.set(key, value.clone()) {
                 diags.push(manifest_diag(None, format!("initialState `{key}`: {e}")));
@@ -209,7 +219,15 @@ impl Story {
                 continue;
             }
             let mut catalog = Catalog::default();
-            for file in files {
+            let mut sources = std::collections::BTreeSet::new();
+            for (index, file) in files.iter().enumerate() {
+                if !sources.insert(file) {
+                    diags.push(manifest_diag(
+                        None,
+                        format!("/catalogs/{category}/{index}: duplicate catalog source `{file}`"),
+                    ));
+                    continue;
+                }
                 let text = match resolve_in_root(root, file)
                     .map_err(|d| d.message)
                     .and_then(paths::read_text)
@@ -338,27 +356,12 @@ impl Story {
 /// References must match the canonical on-disk spelling, including case.
 pub fn resolve_in_root(root: &Path, relative: &str) -> Result<PathBuf, Diagnostic> {
     let bad = |msg: &str| Diagnostic::new(relative, None, msg);
-    if relative.is_empty() {
-        return Err(bad("path is empty"));
-    }
-    if relative.contains('\\') {
-        return Err(bad("path must use `/` separators, not backslashes"));
-    }
-    if relative.contains(':') {
-        return Err(bad("path must not contain `:` (drive letters, streams)"));
-    }
-    if relative.starts_with('/') {
-        return Err(bad("path must be relative to the Story root, not absolute"));
-    }
-    if relative.split('/').any(|seg| seg == "." || seg == "..") {
-        return Err(bad("path must not contain `.` or `..` segments"));
-    }
+    paths::validate_relative(relative).map_err(|e| bad(&e))?;
     if relative.split('/').any(|seg| seg.starts_with('.')) {
         return Err(bad(
             "hidden files and folders are not allowed in Story references",
         ));
     }
-    paths::validate_relative(relative).map_err(|e| bad(&e))?;
     let root_canon = root
         .canonicalize()
         .map_err(|e| bad(&format!("cannot access Story root: {e}")))?;
@@ -469,12 +472,12 @@ mod tests {
     #[test]
     fn collects_all_diagnostics() {
         let dir = story_dir(
-            r#"{"manifestSchema": 2, "id": "", "storyVersion": "1", "title": "",
+            r#"{"manifestSchema": 0, "id": "", "storyVersion": "1", "title": "",
             "entrypoint": "", "dialogue": [], "assets": {"a": "missing.png", "b": "../x"},
             "initialState": {"Bad": 1}}"#,
         );
         let msgs = messages(&dir);
-        assert_eq!(msgs.len(), 8, "{msgs:#?}");
+        assert_eq!(msgs.len(), 7, "{msgs:#?}");
         assert!(msgs.iter().all(|m| m.starts_with("manifest.jsonc: ")));
     }
 

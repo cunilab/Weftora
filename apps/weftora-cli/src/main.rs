@@ -108,8 +108,9 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
             "manifest.jsonc: entrypoint `{entrypoint}` is not a node in the dialogue files"
         ));
     }
+    let registry = presentation_commands();
     for site in dialogue.command_sites() {
-        if let Some(message) = command_problem(&story, &site.command) {
+        if let Some(message) = command_problem(&story, &registry, &site.command) {
             let location = match site.line {
                 Some(line) => format!("{}:{line}", site.file),
                 None => site.file.clone(),
@@ -124,28 +125,47 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
     }
 }
 
-fn command_problem(story: &Story, command: &weftora_api::StoryCommand) -> Option<String> {
-    match command.name.as_str() {
-        "background" | "sound" => match command.args.as_slice() {
-            [id] if id.contains('{') => Some(format!(
-                "`{}` needs a literal asset ID, expressions are not supported",
-                command.name
-            )),
-            [id] if story.manifest().assets.contains_key(id) => None,
-            [id] => Some(format!(
-                "`{}` uses undeclared asset ID `{id}`",
-                command.name
-            )),
-            args => Some(format!(
-                "`{}` takes exactly one asset ID, found {} arguments",
-                command.name,
-                args.len()
-            )),
-        },
-        other => Some(format!(
-            "unknown command `{other}` (Phase 0 supports `background` and `sound`)"
-        )),
+fn presentation_commands() -> weftora_core::command::CommandRegistry {
+    use weftora_core::command::{CommandRegistry, ValueType};
+    let mut registry = CommandRegistry::default();
+    for name in ["background", "sound"] {
+        registry
+            .register(name, vec![ValueType::String], ValueType::Bool, |_| {
+                Box::pin(async { Ok(weftora_api::Value::Bool(true)) })
+            })
+            .expect("unique built-in command IDs");
     }
+    registry
+}
+
+fn command_problem(
+    story: &Story,
+    registry: &weftora_core::command::CommandRegistry,
+    command: &weftora_api::StoryCommand,
+) -> Option<String> {
+    let arguments: Vec<_> = command
+        .args
+        .iter()
+        .cloned()
+        .map(weftora_api::Value::String)
+        .collect();
+    if let Err(error) = registry.validate(&command.name, &arguments) {
+        return Some(error.to_string());
+    }
+    let id = &command.args[0]; // Registry validation guarantees one string argument for each built-in.
+    if id.contains('{') {
+        return Some(format!(
+            "`{}` needs a literal asset ID, expressions are not supported",
+            command.name
+        ));
+    }
+    if !story.manifest().assets.contains_key(id) {
+        return Some(format!(
+            "`{}` uses undeclared asset ID `{id}`",
+            command.name
+        ));
+    }
+    None
 }
 
 fn check_command(dir: &Path) -> CliResult {

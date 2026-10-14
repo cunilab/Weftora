@@ -1,0 +1,12 @@
+title: Start
+---
+<<declare $alpha = "a">>
+<<declare $zeta = "z">>
+<<declare $world__day = 1>>
+<<declare $session__flag = false>>
+<<declare $ui__language = "en">>
+<<set $world__day += 1>>
+<<set $session__flag = true>>
+<<set $ui__language = "fr">>
+Day {$world__day}, language {$ui__language}, defaults {$alpha}{$zeta}.
+===

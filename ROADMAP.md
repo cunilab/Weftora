@@ -37,17 +37,17 @@ Goal: prove the stack end to end with the thinnest possible slice. The phase end
 
 Goal: replace spike code with the real, tested core.
 
-**Status:** all Phase 1 checks passed on Windows x64; implementation is proposed in [PR #7](https://github.com/cunilab/Weftora/pull/7). Evidence: [Phase 1 evidence](./docs/evidence/phase-1.md).
+**Status:** implementation in [PR #7](https://github.com/cunilab/Weftora/pull/7) revised after independent review; headless checks pass locally, Windows verification of the fixes is pending. Evidence: [Phase 1 evidence](./docs/evidence/phase-1.md).
 
-- [x] Lifecycle (boot → load → ready → play → shutdown) with ordered init and reverse teardown.
-- [x] Canonical typed state: scalar values, defaults, scopes, change notifications.
-- [x] Command registry: typed arguments, results, errors, async and cancellation.
-- [x] Signal bus: deterministic order, unsubscribe, recursion limit.
-- [x] Content catalogs with stable IDs; duplicate and missing ID diagnostics.
-- [x] Manifest v1, Engine API range and capability check ([ADR 0002](./docs/adr/0002-versioning-compatibility.md)).
-- [x] Directory loader hardening: absolute, UNC and drive paths, `..` traversal, Windows reserved names, case-insensitive collisions, junction and symlink escape, file count and size limits.
-- [x] `weftora check` and headless `weftora run` share the loader.
-- [x] Golden tests: same inputs produce byte-identical state and event traces.
+- [ ] Lifecycle (boot → load → ready → play → shutdown) with ordered init and reverse teardown.
+- [ ] Canonical typed state: scalar values, defaults, scopes, change notifications.
+- [ ] Command registry: typed arguments, results, errors, async and cancellation.
+- [ ] Signal bus: deterministic order, unsubscribe, recursion limit.
+- [ ] Content catalogs with stable IDs; duplicate and missing ID diagnostics.
+- [ ] Manifest v1, Engine API range and capability check ([ADR 0002](./docs/adr/0002-versioning-compatibility.md)).
+- [ ] Directory loader hardening: absolute, UNC and drive paths, `..` traversal, Windows reserved names, case-insensitive collisions, junction and symlink escape, file count and size limits.
+- [ ] `weftora check` and headless `weftora run` share the loader.
+- [ ] Golden tests: same inputs produce byte-identical state and event traces.
 
 ## Phase 2 — Dialogue and presentation
 

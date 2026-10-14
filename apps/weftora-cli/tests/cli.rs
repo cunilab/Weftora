@@ -123,7 +123,7 @@ fn hidden_dialogue_is_rejected_by_check_and_export() {
 fn export_skips_unreferenced_hidden_content_and_keeps_references() {
     let tmp = tempfile::tempdir().unwrap();
     let story = tmp.path().join("story");
-    minimal_story(&story, "dialogue//intro.yarn");
+    minimal_story(&story, "dialogue/intro.yarn");
     fs::write(story.join(".notes"), "private notes").unwrap();
     fs::create_dir(story.join(".cache")).unwrap();
     fs::write(story.join(".cache/file"), "cached content").unwrap();
@@ -460,5 +460,41 @@ fn headless_choices_are_required_valid_and_exhausted() {
             .output()
             .unwrap();
         assert_eq!(out.status.code(), Some(1), "{choices}: {}", stderr(&out));
+    }
+}
+
+#[test]
+fn real_startup_failure_emits_no_gameplay_trace() {
+    let dir = tempfile::tempdir().unwrap();
+    minimal_story(dir.path(), "main.yarn");
+    fs::write(
+        dir.path().join("main.yarn"),
+        "title: Other\n---\nHello.\n===\n",
+    )
+    .unwrap();
+    let output = weftora()
+        .arg("run")
+        .arg(dir.path())
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(1));
+    assert!(output.stdout.is_empty());
+    assert!(stderr(&output).contains("entrypoint `Start`"));
+}
+
+#[test]
+fn scoped_replay_defaults_notifications_and_signals_match_ten_fresh_runs() {
+    let story = Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/scoped-story");
+    let expected = include_bytes!("fixtures/scoped-replay.jsonl");
+    for _ in 0..10 {
+        let output = weftora()
+            .arg("run")
+            .arg(&story)
+            .arg("--headless")
+            .output()
+            .unwrap();
+        assert!(output.status.success(), "{}", stderr(&output));
+        assert_eq!(output.stdout, expected);
     }
 }

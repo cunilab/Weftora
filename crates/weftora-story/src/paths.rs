@@ -12,8 +12,14 @@ pub fn validate_relative(relative: &str) -> Result<(), String> {
     if relative.is_empty() || relative.starts_with('/') || relative.contains(['\\', ':']) {
         return Err("path must be relative with `/` separators; absolute, UNC, drive and stream paths are forbidden".into());
     }
-    for segment in relative.split('/').filter(|s| !s.is_empty()) {
-        if matches!(segment, "." | "..")
+    if relative
+        .split('/')
+        .any(|segment| matches!(segment, "." | ".."))
+    {
+        return Err("path must not contain `.` or `..` segments".into());
+    }
+    for segment in relative.split('/') {
+        if segment.is_empty()
             || segment.ends_with(['.', ' '])
             || segment.contains(['<', '>', '"', '|', '?', '*'])
             || segment.chars().any(|c| c.is_control())
@@ -203,6 +209,15 @@ mod tests {
                 .contains("total size")
         );
         assert!(inventory_with_limits(dir.path(), 2, 4, 6).is_ok());
+        for name in ["c", "d", "e"] {
+            std::fs::create_dir(dir.path().join(name)).unwrap();
+        }
+        assert!(
+            inventory_with_limits(dir.path(), 2, 4, 6)
+                .unwrap_err()
+                .message
+                .contains("entry count")
+        );
     }
     #[test]
     fn case_collision_policy_covers_ascii_and_unicode_on_every_host() {

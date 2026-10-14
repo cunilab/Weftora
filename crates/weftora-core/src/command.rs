@@ -92,7 +92,8 @@ impl CommandRegistry {
         Ok(())
     }
 
-    pub fn start(&self, id: &str, arguments: Vec<Value>) -> Result<CommandTask, CommandError> {
+    /// Checks a call without creating a future or running its handler.
+    pub fn validate(&self, id: &str, arguments: &[Value]) -> Result<(), CommandError> {
         let command = self
             .commands
             .get(id)
@@ -114,6 +115,12 @@ impl CommandRegistry {
                 });
             }
         }
+        Ok(())
+    }
+
+    pub fn start(&self, id: &str, arguments: Vec<Value>) -> Result<CommandTask, CommandError> {
+        self.validate(id, &arguments)?;
+        let command = &self.commands[id];
         Ok(CommandTask {
             command: id.into(),
             expected: command.result,

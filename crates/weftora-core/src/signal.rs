@@ -34,6 +34,7 @@ pub struct SignalBus {
 }
 
 impl SignalBus {
+    /// Handlers use the supplied State; they must not reacquire its SharedState lock during dispatch.
     pub fn subscribe(
         &mut self,
         id: &str,

@@ -6,4 +6,4 @@
 {"event":"choose","index":1}
 {"character":"Guide","event":"line","text":"Fair enough. The state key \"curious\" stays false."}
 {"character":"Guide","event":"line","text":"That is the whole walking skeleton. Edit dialogue/intro.yarn and run it again."}
-{"changes":[],"event":"end","lifecycle":["boot","load","ready","play","shutdown"],"state":{"curious":false}}
+{"changes":[],"event":"end","lifecycle":["boot","load","init:story","ready","play","shutdown:story","shutdown"],"signals":[],"state":{"curious":false}}

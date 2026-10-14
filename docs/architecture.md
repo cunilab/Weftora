@@ -119,14 +119,14 @@ Manifest v1 (Phase 1):
 
 Version fields and comparator syntax are defined in [ADR 0002](./adr/0002-versioning-compatibility.md). The current Engine API is `0.1.0`; the supported capability is `dialogue.yarn/1`. Legacy schema 0 remains loadable with its original fields; new fields require schema 1. Save and compiled-dialogue fields arrive in Phases 3 and 2 respectively.
 
-Phase 1 data catalogs are JSONC arrays of records with a non-empty string `id`. IDs are unique across all files in the category. Duplicate JSON object keys are errors, including duplicate asset IDs. Catalog diagnostics name the file and JSON pointer (for example `/2/id`); parse errors include a line. Missing lookups use the caller's file and location. Other catalog categories arrive with the features that use them.
+Phase 1 data catalogs are JSONC arrays of records with a non-empty string `id`. IDs are unique across all files in the category. Duplicate JSON object keys are errors, including duplicate asset IDs. Catalog diagnostics name the file and JSON pointer (for example `/2/id`); parse errors include a line. Duplicate IDs name both declaration locations. Missing lookups use the caller's file and location; Phase 1 exposes this as a lookup API, without inventing a general content-reference schema. Other catalog categories arrive with the features that use them.
 
 **Loader rules**
 
 - IDs are namespaced and unique; duplicates, missing references, unknown commands/widgets and invalid Yarn nodes are rejected with file and location.
 - Unsupported manifest schema, Engine API range or capability is rejected **before** any Story state becomes active. Activation is all-or-nothing.
 - Paths are relative to the Story root. The loader rejects absolute, UNC, drive-relative and `\\?\` paths; `..` traversal; Windows reserved device names with or without an extension (`CON`, `NUL.txt`, `COM1`, …); names ending in a dot or space; `:` (alternate data streams); names that collide case-insensitively; symlinks and junctions that resolve outside the root; and packages over the limits: 4,096 files, 8,192 entries including directories, 16 MiB per file, 256 MiB total. Inventory validates every package entry before reading the manifest; text reads enforce the per-file limit again. Case-collision checks use Unicode uppercase spelling conservatively. Asset IDs are not a security boundary — the path policy is.
-- Symlinks and junctions inside a Story are rejected even when their targets remain inside the root. A user-selected root may itself be a symlink. References must match canonical on-disk spelling. Unreferenced dotfiles are counted by inventory but omitted from export.
+- Symlinks and junctions inside a Story are rejected even when their targets remain inside the root. A user-selected root may itself be a symlink. References must match canonical on-disk spelling, including case and separators; repeated `/` separators are rejected. Unreferenced dotfiles are counted by inventory but omitted from export. This deliberately includes editor lock files and nested `.git` contents: their links or size can reject a package, so keep working-copy metadata outside the Story root. All Windows reparse points are rejected; cloud placeholders and deduplicated files are not supported by this directory loader.
 - One active Story at a time. Story dependencies or overlays need their own design.
 
 ## 5. Runtime model
@@ -135,6 +135,8 @@ Phase 1 data catalogs are JSONC arrays of records with a non-empty string `id`. 
 
 `weftora-core::lifecycle` starts services in registration order during `boot → load`, then enters `ready`. Only `ready` may enter `play`. Shutdown releases services in reverse order. Failed initialization first tears down the failing service's partial resources, then earlier services; later services never start. Cleanup continues after a teardown error and returns the collected errors. Failure ends in `shutdown`, never a half-ready runtime; restart requires a new lifecycle. Explicit shutdown is idempotent, and dropping a live lifecycle also tears down services. Services own their resources and must make their cleanup safe after a failed init.
 
+The headless CLI registers one `story` service. It owns validated Story/dialogue content, canonical state, the shared built-in command registry, signal observers and the dialogue runner, in that initialization order; teardown releases them in reverse. A failed start clears all of them before returning an error. The core still supports multiple services with ordered rollback; the Bevy player retains its Phase 0 startup until presentation integration in Phase 2.
+
 ### State
 
 One canonical game state. Keys are namespaced strings (`world.day`, `character.alice.affection`); the Engine never interprets them.
@@ -142,8 +144,8 @@ One canonical game state. Keys are namespaced strings (`world.day`, `character.a
 - Phase 1 value types: `bool`, `int` (i64), `float` (finite f64), `string`.
 - Phase 4 adds `list` and `map` (string keys) of those values, required by Story B ([ADR 0003](./adr/0003-story-rules-language.md)).
 - Every key has a scope: `persistent` (saved), `session` (not saved) or `settings` (saved separately from progress).
-- `state` declares typed defaults and scopes; `initialState` applies overrides after defaults. Legacy initial keys and missing Yarn defaults infer a persistent declaration on their first write. Once declared, a key's type cannot change, including after removal. `reset` restores the default; `remove` reports a missing key explicitly.
-- Mutations enqueue notifications in write order with key, scope, old value and new value; no-op and rejected writes emit nothing. Consumers drain the queue at their update boundary. State construction does not emit notifications. Scope snapshots and iteration have stable key order; no save container is introduced yet.
+- `state` declares typed defaults and scopes; `initialState` applies overrides after defaults. Legacy initial keys and missing Yarn defaults infer a persistent declaration on their first write. Once declared, a key's type cannot change, including after removal. `reset` restores the default; `remove` returns `Result<Value, StateError>` and reports a missing key explicitly. JSON `2` and `2.0` infer distinct int and float declarations; `set` must preserve that type, while numeric `add` permits an int amount on a float key.
+- Mutations enqueue notifications in write order with key, scope, old value and new value; no-op and rejected writes emit nothing. Consumers drain the queue at their update boundary. State construction does not emit notifications. The headless runtime also clears Yarn default-fill notifications before entering play; it then drains changes at each dialogue event and emits `state.changed` signals with the changed key as their string payload. Scope snapshots and iteration have stable key order; no save container is introduced yet. Whole-State equality includes declarations and pending notifications; compare scope snapshots when only values matter.
 - Serialisation is deterministic (stable key order) so golden tests and saves are reproducible.
 
 ### Commands and actions
@@ -161,7 +163,7 @@ Stories define their own commands as either an ordered list of actions (declarat
 
 ### Signals and flow
 
-Signals deliver to subscribers in registration order. Handlers return nested signals, which are appended to a FIFO queue after the current signal; there is no re-entrant delivery. Subscription tokens allow unsubscribe between dispatches. The caller supplies a per-dispatch budget: the initial emission, every handler delivery and every nested emission consume one unit. Exhaustion reports an explicit error and discards pending emissions. Handler errors also discard pending emissions; earlier state writes remain. The renderer may allocate a per-frame budget across dispatches later.
+Signals deliver to subscribers in registration order. Handlers return nested signals, which are appended to a FIFO queue after the current signal; there is no re-entrant delivery. Subscription tokens allow unsubscribe between dispatches. The caller supplies a per-dispatch budget: the initial emission, every handler delivery and every nested emission consume one unit. Exhaustion reports an explicit error and discards pending emissions. Handler errors also discard pending emissions; earlier state writes remain. The shared-state runtime holds one write guard during dispatch. Handlers use the supplied mutable State and must not reacquire that same SharedState lock. Headless trace observers consume real state-change signals; Story-defined handlers remain Phase 4 work. The renderer may allocate a per-frame budget across dispatches later.
 
 Events are `trigger → conditions → actions` with an explicit priority and tie-break (declaration order). The scheduler, not Bevy, decides evaluation order, so headless tests and the real player behave identically.
 

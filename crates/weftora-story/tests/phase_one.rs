@@ -201,3 +201,118 @@ fn windows_symlink_escape_is_rejected_before_activation() {
             .contains("symlink")
     );
 }
+
+#[test]
+fn unsupported_schema_wins_over_future_fields_and_missing_legacy_fields() {
+    for text in [
+        r#"{"manifestSchema":2,"saveSchema":1}"#,
+        r#"{"manifestSchema":99,"newDialogueFormat":{}}"#,
+    ] {
+        let dir = fixture();
+        fs::write(dir.path().join(MANIFEST_FILE), text).unwrap();
+        let errors = Story::load(dir.path()).unwrap_err();
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].message.contains("unsupported manifestSchema"));
+        assert!(
+            !errors[0].message.contains("unknown field")
+                && !errors[0].message.contains("missing field")
+        );
+    }
+}
+
+#[test]
+fn declaration_errors_do_not_hide_override_type_mismatches() {
+    let dir = fixture();
+    change(
+        &dir,
+        "\"state\":{",
+        "\"initialState\":{\"world.day\":true},\"state\":{\"Bad\":{\"default\":1},",
+    );
+    let errors = Story::load(dir.path()).unwrap_err();
+    assert!(errors.iter().any(|d| d.message.contains("Bad")));
+    assert!(
+        errors
+            .iter()
+            .any(|d| d.message.contains("world.day") && d.message.contains("expected int"))
+    );
+}
+
+#[test]
+fn duplicate_sources_and_noncanonical_separators_are_rejected() {
+    let dir = fixture();
+    change(
+        &dir,
+        "\"dialogue\":[\"main.yarn\"]",
+        "\"dialogue\":[\"main.yarn\",\"main//yarn\"]",
+    );
+    assert!(
+        Story::load(dir.path())
+            .unwrap_err()
+            .iter()
+            .any(|d| d.message.contains("invalid Windows path segment"))
+    );
+    let dir = fixture();
+    fs::write(dir.path().join("items.jsonc"), "[]").unwrap();
+    change(
+        &dir,
+        "\"entrypoint\":",
+        "\"catalogs\":{\"data\":[\"items.jsonc\",\"items.jsonc\"]},\"entrypoint\":",
+    );
+    assert!(
+        Story::load(dir.path())
+            .unwrap_err()
+            .iter()
+            .any(|d| d.message.contains("duplicate catalog source"))
+    );
+    let dir = fixture();
+    fs::write(dir.path().join("first.jsonc"), "[{\"id\":\"item.apple\"}]").unwrap();
+    fs::write(dir.path().join("second.jsonc"), "[{\"id\":\"item.apple\"}]").unwrap();
+    change(
+        &dir,
+        "\"entrypoint\":",
+        "\"catalogs\":{\"data\":[\"first.jsonc\",\"second.jsonc\"]},\"entrypoint\":",
+    );
+    let errors = Story::load(dir.path()).unwrap_err();
+    assert_eq!(errors[0].file, "second.jsonc");
+    assert!(errors[0].message.contains("first.jsonc:/0/id"));
+}
+
+#[test]
+fn whole_loader_enforces_the_real_file_count_boundary() {
+    let dir = fixture();
+    for index in 2..weftora_story::paths::MAX_FILES {
+        fs::write(dir.path().join(format!("f{index:04}")), "").unwrap();
+    }
+    assert!(Story::load(dir.path()).is_ok());
+    fs::write(dir.path().join("one-too-many"), "").unwrap();
+    assert!(
+        Story::load(dir.path()).unwrap_err()[0]
+            .message
+            .contains("file count exceeds 4096")
+    );
+}
+
+#[test]
+fn whole_loader_enforces_the_real_total_size_boundary() {
+    let dir = fixture();
+    let initial = fs::metadata(dir.path().join(MANIFEST_FILE)).unwrap().len()
+        + fs::metadata(dir.path().join("main.yarn")).unwrap().len();
+    let mut remaining = weftora_story::paths::MAX_TOTAL_BYTES - initial;
+    let mut index = 0;
+    while remaining > 0 {
+        let length = remaining.min(weftora_story::paths::MAX_FILE_BYTES);
+        fs::File::create(dir.path().join(format!("f{index:02}")))
+            .unwrap()
+            .set_len(length)
+            .unwrap();
+        remaining -= length;
+        index += 1;
+    }
+    assert!(Story::load(dir.path()).is_ok());
+    fs::write(dir.path().join("one-too-many"), "x").unwrap();
+    assert!(
+        Story::load(dir.path()).unwrap_err()[0]
+            .message
+            .contains("total size")
+    );
+}
