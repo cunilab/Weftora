@@ -1,0 +1,329 @@
+Windows (required)	Run cargo test --workspace --locked	﻿2026-10-14T12:34:16.7463161Z ##[group]Run cargo test --workspace --locked
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:16.7463617Z ^[[36;1mcargo test --workspace --locked^[[0m
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:16.7518563Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:16.7519073Z env:
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:16.7519398Z   CARGO_TERM_COLOR: always
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:16.7520061Z   CACHE_ON_FAILURE: false
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:16.7520407Z   CARGO_INCREMENTAL: 0
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:16.7520702Z ##[endgroup]
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:17.5636566Z ^[[1m^[[92m   Compiling^[[0m weftora-api v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-api)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:17.5639795Z ^[[1m^[[92m   Compiling^[[0m serde_json v1.0.154
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:17.5689303Z ^[[1m^[[92m   Compiling^[[0m prost v0.14.4
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:17.7577579Z ^[[1m^[[92m   Compiling^[[0m weftora-core v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-core)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:18.0551991Z ^[[1m^[[92m   Compiling^[[0m yarnspinner_core v0.9.0
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:18.7466243Z ^[[1m^[[92m   Compiling^[[0m weftora-story v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-story)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:19.6069408Z ^[[1m^[[92m   Compiling^[[0m yarnspinner_runtime v0.9.0 (D:\a\Weftora\Weftora\vendor\yarnspinner_runtime)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:22.3287013Z ^[[1m^[[92m   Compiling^[[0m weftora-yarn v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-yarn)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:22.8847875Z ^[[1m^[[92m   Compiling^[[0m yarnspinner_compiler v0.9.0
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:25.8111663Z ^[[1m^[[92m   Compiling^[[0m weftora-render-bevy v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-render-bevy)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:27.1292896Z ^[[1m^[[92m   Compiling^[[0m weftora-yarn-compiler v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-yarn-compiler)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:30.6995283Z ^[[1m^[[92m   Compiling^[[0m xtask v0.0.1 (D:\a\Weftora\Weftora\xtask)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:34:40.8326899Z ^[[1m^[[92m   Compiling^[[0m weftora-player v0.0.1 (D:\a\Weftora\Weftora\apps\weftora-player)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:10.6596677Z ^[[1m^[[92m   Compiling^[[0m weftora-cli v0.0.1 (D:\a\Weftora\Weftora\apps\weftora-cli)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8097445Z ^[[1m^[[92m    Finished^[[0m `test` profile [unoptimized + debuginfo] target(s) in 56.80s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8462189Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_api-7aabbe3a1ab65d00.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8551879Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8552267Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8552461Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8552757Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8553058Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8565788Z ^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\weftora-03ea76ee4f0966fd.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8647860Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8648103Z running 4 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8758059Z test check_tests::check_reports_initial_state_integer_precision ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8758548Z test check_tests::check_reports_initial_state_type_mismatch ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8759028Z test headless::tests::actual_story_service_rolls_back_partial_startup_and_releases_state ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8801503Z test tests::incomplete_export_fails_reference_verification ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8801840Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8802515Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8803071Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8822788Z ^[[1m^[[92m     Running^[[0m tests\cli.rs (target\debug\deps\cli-81776d75f39608d5.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8900674Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.8901239Z running 20 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9018771Z test check_fails_on_missing_story ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9083486Z test check_fails_on_broken_story ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9125721Z test check_and_headless_run_reject_the_same_invalid_package ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9193698Z test check_and_run_reject_invalid_yarn_defaults_before_startup ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9197566Z test check_rejects_case_mismatched_dialogue_on_case_insensitive_filesystems ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9225826Z test check_ok_on_hello_story ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9593205Z test export_rejects_overlapping_directories_without_writes ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9690547Z test export_skips_unreferenced_hidden_content_and_keeps_references ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9886148Z test export_copies_player_and_story ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9892474Z test hidden_dialogue_is_rejected_by_check_and_export ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:13.9970973Z test missing_manifest_diagnostic_names_story_root ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.0030847Z test real_startup_failure_emits_no_gameplay_trace ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.0059627Z test headless_choices_are_required_valid_and_exhausted ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.0161773Z test run_without_player_reports_clear_error ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.0342134Z test startup_preserves_multiline_diagnostics_byte_for_byte ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.0750944Z test typed_command_mismatch_preserves_yarn_context_and_never_activates ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.0917649Z test version_prints_hash ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.0918338Z test screen_state_validation_uses_yarn_defaults_and_blocks_activation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.1227252Z test scoped_replay_defaults_notifications_and_signals_match_ten_fresh_runs ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.2911131Z test headless_golden_traces_match_in_ten_fresh_runs_per_branch ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.2912083Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.2912558Z test result: ok. 20 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.40s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.2913156Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.2928599Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_core-33691a33ec59ad09.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3004713Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3005051Z running 5 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3011077Z test state::tests::key_validation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3012082Z test state::tests::double_underscore_is_reserved ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3012601Z test state::tests::set_get_remove_exists ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3013082Z test state::tests::add_numbers ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3013540Z test state::tests::with_values_validates ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3013794Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3014045Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3014360Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3027143Z ^[[1m^[[92m     Running^[[0m tests\kernel.rs (target\debug\deps\kernel-cf6c0d339c2d751c.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3100389Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3100624Z running 7 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3105682Z test lifecycle_order_failure_cleanup_and_no_restart ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3107378Z test catalogs_report_duplicate_and_missing_ids_without_overwrite ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3108342Z test commands_validate_arguments_results_failure_and_cancellation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3109302Z test async_command_completes_after_yielding_and_cancellation_does_not_poll ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3110434Z test signals_are_fifo_unsubscribable_and_bounded ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3112584Z test state_types_defaults_scopes_and_notifications ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3197737Z test state_numeric_properties_and_atomic_rejections ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3198115Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3198499Z test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3198977Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3211736Z ^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\weftora_player-04f92805e3fc7f49.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3343746Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3344045Z running 3 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3439816Z test tests::player_rejects_unknown_format_stale_sources_and_missing_node_before_window ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3440519Z test tests::packaged_and_explicit_preview_artifacts_load_without_a_compiler ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3533184Z test tests::oversized_artifact_file_is_rejected_by_the_player ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3533661Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3534022Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3534481Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3557946Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_render_bevy-dcc3962d1e2b1619.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3693949Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3694361Z running 26 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3704458Z test declarative::tests::engine_default_font_passes_validation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3708173Z test declarative::tests::invalid_font_fails_before_bevy_registration ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.3711293Z test declarative::tests::modal_rejects_global_and_lower_layer_input ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4074239Z test declarative::tests::binding_patch_keeps_focused_entity_and_change_notifications ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4075088Z test declarative::tests::closing_overlay_restores_saved_focus_key ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4077493Z test declarative::tests::queue_is_bounded_and_preserves_order ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4244468Z test declarative::tests::new_choices_reset_keyboard_focus_to_first_choice ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4303362Z test declarative::tests::space_after_choices_appear_does_not_select_without_keyboard_navigation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4305891Z test presenter::tests::advance_moves_to_next_line_then_end ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4309139Z test presenter::tests::bad_commands_become_error_screens ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4313469Z test presenter::tests::choices_hide_unavailable_and_select_maps_to_runner_index ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4314736Z test declarative::tests::tab_from_empty_focus_enters_overlay_and_stays_there ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4317061Z test presenter::tests::choose_failure_and_renderer_failure_show_errors ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4317769Z test presenter::tests::commands_run_before_first_line_and_line_waits ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4320208Z test presenter::tests::identical_consecutive_choice_offers_have_distinct_revisions ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4321253Z test presenter::tests::no_available_choices_is_an_error ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4323235Z test presenter::tests::runner_errors_become_error_screens ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4386407Z test tests::duplicate_progress_intents_advance_only_one_line ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4387222Z test tests::focused_enter_and_button_action_do_not_advance_dialogue ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4390805Z test tests::invalid_images_return_asset_specific_error ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4395231Z test tests::oversized_image_is_rejected_from_header_before_decode ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4398764Z test tests::invalid_audio_returns_asset_specific_error ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4402110Z test tests::valid_wav_passes_audio_validation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4409284Z test declarative::tests::widget_systems_build_demo_and_patch_text_without_rebuilding ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4440011Z test tests::valid_png_decodes ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4466374Z test declarative::tests::choice_updates_canonical_state_bound_label_and_later_yarn_condition ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4466773Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4466964Z test result: ok. 26 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.08s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4467221Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4511771Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_story-a24fba0a00217235.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4595650Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4595988Z running 17 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4602077Z test jsonc::tests::plain_json_is_unchanged ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4604775Z test jsonc::tests::errors_keep_original_line_numbers ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4605688Z test compatibility::tests::adr_phase_one_version_matrix ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4606854Z test jsonc::tests::keeps_comment_markers_and_commas_inside_strings ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4607499Z test jsonc::tests::strips_line_and_block_comments ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4608491Z test jsonc::tests::unterminated_block_comment_is_an_error ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4609607Z test jsonc::tests::strips_trailing_commas ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4610166Z test paths::tests::case_collision_policy_covers_ascii_and_unicode_on_every_host ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4612295Z test paths::tests::windows_names_are_rejected_on_every_host ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4669606Z test tests::json_error_has_line ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4670525Z test paths::tests::inventory_limits_fail_before_loading ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4674232Z test tests::collects_all_diagnostics ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4692955Z test tests::loads_good_story ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4743960Z test tests::rejects_bad_paths ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4747338Z test tests::rejects_dot_segments_with_traversal_diagnostic ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4766541Z test tests::rejects_case_mismatched_references_on_case_insensitive_filesystems ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4883679Z test tests::rejects_hidden_references ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4884002Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4884323Z test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4884792Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4900364Z ^[[1m^[[92m     Running^[[0m tests\assets.rs (target\debug\deps\assets-d39eaa9e90f80dc7.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4976373Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.4976585Z running 6 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5107905Z test legacy_schema_zero_still_works_and_typed_catalogs_need_schema_one ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5211655Z test typed_assets_require_the_capability_and_unknown_categories_are_rejected ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5252015Z test duplicates_across_kinds_and_legacy_report_both_sources ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5256347Z test typed_assets_resolve_and_legacy_stays_untyped ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5322529Z test media_read_is_bounded_even_after_inventory ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5643058Z test typed_paths_and_entry_schema_reject_bad_rows_without_partial_load ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5643516Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5643817Z test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.07s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5644230Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5662646Z ^[[1m^[[92m     Running^[[0m tests\phase_one.rs (target\debug\deps\phase_one-2fa7dcf7b5d26484.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5744140Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5744360Z running 10 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5801723Z test declaration_errors_do_not_hide_override_type_mismatches ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5848862Z test unsupported_schema_wins_over_future_fields_and_missing_legacy_fields ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5942527Z test oversized_file_is_rejected_without_reading_it ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.5993649Z test catalog_duplicate_missing_ids_and_duplicate_json_keys_report_source ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.6005972Z test duplicate_sources_and_noncanonical_separators_are_rejected ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.6110732Z test v1_defaults_scopes_and_rejected_compatibility ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.6148084Z test windows_symlink_escape_is_rejected_before_activation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.6167587Z test whole_loader_enforces_the_real_total_size_boundary ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:14.6257430Z test windows_junction_escape_and_case_alias_are_rejected_before_activation ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7085573Z test whole_loader_enforces_the_real_file_count_boundary ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7085866Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7086057Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.13s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7086368Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7105866Z ^[[1m^[[92m     Running^[[0m tests\ui.rs (target\debug\deps\ui-fa2885d2c71c3350.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7189478Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7189746Z running 8 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7200431Z test finite_lengths_include_direct_api_values ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.7911535Z test action_type_and_missing_key_report_author_pointer ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8041506Z test stories_without_screens_keep_legacy_compatibility ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8192661Z test typed_image_required_even_if_legacy_id_exists ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8234601Z test capability_initial_screen_and_path_are_checked ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8369393Z test bounds_and_root_contracts_are_enforced ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8375028Z test valid_screen_loads_and_state_validation_is_separate ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8460140Z test malformed_widgets_and_cross_references_are_rejected ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8460530Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8461078Z test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.13s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8461483Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8479690Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_yarn-0073bcb5ea8bfd2e.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8560497Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8560723Z running 10 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8567931Z test artifact::tests::future_format_takes_priority_over_missing_current_fields ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8575842Z test artifact::tests::supported_artifact_round_trips_without_byte_changes ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8576536Z test artifact::tests::raw_body_checksum_is_independent_of_wrapper_key_order ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8579193Z test storage::tests::integer_conversion_checks_extremes_and_exact_boundaries ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8583684Z test artifact::tests::unknown_wrapper_fields_compiler_and_body_corruption_are_rejected ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8584397Z test storage::tests::invalid_defaults_do_not_skip_valid_defaults ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8590479Z test tests::zero_budget_executes_no_instruction ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8599997Z test tests::configurable_budget_resets_between_continue_calls ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8604018Z test artifact::tests::malformed_bytecode_is_rejected_even_with_a_recomputed_checksum ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8606860Z test artifact::tests::file_limit_and_source_identity_are_enforced ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8607187Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8607377Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8607656Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8623908Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_yarn_compiler-660380a14b950d90.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8710144Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8710406Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8710686Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8711010Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8711301Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8725480Z ^[[1m^[[92m     Running^[[0m tests\artifact.rs (target\debug\deps\artifact-706a763b8c240eb8.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8806670Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8806941Z running 2 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.8814589Z test compiler_identity_matches_the_locked_dependency ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9044121Z test fresh_compilations_and_loaded_artifacts_produce_identical_bytes_and_events ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9044632Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9045029Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9045326Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9066316Z ^[[1m^[[92m     Running^[[0m tests\hello_story.rs (target\debug\deps\hello_story-8076fb927c4db9c6.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9152388Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9152583Z running 25 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9221721Z test canonical_state_rejects_runtime_type_change_without_breaking_dialogue ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9234985Z test compiler_panic_becomes_diagnostic ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9293327Z test command_jump_loop_fails_after_one_thousand_commands ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9325890Z test compiles_hello_story ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9351010Z test declared_default_does_not_overwrite_existing_state ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9353914Z test initial_state_types_are_checked_before_start ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9369395Z test integer_precision_boundaries_never_panic ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9424505Z test invalid_choice_is_rejected ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9437702Z test invalid_default_is_rejected_before_any_canonical_defaults_are_written ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9451061Z test large_initial_int_is_rejected_before_start ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9470253Z test namespaced_and_typed_variables ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9528951Z test no_branch_leaves_curious_false ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9541855Z test non_integral_number_to_int_key_errors ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9574383Z test removed_declaration_mismatch_rejects_all_defaults_before_initialization ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9586506Z test removed_integer_declaration_keeps_its_type_during_yarn_default_fill ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9603339Z test runtime_panic_is_caught_and_runner_cannot_be_restarted ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:16.9663068Z test rust_written_state_is_seen_by_yarn ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:17.1001642Z test self_jump_exhausts_budget_and_fails_runner ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:17.1065928Z test start_missing_node ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:17.1079856Z test state_precision_check_only_checks_declared_numbers ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:17.1090546Z test syntax_error_has_file_and_line ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:17.1149372Z test yes_branch_sets_curious_true ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:17.2480892Z test instruction_budget_is_cumulative_across_commands ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:17.5293598Z test a_blocking_event_is_allowed_after_exactly_one_thousand_commands ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5195590Z test blocking_lines_and_choices_reset_progress_budgets ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5195886Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5196089Z test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.60s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5196402Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5223857Z ^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\xtask-aaeea7fbab05e305.exe)
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5304665Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5304918Z running 31 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5316816Z test deps::tests::clean_graph ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5317360Z test deps::tests::compiler_is_forbidden_in_player_even_transitively ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5317881Z test deps::tests::example_dependency ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5318525Z test deps::tests::dev_dependencies_ignored_but_mixed_edges_checked ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5319359Z test deps::tests::optional_dependencies_are_resolved ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5320868Z test deps::tests::transitive_bevy ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5322512Z test docs::tests::broken_anchor ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5323429Z test docs::tests::bad_header ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5325029Z test docs::tests::broken_link ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5326112Z test docs::tests::all_reference_forms_resolve_case_insensitively ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5327508Z test docs::tests::deeply_indented_list_fences_ignored ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5328194Z test docs::tests::duplicate_id ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5328681Z test docs::tests::fences_ignored ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5329404Z test docs::tests::footnotes_are_not_links_or_definitions ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5331898Z test docs::tests::front_matter_is_not_a_heading ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5332706Z test docs::tests::heading_link_labels_define_slugs ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5333413Z test docs::tests::images_inside_links_are_checked_once ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5334033Z test docs::tests::inline_code_links_ignored ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5336275Z test docs::tests::labels_cannot_span_blank_lines ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5337845Z test docs::tests::literal_brackets_do_not_hide_inner_links ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5338404Z test docs::tests::links_inside_link_text_are_checked_once ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5341142Z test docs::tests::multiline_inline_links_keep_line_numbers ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5342520Z test docs::tests::link_paths_require_exact_case_for_every_component ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5343226Z test docs::tests::reference_targets_are_checked ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5344106Z test docs::tests::query_strings_and_repo_root_links_resolve ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5346652Z test docs::tests::title_mismatch ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5348479Z test docs::tests::references_in_code_and_escaped_brackets_are_ignored ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5349236Z test docs::tests::undefined_shortcuts_are_literal_text ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5349900Z test docs::tests::unresolved_references_report_use_lines ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5350421Z test docs::tests::valid_anchors_and_external_links ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5350858Z test docs::tests::valid_header ... ok
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5351059Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5351482Z test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5352131Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5364566Z ^[[1m^[[92m   Doc-tests^[[0m weftora_api
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5824346Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5824846Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5825081Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5825347Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5825688Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.5891761Z ^[[1m^[[92m   Doc-tests^[[0m weftora_core
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.6443456Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.6444349Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.6444617Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.6444980Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.6445408Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.6519445Z ^[[1m^[[92m   Doc-tests^[[0m weftora_render_bevy
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8043515Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8044083Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8044346Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8044720Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8045174Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8127477Z ^[[1m^[[92m   Doc-tests^[[0m weftora_story
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8948209Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8948763Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8948985Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8949371Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.8949726Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.9021408Z ^[[1m^[[92m   Doc-tests^[[0m weftora_yarn
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.9800663Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.9801262Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.9801476Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.9801830Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.9802301Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:19.9878090Z ^[[1m^[[92m   Doc-tests^[[0m weftora_yarn_compiler
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:20.0391923Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:20.0392499Z running 0 tests
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:20.0392668Z 
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:20.0392938Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	Run cargo test --workspace --locked	2026-10-14T12:35:20.0393248Z 
