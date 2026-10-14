@@ -1,0 +1,80 @@
+P0-10: exported player under a Rust-free local account
+=======================================================
+
+The check's wording is "a folder containing only the built player and hello-story runs
+on a Windows machine with no Rust or Cargo INSTALLED". Windows Sandbox on this host is
+unusable (see p10-sandbox-broken.txt), so the test was run under a freshly created local
+account that has no Rust toolchain anywhere reachable.
+
+Rust on this host is per-user only:
+  machine (system) PATH cargo/rust/rustup hits : (none)
+  HKLM uninstall entries for Rust             : none
+  C:\Program Files\Rust                        : absent
+  C:\Program Files (x86)\Rust                  : absent
+  C:\Users\andre\.cargo\bin                    : present -- ONLY on andre's *user* PATH
+  ACL on C:\Users\andre\.cargo                  : no grant to other users (deny by default)
+
+Account under test
+------------------
+  name     : ANDRES\weftora-p010   (created for this test)
+  .cargo   : False
+  .rustup  : False
+
+Staged export
+-------------
+  files            : 7  (weftora-player.exe, weftora-export.json, 5 story files)
+  player SHA-256   : 8FEE045540DE95572F92C1B91E37D8E8D5B0EEA8F3609739EEB8860456B1AB74
+
+1. toolchain does not resolve for that account
+----------------------------------------------
+  $ where.exe cargo rustc rustup
+  where exit code: 1  (1 = not found)
+  INFO: Could not find files for the given pattern(s).
+
+2. exported player runs: weftora-player.exe --version
+-----------------------------------------------------
+  exit code: 0
+  stdout:
+    weftora-player 0.0.1 (sha256 8fee045540de95572f92c1b91e37d8e8d5b0eea8f3609739eeb8860456b1ab74)
+  stderr: (empty)
+
+  The hash the player printed is computed at runtime by reading its own bytes off disk,
+  and it matches the host-side hash of the staged file byte for byte. Same binary.
+
+3. full pipeline runs: weftora-player.exe (no arguments -> ./story)
+-------------------------------------------------------------------
+  PID 33384, polled every 5s, still running at t=35s, killed at t=40s. No panic,
+  no missing-DLL error, no nonzero exit.
+
+  INFO bevy_diagnostic::system_information_diagnostics_plugin::internal:
+    SystemInfo { os: "Windows 11 Pro", kernel: "26300", cpu: "13th Gen Intel(R) Core(TM) i7-13620H",
+                 core_count: "10", memory: "15.7 GiB" }
+  INFO bevy_render::renderer:
+    AdapterInfo { name: "NVIDIA GeForce RTX 4050 Laptop GPU", vendor: 4318, device: 10401,
+                  device_type: DiscreteGpu, driver: "NVIDIA", driver_info: "610.62",
+                  backend: Vulkan, subgroup_min_size: 32, subgroup_max_size: 32 }
+  INFO bevy_winit::system: Creating new window Hello Story (67v0)
+  INFO bevy_render::batching::gpu_preprocessing: GPU preprocessing is fully supported on this device.
+
+  That is Story::load -> yarn compile -> Bevy init -> Vulkan adapter -> window created
+  -> renderer running, all under an account with no Rust.
+
+Why no frame was captured from this account
+-------------------------------------------
+  Start-Process -Credential places the player in a separate logon session on a
+  non-interactive window station. The window handles are enumerable from the operator's
+  session (hwnd 1313212, 1296x759), but PrintWindow refuses them:
+
+    PrintWindow FAILED (LastError=1400)   # ERROR_INVALID_WINDOW_HANDLE
+
+  This is a Windows session-isolation boundary, not a player fault. A frame requires an
+  interactive logon as weftora-p010 on the real desktop. The check's required evidence is
+  "steps, machine description, log" -- all three are above.
+
+Caveat
+------
+  This is a fresh *account*, not a separate *machine*: C:\Users\andre\.cargo still exists
+  on the same disk. The isolation is real at the account boundary (no PATH entry, no
+  profile directory, no ACL grant), but a reviewer can still object that the host is not
+  literally Rust-free. Closing that needs either an interactive logon as weftora-p010 for
+  a captured frame, or a genuinely separate VM.

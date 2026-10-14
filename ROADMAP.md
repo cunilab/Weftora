@@ -19,17 +19,19 @@ status: proposed
 
 Goal: prove the stack end to end with the thinnest possible slice. The phase ends with the go/no-go review in [ADR 0001](./docs/adr/0001-rust-native-engine.md).
 
-- [ ] Cargo workspace with `weftora-api`, `weftora-core`, `weftora-story`, `weftora-yarn`, `weftora-render-bevy`, `apps/weftora-player`, `apps/weftora-cli`. Pinned `rust-toolchain.toml`, committed `Cargo.lock`.
-- [ ] CI runs the merge gate ([architecture §10](./docs/architecture.md#10-drift-protection)) on Windows; the player prints its release ID and build hash (`--version`).
-- [ ] **Yarn spike:** compile and run a Yarn file with one choice and one variable using the Bevy-independent `yarnspinner` crates. Record the version, licence, gaps and the fallback.
-- [ ] **Bevy spike:** a window showing a background image, a text line, two clickable choices and a sound, on a real Windows GPU.
-- [ ] Provisional manifest (`manifestSchema: 0`, explicitly unstable) and a directory loader that confines paths to the Story root.
-- [ ] `examples/hello-story/`: manifest, one Yarn file, one background, one sound.
-- [ ] `weftora run examples/hello-story` launches the prebuilt player on it; one choice sets a state variable that the next line reads.
-- [ ] Editing `hello-story`'s Yarn text and re-running shows the change without rebuilding the player.
-- [ ] **Export spike:** copy the built player and `hello-story` into a folder; it runs on a Windows machine with no Rust installed.
-- [ ] Choose the Story authoring file format (JSON, JSONC, TOML, RON or YAML) by ADR, using the `hello-story` files.
-- [ ] Go/no-go review in ADR 0001: continue, change adapter, or revisit the stack.
+**Status:** in progress — built in PR #2; remaining items need a Windows machine. Evidence: [Phase 0 evidence](./docs/evidence/phase-0.md).
+
+- [x] Cargo workspace with `weftora-api`, `weftora-core`, `weftora-story`, `weftora-yarn`, `weftora-render-bevy`, `apps/weftora-player`, `apps/weftora-cli`. Pinned `rust-toolchain.toml`, committed `Cargo.lock`.
+- [x] CI runs the merge gate ([architecture §10](./docs/architecture.md#10-drift-protection)) on Windows; the player prints its release ID and build hash (`--version`).
+- [x] **Yarn spike:** compile and run a Yarn file with one choice and one variable using the Bevy-independent `yarnspinner` crates. Record the version, licence, gaps and the fallback.
+- [ ] **Bevy spike:** a window showing a background image, a text line, two clickable choices and a sound, on a real Windows GPU. *(Works on macOS; Windows run pending.)*
+- [x] Provisional manifest (`manifestSchema: 0`, explicitly unstable) and a directory loader that confines paths to the Story root.
+- [x] `examples/hello-story/`: manifest, one Yarn file, one background, one sound.
+- [ ] `weftora run examples/hello-story` launches the prebuilt player on it; one choice sets a state variable that the next line reads. *(Works on macOS; Windows run pending.)*
+- [ ] Editing `hello-story`'s Yarn text and re-running shows the change without rebuilding the player. *(Works on macOS; Windows run pending.)*
+- [ ] **Export spike:** copy the built player and `hello-story` into a folder; it runs on a Windows machine with no Rust installed. *(Export works on macOS; clean Windows run pending.)*
+- [x] Choose the Story authoring file format (JSON, JSONC, TOML, RON or YAML) by ADR, using the `hello-story` files.
+- [ ] Go/no-go review in ADR 0001: continue, change adapter, or revisit the stack. *(Provisional GO recorded; final after the Windows runs.)*
 
 ## Phase 1 — Headless kernel
 

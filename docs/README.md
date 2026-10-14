@@ -6,7 +6,7 @@ status: proposed
 
 # Weftora Documentation Index
 
-All documents are proposals under review in [PR #1](https://github.com/cunilab/Weftora/pull/1). Nothing described here is implemented yet.
+Each document's header shows whether it is proposed or accepted. What actually works is recorded only as evidence against the [success criteria](./success-criteria.md).
 
 | Document | ID | What it owns |
 | --- | --- | --- |
@@ -19,5 +19,7 @@ All documents are proposals under review in [PR #1](https://github.com/cunilab/W
 | [ADR 0001 — Rust-native engine](./adr/0001-rust-native-engine.md) | WFT-ADR-001 | Why Rust/Bevy/Yarn, go/no-go gates |
 | [ADR 0002 — Versioning and compatibility](./adr/0002-versioning-compatibility.md) | WFT-ADR-002 | Version domains, save compatibility |
 | [ADR 0003 — Story rules language](./adr/0003-story-rules-language.md) | WFT-ADR-003 | Declarative actions + Rhai, collection state |
+| [ADR 0004 — Story authoring format](./adr/0004-story-authoring-format.md) | WFT-ADR-004 | JSONC for non-Yarn Story files |
+| [Phase 0 evidence](./evidence/phase-0.md) | WFT-EVID-001 | Phase 0 check results |
 
 To add a document, copy the [template](./templates/document.md) and follow the [standards](./standards.md).

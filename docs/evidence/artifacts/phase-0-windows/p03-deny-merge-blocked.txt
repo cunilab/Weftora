@@ -1,0 +1,38 @@
+=== P0-03 probe B: cargo-deny license violation (PR #4) ===
+
+Branch:   test/p003-deny
+Commit:   4acd4f7
+Base:     main
+Injected: removed "MIT", "Apache-2.0" and "Apache-2.0 WITH LLVM-exception"
+          from the [licenses] allow list in deny.toml
+Why:      the "Dependencies (required)" job runs cargo-deny check on ubuntu-latest
+
+--- check results on the PR head commit ---
+Windows (required)            SUCCESS  (all 5 steps green: fmt, clippy, test, xtask deps, xtask docs)
+Dependencies (required)       FAILURE
+macOS headless (non-blocking) SUCCESS
+
+--- merge state ---
+mergeStateStatus: BLOCKED
+mergeable:        MERGEABLE
+
+--- merge attempt 1: standard ---
+$ gh pr merge 4 --squash
+X Pull request cunilab/Weftora#4 is not mergeable: the base branch policy prohibits the merge.
+exit code: 1
+
+--- merge attempt 2: with administrator privileges ---
+$ gh pr merge 4 --squash --admin
+GraphQL: Repository rule violations found
+Required status check "Dependencies (required)" is failing.
+exit code: 1
+
+--- conclusion ---
+The Dependencies job alone, while Windows and macOS were both green, blocked the
+merge. Combined with probe A (p03-fmt-merge-blocked.txt) this covers both required
+jobs named in architecture section 10's merge gate; the six gate items themselves
+run inside those two jobs, so a red run of any of them fails the job and blocks.
+The admin escape hatch was ALSO refused.
+
+--- CI run ---
+https://github.com/cunilab/Weftora/actions/runs/38442678898

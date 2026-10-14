@@ -1,0 +1,20 @@
+[package]
+name = "weftora-yarn"
+description = "Yarn Spinner adapter: compiles Story dialogue and runs it on canonical Weftora state."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+weftora-api.workspace = true
+weftora-core.workspace = true
+weftora-story.workspace = true
+yarnspinner.workspace = true
+thiserror.workspace = true
+# Only for the `HashMap` type that yarnspinner's `VariableStorage` trait names; keep in step with yarnspinner.
+bevy_platform = { version = "0.19", default-features = false, features = ["alloc"] }
+
+[lints]
+workspace = true

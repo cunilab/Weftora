@@ -1,0 +1,36 @@
+﻿=== P0-03 probe A: fmt violation (PR #3) ===
+
+Branch:   test/p003-fmt
+Commit:   2f21d6d
+Base:     main
+Injected: mis-formatted fn p003_fmt_probe in crates/weftora-api/src/lib.rs
+Why:      cargo fmt --all -- --check is step 1 of the "Windows (required)" job
+
+--- check results on the PR head commit ---
+Windows (required)         FAILURE
+Dependencies (required)    SUCCESS
+macOS headless (non-blocking) SUCCESS
+
+--- merge state ---
+mergeStateStatus: BLOCKED
+mergeable:        MERGEABLE
+(before the probe was pushed, an equivalent PR read UNSTABLE / allowed)
+
+--- merge attempt 1: standard ---
+$ gh pr merge 3 --squash
+X Pull request cunilab/Weftora#3 is not mergeable: the base branch policy prohibits the merge.
+exit code: 1
+
+--- merge attempt 2: with administrator privileges ---
+$ gh pr merge 3 --squash --admin
+GraphQL: Repository rule violations found
+Required status check "Windows (required)" is failing.
+exit code: 1
+
+--- conclusion ---
+The Windows job alone, while Dependencies and macOS were both green, blocked the
+merge. The admin escape hatch was ALSO refused, proving ruleset 25017317 has no
+bypass actors and the required status check binds everyone.
+
+--- CI run ---
+https://github.com/cunilab/Weftora/actions/runs/38441749677

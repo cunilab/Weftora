@@ -1,0 +1,9 @@
+{
+  "manifestSchema": 0,
+  "id": "dev.weftora.broken",
+  "storyVersion": "0.0.1",
+  "title": "Broken",
+  "entrypoint": "Start",
+  "dialogue": ["dialogue/main.yarn"],
+  "assets": {}
+}

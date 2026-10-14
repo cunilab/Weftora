@@ -41,7 +41,8 @@ Each rule lives in exactly one document; others link to it instead of restating 
 | Product scope, users, requirements, non-goals | [PRD](../PRD.md) |
 | Phase order and task lists | [Roadmap](../ROADMAP.md) |
 | Crates, dependency rules, Story package, runtime semantics | [Architecture](./architecture.md) |
-| Pass/fail checks and evidence | [Success criteria](./success-criteria.md) |
+| Pass/fail checks | [Success criteria](./success-criteria.md) |
+| Recorded results of those checks | `docs/evidence/` (one page per phase) |
 | Supported and future targets | [Platforms](./platforms.md) |
 | Rationale for a hard-to-reverse choice | An [ADR](./adr/) |
 

@@ -1,0 +1,44 @@
+[workspace]
+resolver = "3"
+members = [
+    "crates/weftora-api",
+    "crates/weftora-core",
+    "crates/weftora-story",
+    "crates/weftora-yarn",
+    "crates/weftora-render-bevy",
+    "apps/weftora-player",
+    "apps/weftora-cli",
+    "xtask",
+]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.98"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/cunilab/Weftora"
+publish = false
+
+[workspace.dependencies]
+weftora-api = { path = "crates/weftora-api" }
+weftora-core = { path = "crates/weftora-core" }
+weftora-story = { path = "crates/weftora-story" }
+weftora-yarn = { path = "crates/weftora-yarn" }
+weftora-render-bevy = { path = "crates/weftora-render-bevy" }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+yarnspinner = { version = "0.9.0", default-features = false }
+bevy = { version = "0.20.0", default-features = false, features = ["2d", "ui", "audio"] }
+
+[workspace.lints.rust]
+unsafe_code = "forbid"
+
+[workspace.lints.clippy]
+all = { level = "warn", priority = -1 }
+
+[profile.dev.package."*"]
+opt-level = 2
+
+[patch.crates-io]
+yarnspinner_runtime = { path = "vendor/yarnspinner_runtime" }

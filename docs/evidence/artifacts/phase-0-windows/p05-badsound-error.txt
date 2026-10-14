@@ -1,0 +1,6 @@
+[2m2026-10-13T16:10:07.332414Z[0m [32m INFO[0m [2mbevy_diagnostic::system_information_diagnostics_plugin::internal[0m[2m:[0m SystemInfo { os: "Windows 11 Pro", kernel: "26200", cpu: "13th Gen Intel(R) Core(TM) i7-13620H", core_count: "10", memory: "15.7 GiB" }
+[2m2026-10-13T16:10:07.669309Z[0m [32m INFO[0m [2mbevy_render::renderer[0m[2m:[0m AdapterInfo { name: "NVIDIA GeForce RTX 4050 Laptop GPU", vendor: 4318, device: 10401, device_type: DiscreteGpu, device_pci_bus_id: "0000:01:00.0", driver: "NVIDIA", driver_info: "610.62", backend: Vulkan, subgroup_min_size: 32, subgroup_max_size: 32, transient_saves_memory: Some(false), limit_bucket: None }
+[2m2026-10-13T16:10:07.805133Z[0m [32m INFO[0m [2mbevy_winit::system[0m[2m:[0m Creating new window Hello Story (67v0)
+[2m2026-10-13T16:10:07.846631Z[0m [31mERROR[0m [2mweftora_render_bevy[0m[2m:[0m asset `sfx.chime` is not readable audio: The format of the data has not been recognized.
+[2m2026-10-13T16:10:07.846781Z[0m [31mERROR[0m [2mweftora_render_bevy[0m[2m:[0m asset `sfx.chime` is not readable audio: The format of the data has not been recognized.
+[2m2026-10-13T16:10:07.860335Z[0m [32m INFO[0m [2mbevy_render::batching::gpu_preprocessing[0m[2m:[0m GPU preprocessing is fully supported on this device.

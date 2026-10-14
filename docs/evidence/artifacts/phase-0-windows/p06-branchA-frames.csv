@@ -1,0 +1,7 @@
+"step","desc","png","sha256","wxh"
+"01-line1","Guide: Welcome to Weftora... (click / Space to continue)","p06-branchA-01-line1.png","e80566eae255ce68fc91c9b761217e4166a9b0b5b13447f2b04c866d7283ce32","1296x759"
+"02-line2","Guide: Want to see a choice change the game state?","p06-branchA-02-line2.png","abc0f102cdfcd4306214e5f742d9eeef9fea0656b7f05a5d6e0bbe49f3a7961c","1296x759"
+"03-choices","two choices rendered: '1. Yes, show me.' / '2. Not right now.'","p06-branchA-03-choices.png","2ef13d6e0ce4c3fea02635d03ec78a840113fb887804dcdc27b5e3f13bb16d03","1296x759"
+"04-result","CHOICE 1 selected -> Result node renders the state-dependent line","p06-branchA-04-result.png","79c72bdd8f329c01bc7124492e26b7213bba14f9d30fc1f83c9028c99dbe2505","1296x759"
+"05-closing","Guide: That is the whole walking skeleton...","p06-branchA-05-closing.png","8551cb59247a62c14fa28a6a5f15225251a3f413e27c5c9f60c9e545e56cc1f2","1296x759"
+"06-end","end screen (press Esc to quit)","p06-branchA-06-end.png","8adbb29438072b3580f3140e4d7b945210fcd2d547a47876984f45bff13460d9","1296x759"
