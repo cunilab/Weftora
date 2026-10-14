@@ -90,7 +90,7 @@ pub(crate) fn validate_default(
 }
 
 /// Yarn `$a__b` to state key `a.b`.
-fn key_for(name: &str) -> Result<String> {
+pub(crate) fn key_for(name: &str) -> Result<String> {
     let stripped =
         name.strip_prefix('$')
             .ok_or_else(|| VariableStorageError::InvalidVariableName {
@@ -191,6 +191,63 @@ impl StateStorage {
     pub(crate) fn write_counters(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
         (self.writes.clone(), self.write_bytes.clone())
     }
+    pub(crate) fn visit_snapshot(&self) -> Result<weftora_save::Visits> {
+        let internal = self
+            .internal
+            .read()
+            .map_err(|_| poisoned("visit counters"))?;
+        let mut visits = std::collections::BTreeMap::new();
+        for (name, value) in internal.iter() {
+            let Some(node) = name.strip_prefix("$Yarn.Internal.Visiting.") else {
+                continue;
+            };
+            let YarnValue::Number(count) = value else {
+                return Err(var_error(name, "invalid visit counter"));
+            };
+            if !count.is_finite()
+                || count.fract() != 0.0
+                || !(0.0..=MAX_EXACT_INT as f32).contains(count)
+            {
+                return Err(var_error(name, "invalid visit counter"));
+            }
+            if *count > 0.0 {
+                visits.insert(node.into(), *count as u32);
+            }
+        }
+        Ok(visits)
+    }
+
+    pub(crate) fn restore_visits(
+        &self,
+        visits: &weftora_save::Visits,
+        program: &yarnspinner_core::prelude::Program,
+    ) -> Result<()> {
+        let mut replacement = HashMap::new();
+        for (name, initial) in &program.initial_values {
+            if name.starts_with("$Yarn.Internal.Visiting.") {
+                replacement.insert(name.clone(), initial.clone().into());
+            }
+        }
+        for (node, count) in visits {
+            let name = format!("$Yarn.Internal.Visiting.{node}");
+            if *count > MAX_EXACT_INT as u32
+                || !program.nodes.contains_key(node)
+                || !replacement.contains_key(&name)
+            {
+                return Err(var_error(
+                    &name,
+                    "saved visit counter is no longer compatible",
+                ));
+            }
+            replacement.insert(name, YarnValue::Number(*count as f32));
+        }
+        *self
+            .internal
+            .write()
+            .map_err(|_| poisoned("visit counters"))? = replacement;
+        Ok(())
+    }
+
     pub(crate) fn new(state: SharedState) -> Self {
         Self {
             state,

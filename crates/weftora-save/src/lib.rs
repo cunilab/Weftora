@@ -1,4 +1,5 @@
 //! Save-format validation and durable storage. Runtime adapters own safe-point eligibility.
+pub mod directory;
 pub mod storage;
 
 use serde::{Deserialize, Serialize};

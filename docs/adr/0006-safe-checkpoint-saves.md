@@ -10,7 +10,7 @@ status: accepted
 
 Use stable author checkpoint IDs, not instruction offsets or compiled-artifact hashes. A literal Yarn command such as `<<checkpoint scene.intro>>` must be the first instruction of its node, with no substitutions. IDs use canonical state-key grammar, are at most 128 bytes and are unique across the Story. The compiled artifact supplies the ID→node map; no duplicate manifest map is introduced. A save-enabled schema-1 Story declares a positive saveSchema and the save/1 capability. This is additive; existing Stories retain Engine API 0.1.0 and manifest behavior.
 
-The runtime captures Persistent state and positive Yarn visit counters at that command, before executing the node's opening. It arms the point only when the opening reaches its first line or choice in the same node. Progression or a Persistent-state mutation disarms it; Settings changes do not. Saving also requires the host's commands/transitions/async work to be settled. Random functions are forbidden in checkpoint nodes because the current Yarn RNG is not resumable. Authors can use other nodes for random gameplay.
+The runtime captures Persistent state and positive Yarn visit counters at that command, before executing the node's opening. It arms the point only when the opening reaches its first line or choice in the same node. Progression disarms it, and saving refuses while Persistent state differs from its displayed value; Settings changes do not. Saving also requires the host's commands/transitions/async work to be settled. Random functions are forbidden in checkpoint nodes because the current Yarn RNG is not resumable. Authors can use other nodes for random gameplay. Checkpoint nodes cannot read manifest-declared Session variables: load resets them, so their prior values cannot reproduce the opening. Deterministic Session writes remain allowed. Settings reads use current preferences on load; authors must avoid making checkpoint meaning or Persistent outcomes depend on a Settings preference.
 
 A checkpoint opening rebuilds presentation from a fresh view/audio model on load. It must establish its own scene; it cannot depend on the prior renderer's layers, audio position or open overlays. Checkpoint meaning changes require a save-schema bump. Renaming an untracked node can preserve its checkpoint ID; removed or incompatible saved visit-counter names are refused until a migration exists.
 
@@ -31,6 +31,8 @@ Limits: 8 MiB encoded read/write, 4096 state entries, 512-byte state keys, 16 Ki
 5. Start the mapped checkpoint node using fresh presentation models and reach its armed first line/choice.
 6. Activate the candidate state, dialogue and view together.
 
+Prefix state changes follow the normal notification boundary. Observers that affect checkpoint outcomes must operate on the candidate during validation; side effects must not escape before activation. Headless built-in presentation commands are validated once during priming, then their buffered trace is published without executing them twice.
+
 Unknown/removed saved keys, wrong scopes/types and incompatible schemas are refused. Story and writer version strings are diagnostics, not save-compatibility gates. New Persistent fields keep current defaults. No migration registry or Rhai host is introduced in this slice; incompatible schemas refuse explicitly. Failure preserves the live game and saved file; loading never silently starts a new game or falls back to a backup.
 
 ## Storage
@@ -41,4 +43,4 @@ Writers take a nonblocking OS file lock on a permanent save.lock inode and expli
 
 ## Implementation and evidence
 
-The first slice implements the container, scoped candidate state and storage core. Checkpoint recognition, actual runtime eligibility, app path resolution and player controls follow as separate integration work. No P3-04 or Phase 3 gate is claimed by the storage core alone. Native Windows tests and results remain maintainer-owned under issue #5, with blank records.
+The storage slice implements the container and scoped candidate state. Runtime integration now implements checkpoint recognition, frozen node-entry state and visits, actual dialogue eligibility, user-data path resolution and headless save/load. Player controls and atomic view activation follow as separate integration work. No P3-04 or Phase 3 gate is claimed by the storage core alone. Native Windows tests and results remain maintainer-owned under issue #5, with blank records.

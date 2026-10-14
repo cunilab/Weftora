@@ -247,6 +247,13 @@ impl CompiledDialogue {
         let library = Library::standard_library();
         let mut total = 0;
         let mut commands = Vec::new();
+        let mut checkpoints = std::collections::BTreeSet::new();
+        let checkpoint_nodes: std::collections::BTreeSet<_> = self
+            .sites
+            .iter()
+            .filter(|s| s.command.name == "checkpoint")
+            .map(|s| s.node.as_str())
+            .collect();
         for (name, node) in &self.program.nodes {
             if name.len() > 256
                 || name != &node.name
@@ -358,8 +365,34 @@ impl CompiledDialogue {
                 {
                     return Err(fail("invalid substitution count (0..=64 required)"));
                 }
+                if op == OpCode::CallFunc
+                    && checkpoint_nodes.contains(name.as_str())
+                    && matches!(
+                        string(0),
+                        "random" | "random_range" | "random_range_float" | "dice"
+                    )
+                {
+                    return Err(fail(
+                        "random functions are not supported in checkpoint nodes",
+                    ));
+                }
                 if op == OpCode::RunCommand {
                     let mut parts = split_command(string(0));
+                    if parts.first().is_some_and(|name| name == "checkpoint") {
+                        if pc != 0 || parts.len() != 2 || instruction.read_operand::<f32>(1) != 0.0
+                        {
+                            return Err(fail(
+                                "checkpoint must be a literal first instruction with one ID",
+                            ));
+                        }
+                        let id = &parts[1];
+                        if id.len() > 128 || weftora_core::state::validate_key(id).is_err() {
+                            return Err(fail("invalid checkpoint ID"));
+                        }
+                        if !checkpoints.insert(id.clone()) {
+                            return Err(fail("duplicate checkpoint ID"));
+                        }
+                    }
                     if !parts.is_empty() {
                         commands.push((
                             name.as_str(),
@@ -554,6 +587,33 @@ mod tests {
                 file: "a.yarn".into(),
                 contents: "edited".into()
             }])
+        );
+    }
+    #[test]
+    fn checkpoint_random_policy_requires_review_when_standard_functions_change() {
+        let library = Library::standard_library();
+        let mut names: Vec<_> = library.names().filter(|name| !name.contains('.')).collect();
+        names.sort_unstable();
+        assert_eq!(
+            names,
+            [
+                "bool",
+                "ceil",
+                "dec",
+                "decimal",
+                "dice",
+                "floor",
+                "format_invariant",
+                "inc",
+                "int",
+                "number",
+                "random",
+                "random_range",
+                "random_range_float",
+                "round",
+                "round_places",
+                "string"
+            ]
         );
     }
 }

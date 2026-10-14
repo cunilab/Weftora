@@ -28,6 +28,8 @@ pub const MANIFEST_FILE: &str = "manifest.jsonc";
 pub struct Manifest {
     pub manifest_schema: u32,
     #[serde(default)]
+    pub save_schema: Option<u32>,
+    #[serde(default)]
     pub requires: Option<Requirements>,
     #[serde(default)]
     pub state: BTreeMap<String, StateDefinition>,
@@ -191,6 +193,7 @@ impl Story {
             || !manifest.catalogs.is_empty()
             || !manifest.screens.is_empty()
             || manifest.initial_screen.is_some()
+            || manifest.save_schema.is_some()
         {
             diags.push(manifest_diag(
                 None,
@@ -275,6 +278,19 @@ impl Story {
         for (key, value) in &manifest.initial_state {
             if let Err(e) = scratch.set(key, value.clone()) {
                 diags.push(manifest_diag(None, format!("initialState `{key}`: {e}")));
+            }
+        }
+
+        if let Some(schema) = manifest.save_schema {
+            if schema == 0 {
+                diags.push(manifest_diag(None, "saveSchema must be positive".into()));
+            }
+            if !manifest
+                .requires
+                .as_ref()
+                .is_some_and(|r| r.capabilities.iter().any(|c| c == "save/1"))
+            {
+                diags.push(manifest_diag(None, "saveSchema requires save/1".into()));
             }
         }
 

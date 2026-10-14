@@ -178,6 +178,34 @@ impl State {
             .collect()
     }
 
+    /// Compare a scope without allocating; floats use their exact persisted bit pattern.
+    pub fn matches_snapshot(
+        &self,
+        scope: Scope,
+        entries: &BTreeMap<String, Option<Value>>,
+    ) -> bool {
+        let mut count = 0;
+        for (key, definition) in &self.definitions {
+            if definition.scope != scope {
+                continue;
+            }
+            count += 1;
+            let Some(expected) = entries.get(key) else {
+                return false;
+            };
+            let equal = match (self.values.get(key), expected.as_ref()) {
+                (Some(Value::Float(actual)), Some(Value::Float(expected))) => {
+                    actual.to_bits() == expected.to_bits()
+                }
+                (actual, expected) => actual == expected,
+            };
+            if !equal {
+                return false;
+            }
+        }
+        count == entries.len()
+    }
+
     /// Applies known keys atomically; newly declared fields retain the receiver's defaults.
     pub fn apply_snapshot(
         &mut self,

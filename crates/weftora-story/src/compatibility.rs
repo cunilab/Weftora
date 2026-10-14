@@ -8,6 +8,7 @@ pub const CAPABILITIES: &[&str] = &[
     "assets.catalog/1",
     "ui.screens/1",
     "presentation.media/1",
+    "save/1",
 ];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
