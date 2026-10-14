@@ -179,4 +179,44 @@ tested_by: Andres-Holivin
 tested_at: 2026-10-15
 ```
 
+### Recheck 2+3 — same-player edit and stale-artifact rejection
+
+Covers "Runnable catalog/artifact recheck" steps 2–3 and the corresponding issue #5 bullet.
+Agent-run on the maintainer's machine under explicit maintainer delegation ("i think you can do
+this without me"); every claim below is machine-verified from a captured frame, a hash or an exit
+code, with artifacts attached. No human perception is involved in this check.
+
+```yaml
+check: recheck-2+3 (same-player edit, stale artifact)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+cli_sha256: 912dc804a4de43006ad690a4bc44b3f78f75d06708d5f034c8e015e69c0268c6
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (+ Intel UHD)
+gpu_driver: 610.62 (Vulkan)
+fixture: hello-story working copy (edited line) + release export (edited in place for stale test)
+steps: >-
+  Edit one Guide line in a working copy; record the player SHA-256; run CLI
+  `run` (compiles a fresh dialogue preview and launches the player); capture
+  the window; re-hash the player. Then edit the exported Story's yarn in place
+  WITHOUT re-exporting and launch the export; finally re-export into a fresh
+  directory and launch again.
+expected: >-
+  Edited line visible with unchanged player hash; stale export refused with a
+  controlled message and nonzero exit; fresh re-export launches.
+actual: >-
+  Edited line rendered in the player (frame attached); player SHA-256 identical
+  before/after (612f9560…, matches the release evidence hash). Stale export
+  refused before any window opened: stderr "stale dialogue artifact: inputHash
+  does not match the Story sources; use `weftora run` or export again", exit
+  code 1 (verified twice: cmd-wrapper LASTEXITCODE and Start-Process ExitCode).
+  Fresh re-export launched and rendered the edited line (frame attached).
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/same-player-stale.txt, hello-edited-line.png, hello-reexport-ok.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.
