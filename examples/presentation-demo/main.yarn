@@ -1,0 +1,35 @@
+title: Start
+---
+<<background bg.day>>
+<<move left 0.25 0.5 1 1 0>>
+<<move right 0.75 0.5 1 1 0>>
+<<show left actor.alice 500>>
+<<show right actor.bob 500>>
+<<music audio.music 1000>>
+<<ambience audio.ambience 1000>>
+<<voice audio.voice 250>>
+<<effect audio.effect 250>>
+Guide: Day background and two characters fade in. Music and ambience loop; voice and effect are one-shots. Open Volume to mute each channel or master.
+<<move left 0.4 0.4 1.4 0.6 1500>>
+<<show background bg.night 1500>>
+Guide: The background crossfades to night. The left character moves, scales and becomes partly transparent over 1.5 seconds.
+<<show cg cg.sun 1000>>
+Guide: The CG fades over the character layer. Advance after one second.
+<<show overlay overlay.tint 1000>>
+Guide: A decorative tint overlay fades above the CG. It does not block clicks. The Volume overlay is separate and modal.
+<<hide overlay 1000>>
+<<hide cg 1000>>
+<<move left 0.25 0.5 1 1 1000>>
+<<effect audio.effect 500>>
+Guide: CG and tint fade out; the character returns. The effect fades in. Music and ambience continue so channel volume can be checked.
+<<music none 1500>>
+<<ambience none 1500>>
+<<voice audio.voice 500>>
+<<effect audio.effect 500>>
+Guide: Music and ambience fade out; voice and effects fade in. Advance immediately to hear them fade out too.
+<<voice none 750>>
+<<effect none 750>>
+<<hide left 1000>>
+<<hide right 1000>>
+Guide: Both characters and the remaining audio fade out. Background stays. Native actual results belong to maintainer issue 5.
+===

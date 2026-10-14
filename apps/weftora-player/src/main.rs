@@ -67,7 +67,10 @@ fn run_story(dir: PathBuf, artifact: Option<PathBuf>, validate: bool) -> ExitCod
                     story.manifest().id
                 );
             } else {
-                weftora_render_bevy::run(story, dialogue, state);
+                if let Err(message) = weftora_render_bevy::run(story, dialogue, state) {
+                    eprintln!("weftora-player: {message}");
+                    return ExitCode::FAILURE;
+                }
             }
             ExitCode::SUCCESS
         }
@@ -101,7 +104,7 @@ fn load(
     let state = Arc::new(RwLock::new(state));
     let sources = story.dialogue_sources()?;
     let default_artifact = dir.join("..").join(weftora_yarn::ARTIFACT_FILE);
-    let dialogue =
+    let mut dialogue =
         weftora_yarn::CompiledDialogue::load_artifact(artifact.unwrap_or(&default_artifact))
             .map_err(|e| vec![Diagnostic::new("", None, e)])?;
     dialogue

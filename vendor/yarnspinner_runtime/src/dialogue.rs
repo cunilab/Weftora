@@ -46,6 +46,19 @@ pub enum DialogueError {
         node_name: String,
         budget: usize,
     },
+    ResourceBudgetExceeded {
+        node_name: String,
+        resource: &'static str,
+        limit: usize,
+    },
+    InvalidExecution {
+        node_name: String,
+        message: String,
+    },
+    ExecutionError {
+        node_name: String,
+        source: Box<DialogueError>,
+    },
     InvalidNode {
         node_name: String,
     },
@@ -62,6 +75,7 @@ impl Error for DialogueError {
         match self {
             MarkupParseError(e) => e.source(),
             VariableStorageError(e) => e.source(),
+            ExecutionError { source, .. } => Some(source.as_ref()),
             _ => None,
         }
     }
@@ -81,6 +95,9 @@ impl Display for DialogueError {
             UnexpectedOptionSelectionError => f.write_str("An option was selected, but the dialogue wasn't waiting for a selection. This method should only be called after the Dialogue is waiting for the user to select an option."),
             ContinueOnOptionSelectionError => f.write_str("Dialogue was asked to continue running, but it is waiting for the user to select an option first."),
             NoNodeSelectedOnContinue => f.write_str("Cannot continue running dialogue. No node has been selected."),
+            ResourceBudgetExceeded { node_name, resource, limit } => write!(f, "{resource} budget ({limit}) exceeded in node '{node_name}'"),
+            InvalidExecution { node_name, message } => write!(f, "{message} in node '{node_name}'"),
+            ExecutionError { node_name, source } => write!(f, "{source} in node '{node_name}'"),
             InstructionBudgetExceeded { node_name, budget } => write!(f, "instruction budget ({budget}) exceeded in node `{node_name}`"),
             NoProgramLoaded => f.write_str("No program has been loaded. Cannot continue running dialogue."),
             InvalidNode { node_name } => write!(f, "No node named \"{node_name}\" has been loaded."),

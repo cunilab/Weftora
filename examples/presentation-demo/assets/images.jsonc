@@ -1,0 +1,26 @@
+[
+  {
+    "id": "bg.day",
+    "path": "assets/day.png"
+  },
+  {
+    "id": "bg.night",
+    "path": "assets/night.png"
+  },
+  {
+    "id": "actor.alice",
+    "path": "assets/alice.png"
+  },
+  {
+    "id": "actor.bob",
+    "path": "assets/bob.png"
+  },
+  {
+    "id": "cg.sun",
+    "path": "assets/cg.png"
+  },
+  {
+    "id": "overlay.tint",
+    "path": "assets/overlay.png"
+  }
+]

@@ -5,6 +5,7 @@
 pub mod compatibility;
 pub mod jsonc;
 pub mod paths;
+pub mod ui;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,9 @@ pub struct Manifest {
     pub state: BTreeMap<String, StateDefinition>,
     #[serde(default)]
     pub catalogs: BTreeMap<String, Vec<String>>,
+    #[serde(default)]
+    pub screens: Vec<String>,
+    pub initial_screen: Option<String>,
     /// Reverse-domain Story ID, e.g. `com.example.hello-story`.
     pub id: String,
     pub story_version: String,
@@ -91,6 +95,7 @@ pub struct Story {
     manifest: Manifest,
     catalogs: BTreeMap<String, Catalog<serde_json::Value>>,
     assets: Catalog<Asset>,
+    screens: Catalog<ui::ScreenDefinition>,
 }
 
 /// One Yarn source file read from the Story.
@@ -184,10 +189,12 @@ impl Story {
         } else if manifest.requires.is_some()
             || !manifest.state.is_empty()
             || !manifest.catalogs.is_empty()
+            || !manifest.screens.is_empty()
+            || manifest.initial_screen.is_some()
         {
             diags.push(manifest_diag(
                 None,
-                "requires, state and catalogs need manifestSchema 1".into(),
+                "requires, state, catalogs and screens need manifestSchema 1".into(),
             ));
         }
         if manifest
@@ -202,6 +209,17 @@ impl Story {
             diags.push(manifest_diag(
                 None,
                 "typed asset catalogs require `assets.catalog/1` in requires.capabilities".into(),
+            ));
+        }
+        if (!manifest.screens.is_empty() || manifest.initial_screen.is_some())
+            && !manifest
+                .requires
+                .as_ref()
+                .is_some_and(|r| r.capabilities.iter().any(|c| c == "ui.screens/1"))
+        {
+            diags.push(manifest_diag(
+                None,
+                "declarative screens require `ui.screens/1` in requires.capabilities".into(),
             ));
         }
         for (name, value) in [
@@ -380,16 +398,41 @@ impl Story {
             }
             catalogs.insert(category.clone(), catalog);
         }
-        if diags.is_empty() {
-            Ok(Story {
-                root: root.to_path_buf(),
-                manifest,
-                catalogs,
-                assets,
-            })
-        } else {
-            Err(diags)
+        let screens = match ui::load(root, &manifest) {
+            Ok(screens) => screens,
+            Err(errors) => {
+                diags.extend(errors);
+                Catalog::default()
+            }
+        };
+        if !diags.is_empty() {
+            return Err(diags);
         }
+        let story = Story {
+            root: root.to_path_buf(),
+            manifest,
+            catalogs,
+            assets,
+            screens,
+        };
+        let errors = ui::reference_errors(&story);
+        if errors.is_empty() {
+            Ok(story)
+        } else {
+            Err(errors)
+        }
+    }
+
+    pub fn screen(&self, id: &str) -> Result<&ui::ScreenDefinition, Diagnostic> {
+        self.screens.get(id, MANIFEST_FILE, "screen reference")
+    }
+    pub fn screens(&self) -> impl Iterator<Item = (&str, &ui::ScreenDefinition)> {
+        self.screens.iter()
+    }
+    pub fn asset_kind(&self, id: &str) -> Result<Option<AssetKind>, Diagnostic> {
+        self.assets
+            .get(id, MANIFEST_FILE, "asset reference")
+            .map(|a| a.kind)
     }
 
     pub fn root(&self) -> &Path {

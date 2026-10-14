@@ -200,23 +200,23 @@ This makes accidents safe; it is **not** a guarantee that hostile mods are safe.
 
 Stories define screens as data: layout, widgets, theme, bindings to state and actions. Initial widgets: screen, panel, text, image, button, list, choice list, overlay. Bindings must define update timing, validation, focus order, localisation and scaling. New widget types are Tier 3 (Engine release).
 
-Presentation layers: background, character, CG, overlay, UI. Operations: show, hide, position, scale, opacity, fade, move, crossfade, shake.
+Presentation layers: background, two character slots, CG, decorative overlay, UI. The implemented [presentation v1 contract](./presentation.md) covers show/hide, position/scale/opacity, fade, move and crossfade plus four audio channels and canonical Settings volume. Shake is outside the Phase 2 criterion. Yarn uses fixed-arity literal aliases; dotted Engine primitive IDs in §5 describe conceptual operations, not the Yarn command spelling.
 
-The Phase 2 renderer choice is Bevy UI inside the existing presentation adapter; see [ADR 0005](./adr/0005-declarative-ui-renderer.md). The declarative widget/binding/focus implementation and Windows evidence remain outstanding.
+The Phase 2 renderer is Bevy UI inside the existing presentation adapter; see [ADR 0005](./adr/0005-declarative-ui-renderer.md) and the implemented [UI v1 contract](./ui.md). Versioned JSONC screens validate before activation, bind canonical state and dialogue, and support keyboard/mouse focus. Windows native verification remains maintainer-owned in issue #5.
 
-Illustrative screen definition:
+A valid dialogue screen file:
 
 ```jsonc
 {
-  "id": "ui.main_menu",
-  "type": "screen",
-  "children": [
-    {
-      "type": "button",
-      "textKey": "menu.start",
-      "onClick": { "command": "dialogue.start", "args": { "node": "intro" } }
-    }
-  ]
+  "screenSchema": 1,
+  "root": {
+    "id": "dialogue", "type": "screen",
+    "children": [
+      {"type": "text", "bind": {"dialogue": "text"}},
+      {"type": "choiceList", "id": "choices"},
+      {"type": "button", "id": "next", "text": "Next", "action": {"do": "dialogue.advance"}}
+    ]
+  }
 }
 ```
 
@@ -274,4 +274,4 @@ Manifest v1 accepts `catalogs.images`, `catalogs.audio` and `catalogs.fonts` alo
 
 `assets.catalog/1` advertises this additive feature without changing the Engine API range. Stories using any typed catalog category must declare it in `requires.capabilities`; omission is rejected. All media paths pass the same confinement, existence and package-limit checks as other Story references. The renderer rechecks path policy and uses a bounded binary read; `background` expects images and `sound` expects audio. Legacy manifest assets have no declared kind and accept either command; runtime image/audio decoding remains responsible for validating their bytes.
 
-Font entries currently resolve and are path-checked, but no new font consumer or font decoding claim is made yet. Catalog resolution is not Windows rendering/audio/font evidence. Exports preserve the catalog source files and every referenced media path and verify the copied package before reporting success.
+UI text consumes typed font catalog IDs after bounded Story reads and successful registration with Bevy's own font collection. This automated decode/registration check does not prove native glyph rendering. Catalog resolution is not Windows rendering/audio/font evidence. Exports preserve the catalog source files and every referenced media path and verify the copied package before reporting success.

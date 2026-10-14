@@ -6,13 +6,16 @@
   "storyVersion": "0.1.0",
   "requires": {
     "engineApi": ">=0.1.0 <0.2.0",
-    "capabilities": ["dialogue.yarn/1", "assets.catalog/1"],
+    "capabilities": ["dialogue.yarn/1", "assets.catalog/1", "ui.screens/1"],
   },
   "title": "Hello Story",
 
   // Yarn node the game starts at.
   "entrypoint": "Start",
   "dialogue": ["dialogue/intro.yarn"],
+
+  "screens": ["ui/dialogue.jsonc", "ui/details.jsonc"],
+  "initialScreen": "dialogue",
 
   // Typed asset IDs used by the same Yarn background/sound commands.
   "catalogs": {
