@@ -1,0 +1,54 @@
+{
+  "manifestSchema": 1,
+  "id": "dev.weftora.presentation-demo",
+  "storyVersion": "0.1.0",
+  "title": "Presentation demo",
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": [
+      "dialogue.yarn/1",
+      "assets.catalog/1",
+      "ui.screens/1",
+      "presentation.media/1"
+    ]
+  },
+  "entrypoint": "Start",
+  "dialogue": [
+    "main.yarn"
+  ],
+  "screens": [
+    "ui/dialogue.jsonc",
+    "ui/volume.jsonc"
+  ],
+  "initialScreen": "dialogue",
+  "catalogs": {
+    "images": [
+      "assets/images.jsonc"
+    ],
+    "audio": [
+      "assets/audio.jsonc"
+    ]
+  },
+  "state": {
+    "settings.audio.master": {
+      "default": 0.5,
+      "scope": "settings"
+    },
+    "settings.audio.music": {
+      "default": 1.0,
+      "scope": "settings"
+    },
+    "settings.audio.effects": {
+      "default": 1.0,
+      "scope": "settings"
+    },
+    "settings.audio.ambience": {
+      "default": 1.0,
+      "scope": "settings"
+    },
+    "settings.audio.voice": {
+      "default": 1.0,
+      "scope": "settings"
+    }
+  }
+}

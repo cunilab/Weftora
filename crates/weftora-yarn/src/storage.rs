@@ -2,13 +2,18 @@
 
 use std::any::Any;
 use std::fmt;
+use std::sync::atomic::{AtomicUsize, Ordering};
 use std::sync::{Arc, RwLock};
+use yarnspinner_runtime::resource_limits::MAX_STRING_BYTES;
+const MAX_WRITES: usize = 4096;
+// Initialization may fill 2048 defaults of 16 KiB each.
+pub(crate) const MAX_WRITE_BYTES: usize = 32 * 1024 * 1024;
 
 use bevy_platform::collections::HashMap;
 use weftora_api::Value;
 use weftora_core::SharedState;
-use yarnspinner::core::YarnValue;
-use yarnspinner::runtime::{VariableStorage, VariableStorageError};
+use yarnspinner_core::prelude::YarnValue;
+use yarnspinner_runtime::prelude::{VariableStorage, VariableStorageError};
 
 use crate::DialogueError;
 
@@ -104,7 +109,8 @@ fn name_for(key: &str) -> String {
 fn to_yarn(name: &str, value: &Value) -> Result<YarnValue> {
     match value {
         Value::Bool(b) => Ok(YarnValue::Boolean(*b)),
-        Value::String(s) => Ok(YarnValue::String(s.clone())),
+        Value::String(s) if s.len() <= MAX_STRING_BYTES => Ok(YarnValue::String(s.clone())),
+        Value::String(_) => Err(var_error(name, "string budget (16384 bytes) exceeded")),
         Value::Int(i) if (-MAX_EXACT_INT..=MAX_EXACT_INT).contains(i) => {
             Ok(YarnValue::Number(*i as f32))
         }
@@ -177,13 +183,20 @@ fn poisoned(name: &str) -> VariableStorageError {
 pub(crate) struct StateStorage {
     state: SharedState,
     internal: Arc<RwLock<HashMap<String, YarnValue>>>,
+    writes: Arc<AtomicUsize>,
+    write_bytes: Arc<AtomicUsize>,
 }
 
 impl StateStorage {
+    pub(crate) fn write_counters(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
+        (self.writes.clone(), self.write_bytes.clone())
+    }
     pub(crate) fn new(state: SharedState) -> Self {
         Self {
             state,
             internal: Arc::default(),
+            writes: Arc::default(),
+            write_bytes: Arc::default(),
         }
     }
 }
@@ -198,7 +211,16 @@ impl VariableStorage for StateStorage {
     }
 
     fn set(&mut self, name: String, value: YarnValue) -> Result<()> {
+        if matches!(&value, YarnValue::String(s) if s.len() > MAX_STRING_BYTES) {
+            return Err(var_error(&name, "string budget (16384 bytes) exceeded"));
+        }
+        if self.writes.fetch_add(1, Ordering::Relaxed) >= MAX_WRITES {
+            return Err(var_error(&name, "state write budget (4096) exceeded"));
+        }
         if is_internal(&name) {
+            if !matches!(&value, YarnValue::Number(n) if n.is_finite()) {
+                return Err(var_error(&name, "internal values must be finite numbers"));
+            }
             self.internal
                 .write()
                 .map_err(|_| poisoned(&name))?
@@ -207,6 +229,22 @@ impl VariableStorage for StateStorage {
         }
         let key = key_for(&name)?;
         let mut state = self.state.write().map_err(|_| poisoned(&name))?;
+        let new_bytes = match &value {
+            YarnValue::String(s) => s.len(),
+            _ => 0,
+        };
+        let old_bytes = match state.get(&key).ok() {
+            Some(Value::String(s)) => s.len(),
+            _ => 0,
+        };
+        let bytes = new_bytes.saturating_add(old_bytes);
+        let previous = self.write_bytes.fetch_add(bytes, Ordering::Relaxed);
+        if previous > MAX_WRITE_BYTES.saturating_sub(bytes) || bytes > MAX_WRITE_BYTES {
+            return Err(var_error(
+                &name,
+                "state string write budget (33554432 bytes) exceeded",
+            ));
+        }
         let current = state
             .get(&key)
             .ok()
@@ -317,6 +355,29 @@ mod tests {
                 YarnValue::Number(value as f32)
             );
         }
+    }
+
+    #[test]
+    fn string_write_bytes_are_checked_before_mutating_state() {
+        let state = Arc::new(RwLock::new(State::new()));
+        let mut storage = StateStorage::new(state.clone());
+        storage
+            .write_bytes
+            .store(MAX_WRITE_BYTES - 3, Ordering::Relaxed);
+        storage
+            .set("$text".into(), YarnValue::String("abc".into()))
+            .unwrap();
+        assert_eq!(storage.write_bytes.load(Ordering::Relaxed), MAX_WRITE_BYTES);
+        assert!(
+            storage
+                .set("$text".into(), YarnValue::String("x".into()))
+                .is_err()
+        );
+        assert_eq!(
+            state.read().unwrap().get("text"),
+            Ok(&Value::String("abc".into()))
+        );
+        assert!(to_yarn("$text", &Value::String("x".repeat(MAX_STRING_BYTES + 1))).is_err());
     }
 
     #[test]

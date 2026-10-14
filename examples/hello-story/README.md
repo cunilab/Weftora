@@ -20,3 +20,7 @@ Headless mode emits deterministic JSON-lines commands, dialogue, choices, final 
 Try editing a line in `dialogue/intro.yarn` and running again. The player binary does not change.
 
 Assets (`assets/room.png`, `assets/chime.wav`) are generated placeholders released under CC0.
+
+The image and audio IDs are declared in `assets/images.jsonc` and `assets/audio.jsonc` under manifest `catalogs`. Legacy `assets: {id: path}` still loads, but has no declared media type. Catalog IDs share one namespace; image/audio/font category mismatches are rejected before gameplay.
+
+The Phase 2 UI lives in `ui/dialogue.jsonc` and `ui/details.jsonc`. Next advances a line; Details opens a modal overlay whose state button writes canonical `curious`. Closing returns keyboard focus to Details. Tab/Shift+Tab navigate buttons, Enter/Space activate, and Esc quits. See [UI v1](../../docs/ui.md) for the schema. Headless mode validates screens but does not execute UI actions. Native Windows checks remain in [issue #5](https://github.com/cunilab/Weftora/issues/5).

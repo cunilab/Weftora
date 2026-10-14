@@ -7,6 +7,7 @@ pub(crate) use self::{execution_state::*, state::*};
 use crate::Result;
 use crate::markup::{LineParser, ParsedMarkup};
 use crate::prelude::*;
+use crate::resource_limits::*;
 use core::fmt::Debug;
 use log::*;
 
@@ -205,7 +206,23 @@ impl VirtualMachine {
             self.last_instruction_count += 1;
             let current_node = self.current_node.clone().unwrap();
             let current_instruction = &current_node.instructions[self.state.program_counter];
-            instruction_fn(self, current_instruction)?;
+            let result =
+                instruction_fn(self, current_instruction).and_then(|_| self.check_resources());
+            if let Err(error) = result {
+                let node_name = self.current_node_name.clone().unwrap_or_default();
+                let error = match error {
+                    DialogueError::ResourceBudgetExceeded { .. }
+                    | DialogueError::InvalidExecution { .. }
+                    | DialogueError::ExecutionError { .. } => error,
+                    source => DialogueError::ExecutionError {
+                        node_name,
+                        source: Box::new(source),
+                    },
+                };
+                self.set_execution_state(ExecutionState::Stopped);
+                self.batched_events.clear();
+                return Err(error);
+            }
             // ## Implementation note
             // The original increments the program counter here, but that leads to intentional underflow on [`OpCode::RunNode`],
             // so we do the incrementation in [`VirtualMachine::run_instruction`] instead.
@@ -214,6 +231,12 @@ impl VirtualMachine {
                 continue;
             }
 
+            if self.batched_events.len() + 2 > MAX_EVENTS {
+                let error = self.resource_error("events", MAX_EVENTS);
+                self.set_execution_state(ExecutionState::Stopped);
+                self.batched_events.clear();
+                return Err(error);
+            }
             self.batched_events
                 .push(DialogueEvent::NodeComplete(current_node.name.clone()));
             self.set_execution_state(ExecutionState::Stopped);
@@ -221,6 +244,41 @@ impl VirtualMachine {
             debug!("Run complete.");
         }
         Ok(core::mem::take(&mut self.batched_events))
+    }
+
+    fn resource_error(&self, resource: &'static str, limit: usize) -> DialogueError {
+        DialogueError::ResourceBudgetExceeded {
+            node_name: self.current_node_name.clone().unwrap_or_default(),
+            resource,
+            limit,
+        }
+    }
+    fn invalid_execution(&self, message: impl Into<String>) -> DialogueError {
+        DialogueError::InvalidExecution {
+            node_name: self.current_node_name.clone().unwrap_or_default(),
+            message: message.into(),
+        }
+    }
+    fn check_resources(&self) -> Result<()> {
+        for (size, limit, name) in [
+            (self.state.stack.len(), MAX_STACK, "stack"),
+            (self.state.current_options.len(), MAX_OPTIONS, "options"),
+            (self.batched_events.len(), MAX_EVENTS, "events"),
+        ] {
+            if size > limit {
+                return Err(self.resource_error(name, limit));
+            }
+        }
+        if self.state.stack.last().is_some_and(|value| matches!(&value.raw_value, YarnValue::String(text) if text.len() > MAX_STRING_BYTES)) {
+            return Err(self.resource_error("string", MAX_STRING_BYTES));
+        }
+        Ok(())
+    }
+    fn require_stack(&self, count: usize) -> Result<()> {
+        if count > self.state.stack.len() {
+            return Err(self.invalid_execution("insufficient values on VM stack"));
+        }
+        Ok(())
     }
 
     pub(crate) fn parse_markup(&mut self, line: &str) -> crate::markup::Result<ParsedMarkup> {
@@ -322,6 +380,16 @@ impl VirtualMachine {
         mut function_call_fn: impl FnMut(&dyn UntypedYarnFn, Vec<YarnValue>) -> YarnValue,
     ) -> crate::Result<()> {
         let opcode: OpCode = instruction.opcode.try_into().unwrap();
+        if matches!(
+            opcode,
+            OpCode::Jump
+                | OpCode::JumpIfFalse
+                | OpCode::Pop
+                | OpCode::StoreVariable
+                | OpCode::RunNode
+        ) {
+            self.require_stack(1)?;
+        }
         match opcode {
             OpCode::JumpTo => {
                 // Jumps to a named label
@@ -347,7 +415,7 @@ impl VirtualMachine {
                 // line handler.
                 assert_up_to_date_compiler(instruction.operands.len() >= 2);
 
-                let substitutions = self.pop_substitutions_with_count_at_operand(instruction, 1);
+                let substitutions = self.pop_substitutions_with_count_at_operand(instruction, 1)?;
                 let line = self.prepare_line(string_id, &substitutions)?;
 
                 self.batched_events.push(DialogueEvent::Line(line));
@@ -364,13 +432,9 @@ impl VirtualMachine {
                 // Passes a string to the client as a custom command
                 let command_text: String = instruction.read_operand(0);
                 assert_up_to_date_compiler(instruction.operands.len() >= 2);
-                let command_text = self
-                    .pop_substitutions_with_count_at_operand(instruction, 1)
-                    .into_iter()
-                    .enumerate()
-                    .fold(command_text, |command_text, (i, substitution)| {
-                        command_text.replace(&format!("{{{i}}}"), &substitution)
-                    });
+                let substitutions = self.pop_substitutions_with_count_at_operand(instruction, 1)?;
+                let command_text = expand_substitutions(&command_text, &substitutions)
+                    .map_err(|_| self.resource_error("string", MAX_STRING_BYTES))?;
                 let command = Command::parse(command_text);
 
                 self.batched_events.push(DialogueEvent::Command(command));
@@ -388,7 +452,7 @@ impl VirtualMachine {
                 let string_id: String = instruction.read_operand(0);
                 let string_id: LineId = string_id.into();
                 assert_up_to_date_compiler(instruction.operands.len() >= 4);
-                let substitutions = self.pop_substitutions_with_count_at_operand(instruction, 2);
+                let substitutions = self.pop_substitutions_with_count_at_operand(instruction, 2)?;
                 let line = self.prepare_line(string_id, &substitutions)?;
 
                 // Indicates whether the VM believes that the
@@ -401,6 +465,7 @@ impl VirtualMachine {
                     // the stack indicating whether the condition
                     // passed or not. We pass that information to
                     // the game.
+                    self.require_stack(1)?;
                     self.state.pop()
                 } else {
                     true
@@ -483,35 +548,23 @@ impl VirtualMachine {
                 self.state.program_counter += 1;
             }
             OpCode::CallFunc => {
-                let actual_parameter_count: usize = self.state.pop();
-                // Get the parameters, which were pushed in reverse
-                let parameters = {
-                    let mut parameters: Vec<_> = (0..actual_parameter_count)
-                        .rev()
-                        .map(|_| self.state.pop_value().raw_value)
-                        .collect();
-                    parameters.reverse();
-                    parameters
-                };
-
-                // Call a function, whose parameters are expected to be on the stack. Pushes the function's return value, if it returns one.
+                self.require_stack(1)?;
                 let function_name: String = instruction.read_operand(0);
-                let function =
-                    self.library
-                        .get(&function_name)
-                        .ok_or(DialogueError::FunctionNotFound {
-                            function_name: function_name.to_string(),
-                            library: self.library.clone(),
-                        })?;
-
-                // Expect the compiler to have placed the number of parameters
-                // actually passed at the top of the stack.
-                let expected_parameter_count = function.parameter_types().len();
-
-                assert_eq!(
-                    expected_parameter_count, actual_parameter_count,
-                    "Function {function_name} expected {expected_parameter_count} parameters, but received {actual_parameter_count}",
-                );
+                let function = self.library.get(&function_name).ok_or_else(|| {
+                    self.invalid_execution(format!("unknown function '{function_name}'"))
+                })?;
+                let expected = function.parameter_types().len();
+                let valid_count = matches!(&self.state.peek_value().raw_value, YarnValue::Number(n) if n.is_finite() && *n == expected as f32);
+                if !valid_count || expected > self.state.stack.len() - 1 {
+                    return Err(self.invalid_execution(format!(
+                        "function '{function_name}' requires {expected} parameters"
+                    )));
+                }
+                self.state.pop_value();
+                let mut parameters: Vec<_> = (0..expected)
+                    .map(|_| self.state.pop_value().raw_value)
+                    .collect();
+                parameters.reverse();
 
                 // Invoke the function
                 let return_value = function_call_fn(function, parameters);
@@ -601,10 +654,14 @@ impl VirtualMachine {
                 language_code: self.language_code.clone(),
             }
         })?;
-        let substituted_text = expand_substitutions(&line_text, substitutions);
+        let substituted_text = expand_substitutions(&line_text, substitutions)
+            .map_err(|_| self.resource_error("string", MAX_STRING_BYTES))?;
         let markup = self
             .parse_markup(&substituted_text)
             .map_err(DialogueError::MarkupParseError)?;
+        if markup.text.len() > MAX_STRING_BYTES {
+            return Err(self.resource_error("string", MAX_STRING_BYTES));
+        }
         let line = Line {
             id: string_id,
             text: markup.text,
@@ -642,14 +699,15 @@ impl VirtualMachine {
         &mut self,
         instruction: &Instruction,
         index: usize,
-    ) -> Vec<String> {
+    ) -> Result<Vec<String>> {
         let expression_count: usize = instruction.operands[index].clone().try_into().unwrap();
-        let mut values: Vec<_> = (0..expression_count)
+        self.require_stack(expression_count)?;
+        let mut values: Vec<String> = (0..expression_count)
             .rev()
             .map(|_| self.state.pop())
             .collect();
         values.reverse();
-        values
+        Ok(values)
     }
 }
 
@@ -668,17 +726,25 @@ fn assert_up_to_date_compiler(predicate: bool) {
 /// If `test` contains a substitution marker whose
 /// index is not present in `substitutions`, it is
 /// ignored.
-#[must_use]
-fn expand_substitutions(text: &str, substitutions: &[String]) -> String {
-    if substitutions.is_empty() {
-        // if we have no substitutions we want to just return the text as is
-        return text.to_owned();
+fn expand_substitutions(text: &str, substitutions: &[String]) -> core::result::Result<String, ()> {
+    if text.len() > MAX_STRING_BYTES {
+        return Err(());
     }
-
-    substitutions
-        .iter()
-        .enumerate()
-        .fold(text.to_owned(), |text, (i, substitution)| {
-            text.replace(&format!("{{{i}}}",), substitution)
-        })
+    let mut text = text.to_owned();
+    for (i, substitution) in substitutions.iter().enumerate() {
+        let marker = format!("{{{i}}}");
+        let count = text.matches(&marker).count();
+        let removed = count.checked_mul(marker.len()).ok_or(())?;
+        let added = count.checked_mul(substitution.len()).ok_or(())?;
+        let length = text
+            .len()
+            .checked_sub(removed)
+            .and_then(|n| n.checked_add(added))
+            .ok_or(())?;
+        if length > MAX_STRING_BYTES {
+            return Err(());
+        }
+        text = text.replace(&marker, substitution);
+    }
+    Ok(text)
 }

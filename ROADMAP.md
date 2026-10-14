@@ -37,7 +37,7 @@ Goal: prove the stack end to end with the thinnest possible slice. The phase end
 
 Goal: replace spike code with the real, tested core.
 
-**Status:** revised after independent review; all Phase 1 headless checks passed on Windows at `c49cede`. Implementation is proposed in [PR #7](https://github.com/cunilab/Weftora/pull/7). Evidence: [Phase 1 evidence](./docs/evidence/phase-1.md).
+**Status:** revised after independent review; all Phase 1 headless checks passed on Windows at `c49cede`. Implementation is merged in [PR #7](https://github.com/cunilab/Weftora/pull/7). Evidence: [Phase 1 evidence](./docs/evidence/phase-1.md).
 
 - [x] Lifecycle (boot → load → ready → play → shutdown) with ordered init and reverse teardown.
 - [x] Canonical typed state: scalar values, defaults, scopes, change notifications.
@@ -53,14 +53,16 @@ Goal: replace spike code with the real, tested core.
 
 Goal: full Yarn integration and the presentation primitives a visual novel needs.
 
-- [ ] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
-- [ ] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats.
+**Status:** in progress. Compiled dialogue, typed catalogs, declarative UI and presentation media primitives are implemented with automated checks; see [Phase 2 implementation evidence](./docs/evidence/phase-2.md). Native rendering/audio/input/font/performance results remain maintainer-owned under issue #5. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 remains open until integration. No Phase 2 gate is claimed.
+
+- [x] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
+- [x] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats. [Automated P2-03 evidence](./docs/evidence/phase-2.md#verified-revision).
 - [ ] Views and layers: background, characters, CG, overlay; position, scale, opacity, fade, move, crossfade.
 - [ ] Audio channels: music, effects, ambience, voice; fades, user volume.
-- [ ] Choose the declarative UI renderer (Bevy UI or alternative) by ADR.
+- [x] Choose the declarative UI renderer (Bevy UI or alternative) by ADR.
 - [ ] Declarative UI v1: screen, panel, text, image, button, list, choice list, overlay; state bindings; keyboard/mouse focus.
-- [ ] Asset catalogs for images, audio and fonts.
-- [ ] Pin Bevy and Yarn versions; record a dependency licence inventory.
+- [x] Asset catalogs for images, audio and fonts; native font/rendering checks remain in issue #5.
+- [x] Pin Bevy and Yarn versions; record a dependency licence inventory.
 - [ ] Measure a Windows performance baseline; confirm or revise the budgets in [PRD R15](./PRD.md#5-requirements) by ADR.
 
 ## Phase 3 — First playable visual novel (Story A) and saves

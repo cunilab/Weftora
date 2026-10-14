@@ -4,6 +4,7 @@ const HEADLESS: &[&str] = &["weftora-api", "weftora-core", "weftora-story"];
 const FORBIDDEN: &[&str] = &[
     "bevy",
     "weftora-yarn",
+    "weftora-yarn-compiler",
     "weftora-render-bevy",
     "weftora-player",
     "weftora-cli",

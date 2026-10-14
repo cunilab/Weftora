@@ -24,7 +24,40 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo xtask deps
+      - run: cargo tree -p weftora-player --edges normal,build --locked
       - run: cargo xtask docs
+      - name: Build Windows preview
+        run: cargo build -p weftora-cli -p weftora-player --locked
+      - name: Package and validate Windows preview
+        shell: pwsh
+        run: |
+          $preview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          .\target\debug\weftora.exe export examples/hello-story --out $preview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $preview "weftora-player.exe") (Join-Path $preview "story") --validate
+      - name: Package and validate Windows presentation demo
+        shell: pwsh
+        run: |
+          $presentationPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-media-preview"
+          .\target\debug\weftora.exe export examples/presentation-demo --out $presentationPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $presentationPreview "weftora-player.exe") (Join-Path $presentationPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $mediaHash = (Get-FileHash (Join-Path $presentationPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $mediaHash) { throw "Stories must export the same player binary" }
+          Write-Output "Same player SHA256 for both Story exports: $mediaHash"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weftora-windows-media-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-media-preview/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        with:
+          name: weftora-windows-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-preview/
+          retention-days: 14
 
   deny:
     name: Dependencies (required)
@@ -47,5 +80,5 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --locked -p weftora-api -p weftora-core -p weftora-story -p weftora-yarn
+      - run: cargo test --locked -p weftora-api -p weftora-core -p weftora-story -p weftora-yarn -p weftora-yarn-compiler
       - run: cargo xtask deps

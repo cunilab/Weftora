@@ -5,6 +5,7 @@ members = [
     "crates/weftora-core",
     "crates/weftora-story",
     "crates/weftora-yarn",
+    "crates/weftora-yarn-compiler",
     "crates/weftora-render-bevy",
     "apps/weftora-player",
     "apps/weftora-cli",
@@ -28,8 +29,11 @@ weftora-render-bevy = { path = "crates/weftora-render-bevy" }
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
 thiserror = "2"
-yarnspinner = { version = "0.9.0", default-features = false }
-bevy = { version = "0.20.0", default-features = false, features = ["2d", "ui", "audio"] }
+yarnspinner_core = { version = "=0.9.0", default-features = false, features = ["std"] }
+yarnspinner_runtime = { version = "=0.9.0", default-features = false, features = ["std"] }
+yarnspinner_compiler = { version = "=0.9.0", default-features = false }
+weftora-yarn-compiler = { path = "crates/weftora-yarn-compiler" }
+bevy = { version = "=0.20.0", default-features = false, features = ["2d", "ui", "audio"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

@@ -5929,6 +5929,7 @@ dependencies = [
  "weftora-core",
  "weftora-story",
  "weftora-yarn",
+ "weftora-yarn-compiler",
 ]
 
 [[package]]
@@ -5946,6 +5947,7 @@ name = "weftora-player"
 version = "0.0.1"
 dependencies = [
  "sha2",
+ "tempfile",
  "weftora-api",
  "weftora-core",
  "weftora-render-bevy",
@@ -5958,6 +5960,7 @@ name = "weftora-render-bevy"
 version = "0.0.1"
 dependencies = [
  "bevy",
+ "image",
  "rodio",
  "weftora-api",
  "weftora-core",
@@ -5982,11 +5985,29 @@ name = "weftora-yarn"
 version = "0.0.1"
 dependencies = [
  "bevy_platform 0.19.1",
+ "prost",
+ "serde",
+ "serde_json",
+ "sha2",
  "thiserror 2.0.21",
  "weftora-api",
  "weftora-core",
  "weftora-story",
- "yarnspinner",
+ "yarnspinner_core",
+ "yarnspinner_runtime",
+]
+
+[[package]]
+name = "weftora-yarn-compiler"
+version = "0.0.1"
+dependencies = [
+ "serde_json",
+ "weftora-api",
+ "weftora-core",
+ "weftora-story",
+ "weftora-yarn",
+ "yarnspinner_compiler",
+ "yarnspinner_core",
 ]
 
 [[package]]
@@ -6767,18 +6788,6 @@ name = "xtask"
 version = "0.0.1"
 dependencies = [
  "serde_json",
-]
-
-[[package]]
-name = "yarnspinner"
-version = "0.9.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "71d7fe0ba35699b3cda9d210d946b732080da94c4613067e370de46b3b0d6964"
-dependencies = [
- "log",
- "yarnspinner_compiler",
- "yarnspinner_core",
- "yarnspinner_runtime",
 ]
 
 [[package]]

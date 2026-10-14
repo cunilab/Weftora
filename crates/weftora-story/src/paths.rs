@@ -146,7 +146,7 @@ fn record_name(names: &mut BTreeMap<String, String>, relative: &str) -> Result<(
 }
 
 /// Enforce the limit again during the read, even if a file grew after inventory.
-pub fn read_text(path: PathBuf) -> Result<String, String> {
+pub fn read_bytes(path: PathBuf) -> Result<Vec<u8>, String> {
     let file = std::fs::File::open(path).map_err(|e| e.to_string())?;
     let mut bytes = Vec::new();
     file.take(MAX_FILE_BYTES + 1)
@@ -155,7 +155,12 @@ pub fn read_text(path: PathBuf) -> Result<String, String> {
     if bytes.len() as u64 > MAX_FILE_BYTES {
         return Err(format!("file size exceeds {MAX_FILE_BYTES} bytes"));
     }
-    String::from_utf8(bytes).map_err(|e| e.to_string())
+    Ok(bytes)
+}
+
+/// Text uses the same bounded read as binary media.
+pub fn read_text(path: PathBuf) -> Result<String, String> {
+    String::from_utf8(read_bytes(path)?).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
