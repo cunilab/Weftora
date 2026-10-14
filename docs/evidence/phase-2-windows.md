@@ -140,4 +140,43 @@ tested_by: Andres-Holivin
 tested_at: 2026-10-15
 ```
 
+### Recheck 1 — no-argument launch, background, dialogue, both branches, chime
+
+Covers "Runnable catalog/artifact recheck" step 1 and the first Phase 2 bullet in issue #5.
+
+```yaml
+check: recheck-1 (no-arg launch, branches, chime)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+cli_sha256: 912dc804a4de43006ad690a4bc44b3f78f75d06708d5f034c8e015e69c0268c6
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (+ Intel UHD)
+gpu_driver: 610.62 (Vulkan)
+audio_device: Realtek High Definition Audio
+audio_driver: Windows stock (WASAPI)
+fixture: examples/hello-story (release export, weftora-player.exe launched with zero arguments)
+steps: >-
+  Double-click-style launch (no CLI arguments, story/ next to the exe); verify
+  room background and Guide dialogue; play branch "Yes, show me." to the end
+  message; close; relaunch from a fresh process and take "Not right now." to the
+  end; press Escape there.
+expected: >-
+  Background and dialogue visible at start; chime audible (Story plays
+  sfx.chime once at start, intro.yarn line 5); both branches reachable from
+  fresh launches; end message shown; Escape closes cleanly.
+actual: >-
+  Maintainer: launch visuals correct (background + dialogue, choice "A"); chime
+  heard once at first open and not again — matches the Story source, which
+  triggers it exactly once at Start; run 1 took "Yes, show me." and reached the
+  Esc-to-quit end message; run 2 (fresh process) took "Not right now.", reached
+  the end, Escape closed with no problem. Agent-side close/Escape exit code 0
+  was separately measured in the automated evidence (see phase-2-windows-agent).
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/ (frames hello-0-opening/hello-1-choices/hello-2-curious-true)
+tested_by: Andres-Holivin
+tested_at: 2026-10-15
+```
+
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.
