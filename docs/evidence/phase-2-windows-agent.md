@@ -71,10 +71,10 @@ Phase 2 checkbox still requires the maintainer per the [success criteria](../suc
 | P2-03 compiled-dialogue boundary | (Covered by CI and [phase-2.md](./phase-2.md); not re-run here) | — | — |
 | P2-04 background, two characters, CG, overlay, move/scale/opacity/crossfade | Real windows of `presentation-demo` at several depths; all 25 commands headless | Day→night crossfade, two character rectangles at different positions/scales/opacity, CG + tint overlay stacked and cleaned up | [day](./artifacts/phase-2-windows-agent/demo-0-day-characters.png), [night](./artifacts/phase-2-windows-agent/demo-1-night-characters.png), [CG+overlay](./artifacts/phase-2-windows-agent/demo-2-cg-overlay.png), [trace](./artifacts/phase-2-windows-agent/headless-presentation.jsonl) |
 | P2-05 audio | (Not covered — see above) | Commands dispatch; audibility not claimed | [trace](./artifacts/phase-2-windows-agent/headless-presentation.jsonl) |
-| P2-06 widgets, bindings, keyboard/mouse focus | Real windows: dialogue widgets, Next/Details, choice list, first-choice focus, live `Curious` binding | Widgets render; text wraps; choice list renders with first option focused; digit key selects a choice | [opening](./artifacts/phase-2-windows-agent/hello-0-opening.png), [choices](./artifacts/phase-2-windows-agent/hello-1-choices.png) |
+| P2-06 widgets, bindings, keyboard/mouse focus | Real windows: dialogue widgets, Next/Details, choice list, first-choice focus, live `Curious` binding; window resize to 684×461; Details overlay opened, state set and closed via keyboard | Widgets render; text wraps and re-wraps on resize without overflow; choice list renders with first option focused; digit key selects a choice; Details overlay opens, its `state.set` button flips the base `Curious` binding to `true` without advancing dialogue | [opening](./artifacts/phase-2-windows-agent/hello-0-opening.png), [choices](./artifacts/phase-2-windows-agent/hello-1-choices.png), [resized](./artifacts/phase-2-windows-agent/hello-resize-narrow.png), [Details overlay](./artifacts/phase-2-windows-agent/hello-details-overlay.png), [after set](./artifacts/phase-2-windows-agent/hello-details-after-set.png) |
 | P2-07 adapters / pins / licences | (Covered by CI dependency job and [phase-2.md](./phase-2.md)) | — | — |
 | P2-08 performance baseline (R15) | Release build, 7 launches + 7 `check` runs | Cold start to window ≤ 0.59 s (warm), first-ever cold launch 1.86 s; idle 371 MiB working set / ~625 MiB private; `check` median 11 ms. All within R15 except input-p95, not measured | [perf-release.txt](./artifacts/phase-2-windows-agent/perf-release.txt) |
-| P2-09 catalog IDs resolve; bad IDs reported | (Asset resolution exercised via P2-02 missing-ID fixture) | Missing catalog ID reported with file/location | [error-paths.txt](./artifacts/phase-2-windows-agent/error-paths.txt) |
+| P2-09 catalog IDs resolve; bad/duplicate IDs reported with file and location | `weftora check` on a missing-ID fixture and a duplicate-ID fixture; corrupt image bytes at check and at render | Missing ID → `file:line` + node; duplicate ID → `assets/images.jsonc: /1/id: … first declared at …/0/id` (JSON-pointer location); corrupt image passes `check` and the player does **not** panic (image just fails to render) | [error-paths.txt](./artifacts/phase-2-windows-agent/error-paths.txt), [asset-id-media.txt](./artifacts/phase-2-windows-agent/asset-id-media.txt) |
 | P2-10 renderer chosen by ADR | (ADR 0005; not re-run here) | — | — |
 
 ### Export integrity and hashes
@@ -110,6 +110,33 @@ Presentation demo — day background with two characters, then CG over the chara
 
 ![Presentation demo CG and overlay](./artifacts/phase-2-windows-agent/demo-2-cg-overlay.png)
 
+## Interactive overlays and decorative click-through
+
+Driven with real keyboard/mouse input against the release build.
+
+- **Details overlay (modal).** Tab to `Details`, Enter opens the Story-defined overlay (dimmed base behind,
+  `curious` binding shown). Activating *Set curious to true* then closing returns to the base dialogue with
+  **`Curious: true`** and the dialogue line unchanged — an overlay action updated canonical state and the base
+  binding without advancing. [open](./artifacts/phase-2-windows-agent/hello-details-overlay.png),
+  [after](./artifacts/phase-2-windows-agent/hello-details-after-set.png).
+- **Resize.** Shrinking the window to 684×461 re-wraps the dialogue text without overflow; widgets and the
+  state label stay inside the panel. [frame](./artifacts/phase-2-windows-agent/hello-resize-narrow.png).
+- **Decorative click-through — observed discrepancy.** With only the background layer present, clicking the
+  unoccupied background advanced a line (control,
+  [frame](./artifacts/phase-2-windows-agent/demo-click-control-advanced.png)). With the presentation-demo's
+  CG/tint decorative layers covering the same point, the same click did **not** advance — reproduced in 4 runs
+  across two different lines that both have CG/tint showing
+  ([frame](./artifacts/phase-2-windows-agent/demo-click-cg-blocked.png)). This is consistent with the CG/tint
+  layers intercepting background clicks, which would contradict the Story text ("It does not block clicks") and
+  the P2-04 expectation that decorative media does not block background clicks. The result is from synthetic
+  click injection and screenshot comparison, and the demo's keystroke delivery was nondeterministic run to run,
+  so it is recorded as a **reproducible observation, not a confirmed bug** — it should be re-checked with a
+  deterministic input harness before filing.
+
+The presentation-demo's Volume overlay did not open reliably through scripted Tab focus (focus order varied
+between launches), so its modal behaviour is not claimed here; the modal mechanism itself is demonstrated by
+the Details overlay above. Volume's *audio* effect belongs to the maintainer's P2-05 check.
+
 ## Performance baseline vs PRD R15
 
 [R15](../../PRD.md#5-requirements) provisional budgets, compared with the release measurements above (single
@@ -130,8 +157,10 @@ machine, agent harness). This is a baseline observation, not an ADR revision.
   pages beyond what the process reports.
 - Perf numbers are from one machine and one harness run each; they are a baseline, not a multi-run statistics
   package. A dedicated ADR should confirm or revise R15 per P2-08.
-- Overlay click-through ("does not block clicks") is stated by the Story and visible as a rendered layer, but
-  actual click routing was not exercised programmatically.
+- The decorative click-through result rests on synthetic clicks and screenshot comparison; the demo's
+  keystroke delivery varied between runs, so the finding above is an observation to re-confirm, not a
+  definitive pass/fail. Input-to-feedback p95 was not measured (frame-capture cost exceeds the latency being
+  measured).
 
 ## Reproduction
 

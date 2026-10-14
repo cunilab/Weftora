@@ -21,6 +21,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [ADR 0003 — Story rules language](./adr/0003-story-rules-language.md) | WFT-ADR-003 | Declarative actions + Rhai, collection state |
 | [ADR 0004 — Story authoring format](./adr/0004-story-authoring-format.md) | WFT-ADR-004 | JSONC for non-Yarn Story files |
 | [ADR 0005 — Declarative UI renderer](./adr/0005-declarative-ui-renderer.md) | WFT-ADR-005 | Bevy UI choice and adapter boundary |
+| [ADR 0006 — Performance baseline and R15 budgets](./adr/0006-performance-baseline.md) | WFT-ADR-006 | Windows perf baseline; confirms measured R15 budgets, leaves p95 open |
 | [Presentation primitives v1](./presentation.md) | WFT-MEDIA-001 | View/audio commands, transitions, canonical volume and bounds |
 | [Declarative UI v1](./ui.md) | WFT-UI-001 | Screen schema, bindings, actions and input |
 | [Phase 0 evidence](./evidence/phase-0.md) | WFT-EVID-001 | Phase 0 check results and P0-10 deferral |
