@@ -5,13 +5,13 @@
 //! [`presenter`] and has no Bevy types; the systems below only translate input and draw its output.
 
 mod declarative;
+mod media;
 pub mod presenter;
 
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 use bevy::asset::RenderAssetUsages;
-use bevy::audio::AudioSource;
-use bevy::ecs::system::SystemParam;
+use bevy::audio::AddAudioSource;
 use bevy::image::{CompressedImageFormats, ImageSampler, ImageType};
 use bevy::input_focus::{InputFocus, tab_navigation::TabNavigationPlugin};
 use bevy::picking::hover::Hovered;
@@ -24,6 +24,7 @@ use weftora_story::ui::UiAction;
 use weftora_story::{AssetKind, Story};
 use weftora_yarn::{CompiledDialogue, DialogueRunner};
 
+use media::Media;
 use presenter::{Action, END_TEXT, Presenter, Screen};
 
 const PANEL_BG: Color = Color::srgba(0.04, 0.04, 0.08, 0.88);
@@ -33,9 +34,12 @@ const SPEAKER_COLOR: Color = Color::srgb(0.95, 0.78, 0.35);
 const ERROR_COLOR: Color = Color::srgb(1.0, 0.45, 0.45);
 
 /// Opens the game window and runs `story` until the window closes.
-pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
+pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Result<(), String> {
     let title = story.manifest().title.clone();
     let runner = DialogueRunner::new(&dialogue, Arc::clone(&state));
+    if let Ok(mut state) = state.write() {
+        state.drain_changes();
+    }
     let (presenter, actions) = Presenter::new(runner, &story.manifest().entrypoint.clone());
     let player = Player {
         presenter,
@@ -45,6 +49,8 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
         dirty: true,
     };
 
+    let failure = RuntimeFailure::default();
+    let outcome = failure.0.clone();
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
             primary_window: Some(Window {
@@ -55,24 +61,48 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
             ..default()
         }))
         .add_plugins(TabNavigationPlugin)
+        .add_audio_source::<media::LoopAudio>()
         .insert_non_send(player)
+        .insert_resource(failure)
         .init_resource::<Intents>()
         .init_resource::<Ui>()
+        .init_resource::<media::Presentation>()
         .add_systems(Startup, (setup, declarative::setup))
         .add_systems(
             Update,
             (
                 drive,
+                media::sync_views,
                 declarative::sync_layers,
                 declarative::sync_choices,
                 declarative::restore_focus,
                 declarative::update_bindings,
+                media::sync_audio,
                 refresh_panel,
                 hover_buttons,
+                remember_failure,
             )
                 .chain(),
         )
         .run();
+    match outcome
+        .lock()
+        .map_err(|_| "runtime result lock poisoned")?
+        .take()
+    {
+        Some(message) => Err(message),
+        None => Ok(()),
+    }
+}
+
+#[derive(Resource, Default)]
+struct RuntimeFailure(Arc<Mutex<Option<String>>>);
+
+fn remember_failure(player: NonSend<Player>, failure: Res<RuntimeFailure>) {
+    if let Screen::Error(message) = player.presenter.screen() {
+        let mut first = failure.0.lock().unwrap_or_else(|e| e.into_inner());
+        first.get_or_insert_with(|| message.clone());
+    }
 }
 
 /// Presenter plus the Story it reads assets from. Not `Send`: the Yarn runner may not be.
@@ -85,25 +115,10 @@ struct Player {
 }
 
 #[derive(Component)]
-struct Background;
-
-#[derive(Component)]
 struct Panel;
 
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
-    commands.spawn((
-        Background,
-        Pickable::IGNORE,
-        Node {
-            position_type: PositionType::Absolute,
-            width: percent(100),
-            height: percent(100),
-            ..default()
-        },
-        ImageNode::default(),
-        Visibility::Hidden,
-    ));
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
@@ -140,15 +155,6 @@ fn setup(mut commands: Commands) {
     ));
 }
 
-/// Everything [`perform`] needs to create images and sounds.
-#[derive(SystemParam)]
-struct Media<'w, 's> {
-    commands: Commands<'w, 's>,
-    images: ResMut<'w, Assets<Image>>,
-    sounds: ResMut<'w, Assets<AudioSource>>,
-    background: Query<'w, 's, (&'static mut ImageNode, &'static mut Visibility), With<Background>>,
-}
-
 /// Input -> presenter -> side effects.
 #[allow(clippy::too_many_arguments)]
 fn drive(
@@ -161,12 +167,17 @@ fn drive(
     focus_keys: Query<&FocusKey>,
     mut exit: MessageWriter<AppExit>,
     mut media: Media,
+    time: Res<Time>,
 ) {
     if keys.just_pressed(KeyCode::Escape) {
         exit.write(AppExit::Success);
         return;
     }
 
+    media.begin_frame(
+        time.delta(),
+        matches!(player.presenter.screen(), Screen::Error(_)),
+    );
     let before = player.presenter.screen().clone();
     let before_revision = player.presenter.revision();
     let mut actions = std::mem::take(&mut player.pending);
@@ -238,7 +249,10 @@ fn drive(
     }
 
     for action in actions {
-        if let Err(message) = perform(&action, &player.story, &mut media) {
+        if matches!(player.presenter.screen(), Screen::Error(_)) {
+            break;
+        }
+        if let Err(message) = media.apply(&action, &player.story) {
             error!("{message}");
             player.presenter.fail(message);
             break;
@@ -249,6 +263,9 @@ fn drive(
         && !matches!(before, Screen::Error(_))
     {
         error!("{message}");
+    }
+    if let Ok(mut state) = player.state.write() {
+        state.drain_changes();
     }
     if player.presenter.revision() != before_revision {
         player.dirty = true;
@@ -320,30 +337,6 @@ fn decode_image(id: &str, ext: &str, bytes: &[u8]) -> Result<Image, String> {
         RenderAssetUsages::default(),
     )
     .map_err(|error| format!("asset `{id}` is not a readable image: {error}"))
-}
-
-fn perform(action: &Action, story: &Story, media: &mut Media) -> Result<(), String> {
-    match action {
-        Action::SetBackground(id) => {
-            let (ext, bytes) = read_asset(story, id, AssetKind::Image)?;
-            let image = decode_image(id, &ext, &bytes)?;
-            let handle = media.images.add(image);
-            for (mut node, mut visibility) in &mut media.background {
-                node.image = handle.clone();
-                *visibility = Visibility::Inherited;
-            }
-        }
-        Action::PlaySound(id) => {
-            let (_, bytes) = read_asset(story, id, AssetKind::Audio)?;
-            let bytes = Arc::from(bytes);
-            validate_audio(id, &bytes)?;
-            let handle = media.sounds.add(AudioSource { bytes });
-            media
-                .commands
-                .spawn((AudioPlayer::new(handle), PlaybackSettings::DESPAWN));
-        }
-    }
-    Ok(())
 }
 
 /// Rebuilds the dialogue panel when the presenter's screen changed.
@@ -453,6 +446,7 @@ fn label(text: impl Into<String>, size: f32, color: Color) -> impl Bundle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::audio::AudioSource;
     use bevy::input_focus::InputFocusVisible;
 
     const WAV: &[u8] = include_bytes!("../../../examples/hello-story/assets/chime.wav");
@@ -488,11 +482,14 @@ mod tests {
             &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-story"),
         )
         .unwrap();
-        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
         let compiled = CompiledDialogue::from_artifact_bytes(include_bytes!(
             "../../weftora-yarn/tests/fixtures/budget.json"
         ))
         .unwrap();
+        app_for(story, compiled)
+    }
+    pub(super) fn app_for(story: Story, compiled: CompiledDialogue) -> App {
+        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
         let runner = DialogueRunner::new(&compiled, state.clone());
         let (presenter, pending) = Presenter::new(runner, "Start");
         let mut app = App::new();
@@ -503,17 +500,50 @@ mod tests {
             pending,
             dirty: true,
         })
+        .init_resource::<RuntimeFailure>()
+        .init_resource::<Time>()
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<InputFocus>()
         .init_resource::<InputFocusVisible>()
         .init_resource::<Intents>()
         .init_resource::<Ui>()
+        .init_resource::<media::Presentation>()
         .init_resource::<Assets<Image>>()
         .init_resource::<Assets<AudioSource>>()
         .add_message::<AppExit>()
-        .add_systems(Update, drive);
+        .add_systems(Update, (drive, remember_failure).chain());
         app
     }
+    #[test]
+    fn runtime_failure_survives_escape_and_keeps_the_first_error() {
+        let mut app = input_app();
+        app.world_mut()
+            .non_send_mut::<Player>()
+            .presenter
+            .fail("first failure".into());
+        app.world_mut()
+            .non_send_mut::<Player>()
+            .presenter
+            .fail("later failure".into());
+        assert!(
+            matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Error(message) if message == "first failure")
+        );
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        assert_eq!(
+            app.world()
+                .resource::<RuntimeFailure>()
+                .0
+                .lock()
+                .unwrap()
+                .as_deref(),
+            Some("first failure")
+        );
+    }
+
     #[test]
     fn duplicate_progress_intents_advance_only_one_line() {
         let mut app = input_app();
@@ -562,11 +592,11 @@ mod tests {
             player.state.read().unwrap().get("curious"),
             Ok(&weftora_api::Value::Bool(true))
         );
-        assert_eq!(player.state.write().unwrap().drain_changes().len(), 1);
+        assert!(player.state.write().unwrap().drain_changes().is_empty());
     }
     pub(super) fn hello_app() -> App {
         let mut app = input_app();
-        let compiled =
+        let mut compiled =
             CompiledDialogue::from_artifact_bytes(include_bytes!("../tests/fixtures/hello.json"))
                 .unwrap();
         let player = &mut *app.world_mut().non_send_mut::<Player>();
@@ -597,5 +627,32 @@ mod tests {
         bytes[29..33].copy_from_slice(&(!crc).to_be_bytes());
         let error = decode_image("oversized", "png", &bytes).unwrap_err();
         assert!(error.contains("decode budget"), "{error}");
+    }
+    #[test]
+    fn initial_presentation_error_discards_pending_media() {
+        let mut app = hello_app();
+        app.world_mut()
+            .non_send_mut::<Player>()
+            .presenter
+            .fail("startup asset failure".into());
+        app.update();
+        assert_eq!(
+            app.world().non_send::<Player>().presenter.screen(),
+            &Screen::Error("startup asset failure".into())
+        );
+        assert!(
+            app.world()
+                .resource::<media::Presentation>()
+                .audio
+                .cues
+                .is_empty()
+        );
+        assert!(
+            app.world()
+                .resource::<media::Presentation>()
+                .views
+                .samples(std::time::Duration::ZERO)
+                .is_empty()
+        );
     }
 }

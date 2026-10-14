@@ -1,0 +1,18 @@
+[
+  {
+    "id": "audio.music",
+    "path": "assets/music.wav"
+  },
+  {
+    "id": "audio.ambience",
+    "path": "assets/ambience.wav"
+  },
+  {
+    "id": "audio.voice",
+    "path": "assets/voice.wav"
+  },
+  {
+    "id": "audio.effect",
+    "path": "assets/effect.wav"
+  }
+]

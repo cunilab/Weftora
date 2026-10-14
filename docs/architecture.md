@@ -200,7 +200,7 @@ This makes accidents safe; it is **not** a guarantee that hostile mods are safe.
 
 Stories define screens as data: layout, widgets, theme, bindings to state and actions. Initial widgets: screen, panel, text, image, button, list, choice list, overlay. Bindings must define update timing, validation, focus order, localisation and scaling. New widget types are Tier 3 (Engine release).
 
-Presentation layers: background, character, CG, overlay, UI. Operations: show, hide, position, scale, opacity, fade, move, crossfade, shake.
+Presentation layers: background, two character slots, CG, decorative overlay, UI. The implemented [presentation v1 contract](./presentation.md) covers show/hide, position/scale/opacity, fade, move and crossfade plus four audio channels and canonical Settings volume. Shake is outside the Phase 2 criterion. Yarn uses fixed-arity literal aliases; dotted Engine primitive IDs in §5 describe conceptual operations, not the Yarn command spelling.
 
 The Phase 2 renderer is Bevy UI inside the existing presentation adapter; see [ADR 0005](./adr/0005-declarative-ui-renderer.md) and the implemented [UI v1 contract](./ui.md). Versioned JSONC screens validate before activation, bind canonical state and dialogue, and support keyboard/mouse focus. Windows native verification remains maintainer-owned in issue #5.
 

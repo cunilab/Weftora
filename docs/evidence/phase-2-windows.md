@@ -42,6 +42,21 @@ Use the UI implementation's exact CI commit/preview, not the earlier asset-only 
 6. Try an invalid widget, missing asset ID, unknown screen and wrong `state.set` type. `check` must reject each with its screen filename/pointer before launching the player. Remove screens/initialScreen and their capability from a copied package to recheck the legacy panel.
 7. Record actual/result/artifact fields yourself below; keep blank until tested.
 
+## Views/audio scripted demo
+
+Use the media implementation's `weftora-windows-media-preview-<commit>` CI artifact, or build the same commit and run/export `examples/presentation-demo`. The prior UI-only preview does not include this Story.
+
+1. Record the commit/profile/player hash, Windows/GPU/audio device/driver fields yourself. Launch the exported presentation demo and retain the presentation-request logs.
+2. Verify the day background and two differently colored character rectangles. Wait 500 ms for their fades. Use Next; verify a 1.5-second background crossfade and the left character's move/scale/opacity change.
+3. Advance through CG and decorative overlay fade-in, then both fade out. Decorative images must not block background clicks or UI buttons.
+4. Listen for looping 220 Hz music and 330 Hz ambience, plus one-second 440 Hz voice and 660 Hz effect cues. Listen across several music/ambience wrap boundaries for clean looping without gaps. Open Volume: mute each channel separately; 50%/100% and master gain must change the currently playing cues without restarting them.
+5. Advance to music/ambience fade-out. Advance promptly on the voice/effect step to verify their fade-out too. Re-run the Story if a one-shot ended before testing its control. Record actual observations or audio capture; ECS/CI gain arithmetic is not audible evidence.
+6. Verify the final character hides, modal keyboard/mouse handling, resizing and controlled failures for invalid assets/volume. Performance measurements require a release build and the existing blank timing/memory fields.
+
+## Runtime error exit scenario
+
+Use the runtime-fix revision's preview or build that revision. In a copied Story, keep syntax valid and add a declared string initialized to "x"; double it fifteen times before the first line. Static checks can accept the program, but playback must display a controlled string-budget error naming its source file/node. Close the window and record the nonzero process exit status. Also close a valid Story normally and with Escape; both should return zero. Record actual/result/artifact fields below only after testing.
+
 ## Remaining native scenarios
 
 Run these only after the applicable implementation and demo are available. No result is supplied here.
