@@ -52,6 +52,7 @@ pub struct CompiledDialogue {
     strings: BTreeMap<String, String>,
     sites: Vec<CommandSite>,
     input_hash: String,
+    node_files: BTreeMap<String, String>,
 }
 
 impl std::fmt::Debug for CompiledDialogue {
@@ -61,6 +62,20 @@ impl std::fmt::Debug for CompiledDialogue {
 }
 
 impl CompiledDialogue {
+    /// Compiler-only provenance; never serialized into the dialogue artifact.
+    #[doc(hidden)]
+    pub fn set_node_file(&mut self, node: &str, file: &str) {
+        if self.program.nodes.contains_key(node) {
+            self.node_files.insert(node.into(), file.into());
+        }
+    }
+    pub(crate) fn node_file(&self, node: &str) -> &str {
+        self.node_files
+            .get(node)
+            .map(String::as_str)
+            .unwrap_or("<file unknown>")
+    }
+
     /// Names of all nodes, sorted.
     pub fn node_names(&self) -> Vec<String> {
         // `Program::nodes` is a BTreeMap, so keys are already sorted.
@@ -79,6 +94,31 @@ impl CompiledDialogue {
     pub fn command_sites(&self) -> &[CommandSite] {
         &self.sites
     }
+}
+
+/// Diagnostic-only header lookup; unknown/outside-node errors stay explicitly unknown.
+#[doc(hidden)]
+pub fn source_node_at_line(source: &weftora_story::DialogueSource, line: u32) -> Option<&str> {
+    let mut title = None;
+    let mut body = false;
+    for (index, text) in source.contents.lines().enumerate() {
+        if index as u64 + 1 > u64::from(line) {
+            break;
+        }
+        let text = text.trim_start_matches('\u{FEFF}').trim();
+        if text == "===" {
+            if index as u64 + 1 == u64::from(line) {
+                break;
+            }
+            title = None;
+            body = false;
+        } else if text == "---" {
+            body = true;
+        } else if !body && let Some(value) = text.strip_prefix("title:") {
+            title = Some(value.trim());
+        }
+    }
+    title.filter(|s| !s.is_empty())
 }
 
 /// Checks canonical state values against the compiled Yarn variable types.
@@ -121,6 +161,14 @@ fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
                 variable,
                 actual: value.type_name(),
                 expected,
+            });
+        }
+        if let Value::String(text) = value
+            && text.len() > yarnspinner_runtime::resource_limits::MAX_STRING_BYTES
+        {
+            return Some(DialogueError::Variable {
+                variable,
+                message: "string budget (16384 bytes) exceeded".into(),
             });
         }
         if let Value::Int(value) = value
@@ -235,6 +283,9 @@ pub struct DialogueRunner {
     state: SharedState,
     program: Program,
     failure: Option<String>,
+    node_files: BTreeMap<String, String>,
+    writes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
+    write_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     current_node: String,
     consecutive_commands: usize,
     consecutive_continues: usize,
@@ -262,6 +313,7 @@ impl DialogueRunner {
             )
         }));
         let storage = StateStorage::new(state.clone());
+        let (writes, write_bytes) = storage.write_counters();
         let mut yarn = Dialogue::new(Box::new(storage), Box::new(text));
         let default_error = match state.read() {
             Ok(state) => check_defaults(&dialogue.program, &state)
@@ -284,6 +336,9 @@ impl DialogueRunner {
                     .err()
                     .map(|_| "Yarn runtime panicked during initialization".into())
             }),
+            node_files: dialogue.node_files.clone(),
+            writes,
+            write_bytes,
             current_node: String::new(),
             consecutive_commands: 0,
             consecutive_continues: 0,
@@ -413,7 +468,9 @@ impl DialogueRunner {
         }
         match self.queue.pop_front() {
             Some(event) => self.return_event(event),
-            None => self.fail(DialogueError::Runtime("dialogue produced no event".into())),
+            None => {
+                self.fail_with_context(DialogueError::Runtime("dialogue produced no event".into()))
+            }
         }
     }
 
@@ -433,6 +490,9 @@ impl DialogueRunner {
     }
 
     fn reset_progress_budget(&mut self) {
+        self.writes.store(0, std::sync::atomic::Ordering::Relaxed);
+        self.write_bytes
+            .store(0, std::sync::atomic::Ordering::Relaxed);
         self.consecutive_commands = 0;
         self.consecutive_continues = 0;
         self.instructions_since_blocking = 0;
@@ -474,6 +534,23 @@ impl DialogueRunner {
         Err(error)
     }
 
+    fn fail_with_context<T>(&mut self, error: DialogueError) -> Result<T, DialogueError> {
+        let file = self
+            .node_files
+            .get(&self.current_node)
+            .map(String::as_str)
+            .unwrap_or("<file unknown>");
+        let context = format!("{file} (node '{}')", self.current_node);
+        let error = match error {
+            DialogueError::Variable { variable, message } => DialogueError::Variable {
+                variable,
+                message: format!("{context}: {message}"),
+            },
+            other => DialogueError::Runtime(format!("{context}: {other}")),
+        };
+        self.fail(error)
+    }
+
     fn ensure_healthy(&self) -> Result<(), DialogueError> {
         match &self.failure {
             Some(message) => Err(DialogueError::Runtime(message.clone())),
@@ -491,10 +568,43 @@ impl DialogueRunner {
             std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| call(&mut self.dialogue)));
         let error = match result {
             Ok(Ok(value)) => return Ok(value),
-            Ok(Err(error)) => map_dialogue_error(error),
-            Err(_) => DialogueError::Runtime("Yarn runtime panicked; runner has failed".into()),
+            Ok(Err(error)) => {
+                match &error {
+                    yarnspinner_runtime::prelude::DialogueError::ResourceBudgetExceeded {
+                        node_name,
+                        ..
+                    }
+                    | yarnspinner_runtime::prelude::DialogueError::InvalidExecution {
+                        node_name,
+                        ..
+                    }
+                    | yarnspinner_runtime::prelude::DialogueError::ExecutionError {
+                        node_name,
+                        ..
+                    }
+                    | yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
+                        node_name,
+                        ..
+                    } => self.current_node = node_name.clone(),
+                    _ => {}
+                }
+                map_dialogue_error(error)
+            }
+            Err(payload) => {
+                if let Some(node) = self.dialogue.current_node() {
+                    self.current_node = node;
+                }
+                let message = payload
+                    .downcast_ref::<String>()
+                    .map(String::as_str)
+                    .or_else(|| payload.downcast_ref::<&str>().copied())
+                    .unwrap_or("unknown panic");
+                DialogueError::Runtime(format!(
+                    "Yarn runtime panicked; runner has failed: {message}"
+                ))
+            }
         };
-        self.fail(error)
+        self.fail_with_context(error)
     }
 }
 
@@ -503,6 +613,7 @@ fn map_dialogue_error(error: yarnspinner_runtime::prelude::DialogueError) -> Dia
     match error {
         Y::InvalidNode { node_name } => DialogueError::MissingNode(node_name),
         Y::VariableStorageError(e) => storage::map_storage_error(e),
+        Y::ExecutionError { source, .. } => map_dialogue_error(*source),
         other => DialogueError::Runtime(other.to_string()),
     }
 }
@@ -550,3 +661,6 @@ mod tests {
         assert_ne!(state.read().unwrap().get("n"), Ok(&Value::Float(1.0)));
     }
 }
+
+#[cfg(test)]
+mod resource_tests;

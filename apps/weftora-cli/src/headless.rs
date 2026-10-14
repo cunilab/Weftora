@@ -118,6 +118,7 @@ fn replay(resources: &mut Resources, choices: &[usize]) -> Result<Replay, Failur
     let commands = resources.commands.as_ref().expect("ready commands");
     let signals = resources.signals.as_mut().expect("ready signals");
     let mut changes = Vec::new();
+    let mut change_bytes = 0usize;
     let mut choices = choices.iter();
     // A scripted run must terminate even when Story code emits an unlimited sequence of lines.
     let mut ended = false;
@@ -134,6 +135,28 @@ fn replay(resources: &mut Resources, choices: &[usize]) -> Result<Replay, Failur
                 weftora_core::presentation::volumes(&state).map_err(Failure::one)?;
             }
             let pending = state.drain_changes();
+            let pending_bytes: usize = pending
+                .iter()
+                .map(|change| {
+                    change.key.len()
+                        + [&change.before, &change.after]
+                            .into_iter()
+                            .flatten()
+                            .map(|value| match value {
+                                Value::String(text) => text.len(),
+                                _ => 0,
+                            })
+                            .sum::<usize>()
+                })
+                .sum();
+            if pending.len() > 4096usize.saturating_sub(changes.len())
+                || pending_bytes > (32 * 1024 * 1024usize).saturating_sub(change_bytes)
+            {
+                return Err(Failure::one(
+                    "headless change budget exceeded (4096 changes / 32 MiB)",
+                ));
+            }
+            change_bytes += pending_bytes;
             for change in &pending {
                 signals
                     .emit(

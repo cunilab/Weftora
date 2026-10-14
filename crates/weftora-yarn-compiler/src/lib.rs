@@ -20,31 +20,61 @@ pub fn compile(sources: &[DialogueSource]) -> Result<CompiledDialogue, Vec<Diagn
     // treat that as a compile failure rather than aborting the tool.
     let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| compiler.compile()));
     let Ok(outcome) = outcome else {
-        return Err(vec![Diagnostic::new(
-            sources.first().map(|s| s.file.as_str()).unwrap_or_default(),
-            None,
-            "the Yarn compiler crashed on malformed input; check the dialogue syntax",
-        )]);
+        let mut diagnostics = Vec::new();
+        // Retry only to locate a parser panic; cross-file type failures are irrelevant here.
+        for source in sources {
+            let mut compiler = Compiler::new();
+            compiler.add_file(YarnFile {
+                file_name: source.file.clone(),
+                source: source.contents.clone(),
+            });
+            if std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| compiler.compile()))
+                .is_err()
+            {
+                diagnostics.push(Diagnostic::new(&source.file, None, "the Yarn compiler crashed on malformed input (node unknown); check the dialogue syntax"));
+            }
+        }
+        if diagnostics.is_empty() {
+            diagnostics.push(Diagnostic::new(
+                "<file unknown>",
+                None,
+                "the Yarn compiler crashed (node unknown); check the dialogue syntax",
+            ));
+        }
+        return Err(diagnostics);
     };
     let compilation = match outcome {
         Ok(c) => c,
         Err(e) => {
-            let diags: Vec<Diagnostic> =
-                e.0.iter()
-                    .filter(|d| d.severity == DiagnosticSeverity::Error)
-                    .map(|d| {
-                        let line = d
-                            .range
-                            .as_ref()
-                            .map(|r| r.start.line)
-                            .unwrap_or(d.start_line);
-                        Diagnostic::new(
-                            d.file_name.clone().unwrap_or_default(),
-                            u32::try_from(line + 1).ok(),
-                            d.message.clone(),
-                        )
-                    })
-                    .collect();
+            let diags: Vec<Diagnostic> = e
+                .0
+                .iter()
+                .filter(|d| d.severity == DiagnosticSeverity::Error)
+                .map(|d| {
+                    let line = d
+                        .range
+                        .as_ref()
+                        .map(|r| r.start.line)
+                        .unwrap_or(d.start_line);
+                    let file = d
+                        .file_name
+                        .clone()
+                        .unwrap_or_else(|| "<file unknown>".into());
+                    let line = line
+                        .checked_add(1)
+                        .and_then(|line| u32::try_from(line).ok())
+                        .filter(|line| *line > 0);
+                    let node = line
+                        .and_then(|line| {
+                            sources
+                                .iter()
+                                .find(|s| s.file == file)
+                                .and_then(|s| weftora_yarn::source_node_at_line(s, line))
+                        })
+                        .unwrap_or("unknown");
+                    Diagnostic::new(file.clone(), line, format!("{} (node '{node}')", d.message))
+                })
+                .collect();
             return Err(if diags.is_empty() {
                 vec![Diagnostic::new("", None, "Yarn compilation failed")]
             } else {
@@ -96,6 +126,20 @@ pub fn compile(sources: &[DialogueSource]) -> Result<CompiledDialogue, Vec<Diagn
         }
     }
 
-    CompiledDialogue::from_parts(program, strings, sites, input_hash(sources))
-        .map_err(|error| vec![Diagnostic::new("", None, error)])
+    let provenance: Vec<_> = program
+        .nodes
+        .keys()
+        .filter_map(|name| {
+            compilation
+                .debug_info
+                .get(name)
+                .map(|info| (name.clone(), info.file_name.clone()))
+        })
+        .collect();
+    let mut dialogue = CompiledDialogue::from_parts(program, strings, sites, input_hash(sources))
+        .map_err(|error| vec![Diagnostic::new("<file unknown>", None, error)])?;
+    for (node, file) in provenance {
+        dialogue.set_node_file(&node, &file);
+    }
+    Ok(dialogue)
 }

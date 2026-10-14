@@ -653,7 +653,9 @@ mod tests {
             .unwrap()
             .set("curious", Value::Bool(true))
             .unwrap();
-        app.update();
+        use bevy::ecs::system::RunSystemOnce;
+        app.world_mut().run_system_once(update_bindings).unwrap();
+        app.world_mut().run_system_once(restore_focus).unwrap();
         assert_eq!(app.world().get::<Text>(label).unwrap().0, "true");
         assert_eq!(app.world().resource::<InputFocus>().get(), Some(button));
         assert_eq!(state.write().unwrap().drain_changes().len(), 1);

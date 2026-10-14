@@ -32,6 +32,26 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             format!("entrypoint `{entrypoint}` is not a node in the dialogue files"),
         ));
     }
+    // The compiler accepts literal jumps to absent nodes; reject them before activation.
+    use yarnspinner_core::prelude::{OpCode, OperandValue};
+    for (name, node) in &dialogue.program.nodes {
+        for pair in node.instructions.windows(2) {
+            if pair[0].opcode == OpCode::PushString as i32
+                && pair[1].opcode == OpCode::RunNode as i32
+                && let Some(OperandValue::StringValue(target)) =
+                    pair[0].operands.first().and_then(|o| o.value.as_ref())
+                && !dialogue.program.nodes.contains_key(target)
+            {
+                errors.push(Diagnostic::new(
+                    dialogue.node_file(name),
+                    None,
+                    format!(
+                        "dialogue node '{target}' does not exist (referenced by node '{name}')"
+                    ),
+                ));
+            }
+        }
+    }
     for site in dialogue.command_sites() {
         if !story.manifest().dialogue.contains(&site.file) {
             errors.push(Diagnostic::new(

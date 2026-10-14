@@ -26,3 +26,13 @@ interrupt the synchronous VM.
 Upstream issue to file (not yet filed): YarnSpinnerTool/YarnSpinner-Rust —
 “Bound synchronous VM execution with a configurable per-continue instruction
 budget”. Include the self-jump reproducer and request this API/error upstream.
+
+The fixed memory guards in resource_limits.rs also cap stack values at 1024,
+pending options at 256, batched events at 1024 and UTF-8 values/expanded text at
+16 KiB. ResourceBudgetExceeded and InvalidExecution identify the executing node;
+ExecutionError preserves that node before VM cleanup for other failures.
+Function arity and available arguments are checked before collecting them.
+Substitution output is bounded before every replacement; empty stack accesses
+fail before popping. String.Add may allocate at most 32 KiB from two bounded
+inputs before its result is checked. These guards complement the adapter's
+storage/notification limits; they do not impose a process RSS budget.
