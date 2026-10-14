@@ -219,4 +219,46 @@ tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
 tested_at: 2026-10-15
 ```
 
+### UI interaction battery — overlay blocking, focus return, Shift+Tab, resize
+
+Covers the issue #5 bullets "Tab/Shift+Tab, Enter/Space, mouse activation and choice digits;
+one activation advances one line" (fully) and the Details part of the overlay-blocking bullet.
+Agent-driven keyboard/mouse except real-mouse activation, which the maintainer performed and
+answered directly (their Q6/Q7): branch choice and Volume overlay were selected by real mouse
+click, and a real click on Details opened the overlay. Scripted *injected* clicks fell through
+widgets in this harness (reproduced 3x on Details, 1x on a choice row) — a harness limitation,
+not a product defect, since real input activates correctly.
+
+```yaml
+check: ui-interaction battery (overlay blocking, focus, shift-tab, resize)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+windows_build: 11 Pro 10.0.26300
+fixture: examples/hello-story (release export)
+steps: >-
+  Advance to choices; open the Details overlay by keyboard; press choice digit 1
+  and click the base while it is open; close it; press Enter on the returned
+  focus. Separately: Tab/Shift+Tab focus cycling at line 1; a real-mouse click
+  on Details (maintainer); resize to 684x461 and verify rewrap.
+expected: >-
+  Overlay blocks base digit/click; base unchanged after close; focus returns to
+  Details and Enter reopens it; Shift+Tab walks focus backwards; wrapping stays
+  readable after resize; real mouse activates buttons and choices.
+actual: >-
+  Digit 1 + base click while overlay open: base stayed on choices, overlay
+  stayed open (blocked). Close: overlay gone, choices + Curious unchanged,
+  focus outline on Details. Enter on that focus reopened the overlay.
+  (An earlier accidental run additionally showed overlay Set updating both the
+  overlay binding and base `Curious` to true in the same frame.) Shift+Tab from
+  Details moved focus back to Next. Resize rewrapped text to 3 lines without
+  overflow. Maintainer real mouse: branch choice clicked (Q6-A), Volume opened
+  by click (Q6-A), Details opened by click (Q7-A). Injected-click fall-through
+  noted above as harness-only.
+result: PASS (Volume overlay blocking sub-part pending maintainer test)
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/hello-overlay-blocks-input.png, hello-overlay-closed-focus-returned.png, hello-overlay-refocus-reopens.png, hello-shift-tab-back.png, hello-resize-advance.png
+tested_by: agent + maintainer real-mouse checks (Andres-Holivin)
+tested_at: 2026-10-15
+```
+
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.
