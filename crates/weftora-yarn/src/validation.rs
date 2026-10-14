@@ -46,6 +46,37 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             ));
         }
     }
+    if errors.is_empty() && !story.manifest().screens.is_empty() {
+        // Validate bindings against manifest state plus the same Yarn default initialization as play.
+        let state = std::sync::Arc::new(std::sync::RwLock::new(
+            story.initial_state().expect("checked above"),
+        ));
+        let runner = crate::DialogueRunner::new(dialogue, state.clone());
+        if let Some(message) = runner.failure {
+            errors.push(Diagnostic::new("manifest.jsonc", None, message));
+        } else {
+            let mut state = state.write().expect("validation owns its state lock");
+            for (_, screen) in story.screens() {
+                errors.extend(screen.state_errors(&state));
+                for (path, widget) in screen.widgets() {
+                    if let Some(weftora_story::ui::UiAction::SetState { key, value }) =
+                        &widget.action
+                        && let Ok(previous) = state.get(key).cloned()
+                        && state.set(key, value.clone()).is_ok()
+                    {
+                        errors.extend(check_state(dialogue, &state).into_iter().map(|e| {
+                            Diagnostic::new(&screen.file, None, format!("{path}/action/value: {e}"))
+                        }));
+                        state
+                            .set(key, previous)
+                            .expect("restore checked scratch state");
+                        // This is a private validation copy, not the runtime notification queue.
+                        state.drain_changes();
+                    }
+                }
+            }
+        }
+    }
     errors
 }
 

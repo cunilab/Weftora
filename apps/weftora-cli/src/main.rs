@@ -400,6 +400,7 @@ fn verify_copied_references(
     let manifest = story.manifest();
     for reference in std::iter::once(weftora_story::MANIFEST_FILE)
         .chain(manifest.dialogue.iter().map(String::as_str))
+        .chain(manifest.screens.iter().map(String::as_str))
         .chain(story.asset_references().map(|(_, path)| path))
         .chain(manifest.catalogs.values().flatten().map(String::as_str))
     {
@@ -492,6 +493,7 @@ mod tests {
         assert!(verify_copied_references(&story, &copied).is_ok());
         for reference in std::iter::once(weftora_story::MANIFEST_FILE)
             .chain(story.manifest().dialogue.iter().map(String::as_str))
+            .chain(story.manifest().screens.iter().map(String::as_str))
             .chain(story.asset_references().map(|(_, path)| path))
             .chain(
                 story

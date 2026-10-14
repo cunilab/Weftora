@@ -132,6 +132,14 @@ fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
                 value: *value,
             });
         }
+        if let Value::Float(value) = value
+            && !(*value as f32).is_finite()
+        {
+            return Some(DialogueError::Variable {
+                variable,
+                message: format!("float {value} does not fit Yarn's f32"),
+            });
+        }
         None
     }));
     errors

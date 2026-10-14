@@ -44,16 +44,16 @@ A fresh direct source-folder launch now needs the CLI to compile a preview; the 
 
 | Check | State |
 | --- | --- |
-| P2-01 canonical state read by a real Engine presentation primitive | NOT_RUN; earlier adapter tests cover state but do not prove the new UI/view integration |
+| P2-01 canonical state read by a real Engine presentation primitive | Automated ECS integration passes locally for choice → state → UI label → later Yarn condition; UI branch Windows CI pending |
 | P2-02 file/node diagnostics and no-panic errors | OPEN; existing compiler/runtime panic containment is not the complete criterion |
 | P2-03 versioned artifact and compiler-free player | PASS for automated criterion at `9d1db87`; see immutable CI, player negative-format fixture and dependency tree above |
 | P2-04 views and transitions | NOT_RUN |
 | P2-05 audio channels/fades/volume | NOT_RUN |
-| P2-06 declarative UI and focus | NOT_RUN |
-| P2-07 pinned adapters and licence inventory | Exact Bevy/Yarn pins and [declared licence inventory](./artifacts/phase-2-adapter-licenses.tsv); asset-branch Windows CI pending |
+| P2-06 declarative UI and focus | Implementation and automated ECS/negative-screen tests pass locally; maintainer native Windows checks pending |
+| P2-07 pinned adapters and licence inventory | Exact Bevy/Yarn pins and [declared licence inventory](./artifacts/phase-2-adapter-licenses.tsv); all three jobs passed at `ffd0211c99aa76a46ea715e35abee5fab42a56e8` in [CI run 38550566712](https://github.com/cunilab/Weftora/actions/runs/38550566712), including 150 Windows tests |
 | P2-08 Windows performance baseline | NOT_RUN |
-| P2-09 image/audio/font catalogs | IMPLEMENTED on the asset-catalog branch; resolution/path/type/duplicate tests pending Windows evidence; fonts have no renderer consumer yet |
-| P2-10 UI renderer ADR | Decision recorded in [ADR 0005](../adr/0005-declarative-ui-renderer.md); awaiting review |
+| P2-09 image/audio/font catalogs | IMPLEMENTED on the asset-catalog branch; resolution/path/type/duplicate tests passed in the asset CI above; native image/audio/font evidence remains maintainer-owned |
+| P2-10 UI renderer ADR | Decision recorded in [ADR 0005](../adr/0005-declarative-ui-renderer.md); accepted; native verification remains open |
 
 Structural bytecode validation is not a complete stack/type verifier. Runtime stack/options and string-memory growth need bounded failure handling ([issue #8](https://github.com/cunilab/Weftora/issues/8)). Existing instruction budgets remain active; OOM is not caught by panic containment. No phase requirement is waived. P0-10 remains deferred under [issue #5](https://github.com/cunilab/Weftora/issues/5).
 
@@ -64,3 +64,12 @@ Typed image/audio/font catalog entries are strict `{id,path}` records. A single 
 Windows manual tests are maintainer-owned and intentionally blank in [the Windows record](./phase-2-windows.md), tracked by [issue #5](https://github.com/cunilab/Weftora/issues/5). Agents do not request Windows access. The CI preview package is provided for those tests; its `--validate` step is automated activation validation, not proof of rendering, audio or input behavior.
 
 The [licence inventory](./artifacts/phase-2-adapter-licenses.tsv) records all 619 packages in `cargo metadata --locked --all-features --offline`, including target-specific dependencies, their locked versions and declared SPDX licence metadata. It does not audit every licence file or replace the Phase 6 licence/advisory gate. No package lacked declared licence metadata in this snapshot.
+
+
+## Declarative UI slice
+
+The [UI v1 contract](../ui.md) adds strict versioned screen files, all eight widgets, bounded structure/layout validation, typed image/font references, canonical-state and dialogue bindings, and button actions. Shared CLI/player validation includes Yarn default types. Screen sources are export references. The sample adds a dialogue screen and modal overlay without changing its Yarn or headless golden traces. Stories without screens retain the original panel.
+
+The adapter builds screen trees when the layer stack changes, patches labels in place, rebuilds choices on new offers and restores focus by stable widget ID. A bounded input queue routes modal actions and prevents multiple dialogue progression intents in one frame; background clicks use picking rather than raw mouse presses. Referenced image/font handles are cached after bounded Story reads and decoder validation. Fonts must register successfully with Bevy's own font collection; image 0.25.10 (already locked) checks dimensions and a conservative byte estimate before decoding. UI preloading is capped at 64 MiB; the dependency inventory's package set is unchanged.
+
+On MacBookAir, the local full workspace suite passed 183 tests across 22 suites with zero failures. Workspace Clippy with warnings denied, formatting, dependency direction and documentation checks passed. Adapter tests prove choice → canonical state → bound label → later Yarn condition, UI action type/precision checks, modal routing, Tab from empty focus, no Space selection before keyboard navigation, focus restoration, in-place labels and retained notifications. These ECS fixtures do not exercise real window keyboard dispatch. Claude Opus 5.5 medium used only Read/Grep in advice/reviews; its final verdict was ship after input fixes. Codex performed every edit and check. Windows UI-branch CI is pending; the earlier asset-branch 150-test result applies only to that immutable revision. Native Windows fields remain blank. This implementation does not complete views/transitions, multichannel audio, VM memory-growth containment, or Windows performance measurement.

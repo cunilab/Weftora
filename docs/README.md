@@ -21,6 +21,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [ADR 0003 — Story rules language](./adr/0003-story-rules-language.md) | WFT-ADR-003 | Declarative actions + Rhai, collection state |
 | [ADR 0004 — Story authoring format](./adr/0004-story-authoring-format.md) | WFT-ADR-004 | JSONC for non-Yarn Story files |
 | [ADR 0005 — Declarative UI renderer](./adr/0005-declarative-ui-renderer.md) | WFT-ADR-005 | Bevy UI choice and adapter boundary |
+| [Declarative UI v1](./ui.md) | WFT-UI-001 | Screen schema, bindings, actions and input |
 | [Phase 0 evidence](./evidence/phase-0.md) | WFT-EVID-001 | Phase 0 check results and P0-10 deferral |
 | [Phase 2 Windows manual verification](./evidence/phase-2-windows.md) | WFT-EVID-005 | Blank maintainer-owned native test records and steps |
 | [Phase 2 implementation evidence](./evidence/phase-2.md) | WFT-EVID-004 | Compiled-dialogue slice and remaining Phase 2 checks |

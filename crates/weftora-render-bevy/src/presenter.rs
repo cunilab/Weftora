@@ -53,6 +53,7 @@ pub const END_TEXT: &str = "The End \u{2014} press Esc to quit";
 pub struct Presenter<S: EventSource> {
     source: S,
     screen: Screen,
+    revision: u64,
 }
 
 impl<S: EventSource> Presenter<S> {
@@ -62,6 +63,7 @@ impl<S: EventSource> Presenter<S> {
         let mut presenter = Self {
             source,
             screen: Screen::End,
+            revision: 0,
         };
         let actions = match started {
             Ok(()) => presenter.run(),
@@ -71,6 +73,10 @@ impl<S: EventSource> Presenter<S> {
             }
         };
         (presenter, actions)
+    }
+
+    pub fn revision(&self) -> u64 {
+        self.revision
     }
 
     pub fn screen(&self) -> &Screen {
@@ -106,6 +112,7 @@ impl<S: EventSource> Presenter<S> {
     /// Reports a renderer-side failure (for example an asset that could not be loaded) on screen.
     pub fn fail(&mut self, message: String) {
         self.screen = Screen::Error(message);
+        self.revision = self.revision.wrapping_add(1);
     }
 
     /// Pulls events until one needs the user, collecting command actions on the way.
@@ -144,6 +151,7 @@ impl<S: EventSource> Presenter<S> {
                 Ok(DialogueEvent::End) => self.screen = Screen::End,
                 Err(err) => self.fail(err.to_string()),
             }
+            self.revision = self.revision.wrapping_add(1);
             return actions;
         }
     }
@@ -354,5 +362,20 @@ mod tests {
         let (mut p, _) = Presenter::new(fake(vec![line(None, "x")]), "S");
         p.fail("asset missing".into());
         assert_eq!(p.screen(), &Screen::Error("asset missing".into()));
+    }
+    #[test]
+    fn identical_consecutive_choice_offers_have_distinct_revisions() {
+        let (mut presenter, _) = Presenter::new(
+            fake(vec![
+                DialogueEvent::Choices(vec![choice(0, "Again", true)]),
+                DialogueEvent::Choices(vec![choice(0, "Again", true)]),
+            ]),
+            "Start",
+        );
+        let before = presenter.screen().clone();
+        let revision = presenter.revision();
+        presenter.select(0);
+        assert_eq!(presenter.screen(), &before);
+        assert_ne!(presenter.revision(), revision);
     }
 }

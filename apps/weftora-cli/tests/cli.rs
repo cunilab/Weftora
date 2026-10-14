@@ -390,7 +390,9 @@ fn export_copies_player_and_story() {
             "assets/images.jsonc",
             "assets/room.png",
             "dialogue/intro.yarn",
-            "manifest.jsonc"
+            "manifest.jsonc",
+            "ui/details.jsonc",
+            "ui/dialogue.jsonc"
         ]
     );
 
@@ -646,4 +648,66 @@ fn typed_command_mismatch_preserves_yarn_context_and_never_activates() {
         .unwrap();
     assert_eq!(export.status.code(), Some(1));
     assert!(!out.exists());
+}
+
+#[test]
+fn screen_state_validation_uses_yarn_defaults_and_blocks_activation() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    let manifest_path = story.join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["manifestSchema"] = 1.into();
+    manifest["storyVersion"] = "0.1.0".into();
+    manifest["requires"] =
+        serde_json::json!({"engineApi":">=0.1.0 <0.2.0","capabilities":["ui.screens/1"]});
+    manifest["screens"] = serde_json::json!(["screen.jsonc"]);
+    manifest["initialScreen"] = "dialogue".into();
+    fs::write(manifest_path, manifest.to_string()).unwrap();
+    fs::write(
+        story.join("intro.yarn"),
+        "title: Start\n---\n<<declare $world__day = 1>>\nHello.\n===\n",
+    )
+    .unwrap();
+    let mut screen = serde_json::json!({"screenSchema":1,"root":{"type":"screen","id":"dialogue","children":[{"type":"text","bind":{"state":"world.day"}},{"type":"choiceList","id":"choices"},{"type":"button","id":"set","text":"Set","action":{"do":"state.set","key":"world.day","value":2.0}}]}});
+    let path = story.join("screen.jsonc");
+    fs::write(&path, screen.to_string()).unwrap();
+    let check = weftora().arg("check").arg(&story).output().unwrap();
+    assert!(check.status.success(), "{}", stderr(&check));
+    for value in [serde_json::json!(true), serde_json::json!("two")] {
+        screen["root"]["children"][2]["action"]["value"] = value;
+        fs::write(&path, screen.to_string()).unwrap();
+        let check = weftora().arg("check").arg(&story).output().unwrap();
+        let run = weftora()
+            .arg("run")
+            .arg(&story)
+            .arg("--headless")
+            .output()
+            .unwrap();
+        assert_eq!(check.status.code(), Some(1));
+        assert_eq!(run.status.code(), Some(1));
+        assert_eq!(check.stderr, run.stderr);
+        assert!(run.stdout.is_empty());
+        assert!(
+            stderr(&check)
+                .contains("screen.jsonc: /root/children/2/action/value: state `world.day` expects")
+        );
+    }
+    screen["root"]["children"][2]["action"]["value"] = serde_json::json!(1e100);
+    fs::write(&path, screen.to_string()).unwrap();
+    let check = weftora().arg("check").arg(&story).output().unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert!(stderr(&check).contains("does not fit Yarn's f32"));
+    let manifest_path = story.join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["initialState"] = serde_json::json!({"world.day":1});
+    fs::write(manifest_path, manifest.to_string()).unwrap();
+    screen["root"]["children"][2]["action"]["value"] = serde_json::json!(16777217);
+    fs::write(&path, screen.to_string()).unwrap();
+    let check = weftora().arg("check").arg(&story).output().unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert!(stderr(&check).contains("/root/children/2/action/value:"));
+    assert!(stderr(&check).contains("outside ±16777216"));
 }

@@ -30,6 +30,18 @@ The CI preview is a debug build. Use a release build for performance measurement
 4. Confirm declared image/audio catalog IDs resolve to the original assets. Invalid/missing IDs and category mismatches should fail through `check` before a player starts.
 5. Record logs and an actual rendered frame, along with the device fields below.
 
+## Declarative UI scenario
+
+Use the UI implementation's exact CI commit/preview, not the earlier asset-only preview.
+
+1. Launch Hello Story. Verify the room image, speaker/text, choice list, Next/Details buttons and `curious` label are readable; resize narrow/wide and verify wrapping and clickable bounds.
+2. Use Tab/Shift+Tab and Enter/Space. One Next activation must advance one line. Details must open the overlay without advancing dialogue.
+3. While Details is open, click outside its panel and press choice digits. The base dialogue must stay unchanged. Set curious to true; both state labels should update. Close and verify keyboard focus returns to Details. After closing with the mouse, Space activates that focused Details button again; click the background or focus Next to continue dialogue.
+4. Advance to choices. Verify first-choice focus, keyboard/mouse selection, state update and later Yarn condition. Repeat both branches from a fresh launch.
+5. Add a licensed valid font to a `fonts` catalog and set a widget's `font` ID; verify actual glyph rendering. Repeat with corrupt font bytes and verify the controlled Story error panel.
+6. Try an invalid widget, missing asset ID, unknown screen and wrong `state.set` type. `check` must reject each with its screen filename/pointer before launching the player. Remove screens/initialScreen and their capability from a copied package to recheck the legacy panel.
+7. Record actual/result/artifact fields yourself below; keep blank until tested.
+
 ## Remaining native scenarios
 
 Run these only after the applicable implementation and demo are available. No result is supplied here.

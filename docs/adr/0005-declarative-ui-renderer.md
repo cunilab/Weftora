@@ -1,7 +1,7 @@
 ---
 id: WFT-ADR-005
 title: ADR 0005 — Declarative UI Renderer
-status: proposed
+status: accepted
 ---
 
 # ADR 0005 — Declarative UI Renderer
@@ -22,4 +22,4 @@ Bindings update after dialogue/command state changes at a deterministic presenta
 
 - Reuses the existing Node/ImageNode/Text/Button/Activate integration and its error screen.
 - Bevy widget/focus API changes stay inside the adapter and require dependency/Windows regression checks on upgrades.
-- Phase 2 still needs the declarative schema, real canonical-state bindings, focus handling and a Windows performance baseline. Revisit the renderer if the baseline or Windows evidence fails the agreed budgets.
+- The [UI v1 contract](../ui.md) implements the schema, canonical bindings and Bevy focus handling. Native Windows verification and a performance baseline remain required. Revisit the renderer if the baseline or Windows evidence fails the agreed budgets.

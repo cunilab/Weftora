@@ -1,9 +1,10 @@
-//! Bevy presentation adapter for the Weftora player (Phase 0 spike).
+//! Bevy presentation adapter for the Weftora player.
 //!
 //! Story assets are read from the Story folder with `std::fs` through [`Story::asset_path_of`] and turned into
 //! Bevy assets here, so Bevy never opens a path outside the Story. The dialogue-to-screen logic lives in
 //! [`presenter`] and has no Bevy types; the systems below only translate input and draw its output.
 
+mod declarative;
 pub mod presenter;
 
 use std::sync::Arc;
@@ -12,11 +13,14 @@ use bevy::asset::RenderAssetUsages;
 use bevy::audio::AudioSource;
 use bevy::ecs::system::SystemParam;
 use bevy::image::{CompressedImageFormats, ImageSampler, ImageType};
+use bevy::input_focus::{InputFocus, tab_navigation::TabNavigationPlugin};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui_widgets::{Activate, Button, observe};
 use bevy::window::WindowResolution;
+use declarative::{ButtonBase, FocusKey, Intent, Intents, Ui};
 use weftora_core::SharedState;
+use weftora_story::ui::UiAction;
 use weftora_story::{AssetKind, Story};
 use weftora_yarn::{CompiledDialogue, DialogueRunner};
 
@@ -31,10 +35,11 @@ const ERROR_COLOR: Color = Color::srgb(1.0, 0.45, 0.45);
 /// Opens the game window and runs `story` until the window closes.
 pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
     let title = story.manifest().title.clone();
-    let runner = DialogueRunner::new(&dialogue, state);
+    let runner = DialogueRunner::new(&dialogue, Arc::clone(&state));
     let (presenter, actions) = Presenter::new(runner, &story.manifest().entrypoint.clone());
     let player = Player {
         presenter,
+        state,
         story,
         pending: actions,
         dirty: true,
@@ -49,10 +54,24 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
             }),
             ..default()
         }))
+        .add_plugins(TabNavigationPlugin)
         .insert_non_send(player)
-        .init_resource::<PickedChoice>()
-        .add_systems(Startup, setup)
-        .add_systems(Update, (drive, refresh_panel, hover_buttons).chain())
+        .init_resource::<Intents>()
+        .init_resource::<Ui>()
+        .add_systems(Startup, (setup, declarative::setup))
+        .add_systems(
+            Update,
+            (
+                drive,
+                declarative::sync_layers,
+                declarative::sync_choices,
+                declarative::restore_focus,
+                declarative::update_bindings,
+                refresh_panel,
+                hover_buttons,
+            )
+                .chain(),
+        )
         .run();
 }
 
@@ -60,13 +79,10 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) {
 struct Player {
     presenter: Presenter<DialogueRunner>,
     story: Story,
+    state: SharedState,
     pending: Vec<Action>,
     dirty: bool,
 }
-
-/// Set by a choice button's observer, consumed by [`drive`].
-#[derive(Resource, Default)]
-struct PickedChoice(Option<usize>);
 
 #[derive(Component)]
 struct Background;
@@ -78,6 +94,7 @@ fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
     commands.spawn((
         Background,
+        Pickable::IGNORE,
         Node {
             position_type: PositionType::Absolute,
             width: percent(100),
@@ -88,7 +105,26 @@ fn setup(mut commands: Commands) {
         Visibility::Hidden,
     ));
     commands.spawn((
+        Node {
+            position_type: PositionType::Absolute,
+            width: percent(100),
+            height: percent(100),
+            ..default()
+        },
+        observe(|event: On<PointerClick>, mut intents: ResMut<Intents>| {
+            if event.button != PointerButton::Primary {
+                return;
+            }
+            intents.push(Intent::Action {
+                layer: None,
+                action: UiAction::Advance,
+            });
+        }),
+    ));
+    commands.spawn((
         Panel,
+        GlobalZIndex(100000),
+        Pickable::IGNORE,
         Node {
             position_type: PositionType::Absolute,
             left: px(24),
@@ -114,11 +150,15 @@ struct Media<'w, 's> {
 }
 
 /// Input -> presenter -> side effects.
+#[allow(clippy::too_many_arguments)]
 fn drive(
     mut player: NonSendMut<Player>,
     keys: Res<ButtonInput<KeyCode>>,
-    mouse: Res<ButtonInput<MouseButton>>,
-    mut picked: ResMut<PickedChoice>,
+    mut intents: ResMut<Intents>,
+    mut ui: ResMut<Ui>,
+    focus: Res<InputFocus>,
+    buttons: Query<(), With<Button>>,
+    focus_keys: Query<&FocusKey>,
     mut exit: MessageWriter<AppExit>,
     mut media: Media,
 ) {
@@ -128,17 +168,73 @@ fn drive(
     }
 
     let before = player.presenter.screen().clone();
+    let before_revision = player.presenter.revision();
     let mut actions = std::mem::take(&mut player.pending);
 
-    let choice_key = DIGIT_KEYS.iter().position(|k| keys.just_pressed(*k));
-    if let Some(position) = picked.0.take().or(choice_key) {
-        actions.extend(player.presenter.select(position));
-    } else if keys.just_pressed(KeyCode::Space)
-        || keys.just_pressed(KeyCode::Enter)
-        || keys.just_pressed(KeyCode::NumpadEnter)
-        || mouse.just_pressed(MouseButton::Left)
-    {
-        actions.extend(player.presenter.advance());
+    let focused_button = focus.get().is_some_and(|e| buttons.contains(e));
+    if !ui.modal() {
+        if let Some(position) = DIGIT_KEYS.iter().position(|k| keys.just_pressed(*k)) {
+            intents.push(Intent::Select {
+                layer: None,
+                position,
+            });
+        } else if !focused_button
+            && [KeyCode::Space, KeyCode::Enter, KeyCode::NumpadEnter]
+                .iter()
+                .any(|k| keys.just_pressed(*k))
+        {
+            intents.push(Intent::Action {
+                layer: None,
+                action: UiAction::Advance,
+            });
+        }
+    }
+    let mut progressed = false;
+    for intent in intents.drain() {
+        if matches!(player.presenter.screen(), Screen::Error(_)) {
+            continue;
+        }
+        let (origin, action) = match intent {
+            Intent::Select { layer, position } => {
+                if ui.accepts(&layer) && !progressed {
+                    progressed = true;
+                    actions.extend(player.presenter.select(position));
+                }
+                continue;
+            }
+            Intent::Action { layer, action } => (layer, action),
+        };
+        if !ui.accepts(&origin) {
+            continue;
+        }
+        let result = match action {
+            UiAction::Advance if !progressed => {
+                progressed = true;
+                actions.extend(player.presenter.advance());
+                Ok(())
+            }
+            UiAction::SetState { ref key, ref value } => (|| {
+                let mut state = player
+                    .state
+                    .write()
+                    .map_err(|_| "canonical state lock poisoned".to_string())?;
+                state.get(key).map_err(|e| e.to_string())?;
+                state.set(key, value.clone()).map_err(|e| e.to_string())
+            })(),
+            UiAction::Open { .. } | UiAction::Close => ui.navigate(
+                &action,
+                &player.story,
+                focus
+                    .get()
+                    .and_then(|e| focus_keys.get(e).ok())
+                    .map(|k| k.0.clone()),
+            ),
+            _ => Ok(()),
+        };
+        if let Err(e) = result {
+            player.presenter.fail(e);
+            break;
+        }
     }
 
     for action in actions {
@@ -154,7 +250,7 @@ fn drive(
     {
         error!("{message}");
     }
-    if *player.presenter.screen() != before {
+    if player.presenter.revision() != before_revision {
         player.dirty = true;
     }
 }
@@ -193,7 +289,28 @@ fn validate_audio(id: &str, bytes: &Arc<[u8]>) -> Result<(), String> {
         .map_err(|error| format!("asset `{id}` is not readable audio: {error}"))
 }
 
+const MAX_IMAGE_BYTES: u64 = 64 * 1024 * 1024;
+fn image_cost(id: &str, ext: &str, bytes: &[u8]) -> Result<u64, String> {
+    let dimensions: Result<u64, String> = (|| {
+        let format =
+            image::ImageFormat::from_extension(ext).ok_or("unsupported format".to_string())?;
+        let (width, height) = image::ImageReader::with_format(std::io::Cursor::new(bytes), format)
+            .into_dimensions()
+            .map_err(|e| e.to_string())?;
+        // Covers even RGBA32F conversion before allocating decoded pixels.
+        if width == 0 || height == 0 || width > 4096 || height > 4096 {
+            return Err("image exceeds 4096px or the 64 MiB decode budget".into());
+        }
+        let cost = u64::from(width) * u64::from(height) * 16;
+        if cost > MAX_IMAGE_BYTES {
+            return Err("image exceeds 4096px or the 64 MiB decode budget".into());
+        }
+        Ok(cost)
+    })();
+    dimensions.map_err(|e| format!("asset `{id}` is not a readable image: {e}"))
+}
 fn decode_image(id: &str, ext: &str, bytes: &[u8]) -> Result<Image, String> {
+    image_cost(id, ext, bytes)?;
     Image::from_buffer(
         bytes,
         ImageType::Extension(ext),
@@ -232,15 +349,26 @@ fn perform(action: &Action, story: &Story, media: &mut Media) -> Result<(), Stri
 /// Rebuilds the dialogue panel when the presenter's screen changed.
 fn refresh_panel(
     mut player: NonSendMut<Player>,
-    panel: Single<Entity, With<Panel>>,
+    panel: Single<(Entity, &mut Visibility), With<Panel>>,
     mut commands: Commands,
 ) {
+    let (panel, mut visibility) = panel.into_inner();
+    let show = player.story.manifest().initial_screen.is_none()
+        || matches!(player.presenter.screen(), Screen::Error(_));
+    *visibility = if show {
+        Visibility::Inherited
+    } else {
+        Visibility::Hidden
+    };
     if !player.dirty {
         return;
     }
     player.dirty = false;
-    let panel = *panel;
+
     commands.entity(panel).despawn_children();
+    if !show {
+        return;
+    }
     match player.presenter.screen().clone() {
         Screen::Line { speaker, text } => {
             commands.entity(panel).with_children(|p| {
@@ -261,13 +389,17 @@ fn refresh_panel(
                     p.spawn((
                         Button,
                         Hovered::default(),
+                        bevy::input_focus::tab_navigation::TabIndex(0),
                         Node {
                             padding: UiRect::axes(px(16), px(10)),
                             ..default()
                         },
                         BackgroundColor(BUTTON_BG),
-                        observe(move |_: On<Activate>, mut picked: ResMut<PickedChoice>| {
-                            picked.0 = Some(position);
+                        observe(move |_: On<Activate>, mut intents: ResMut<Intents>| {
+                            intents.push(Intent::Select {
+                                layer: None,
+                                position,
+                            });
                         }),
                         children![label(
                             format!("{}. {}", position + 1, choice.text),
@@ -293,12 +425,15 @@ fn refresh_panel(
     }
 }
 
-fn hover_buttons(mut buttons: Query<(&Hovered, &mut BackgroundColor), With<Button>>) {
-    for (hovered, mut background) in &mut buttons {
-        background.0 = if hovered.get() {
+fn hover_buttons(
+    focus: Res<InputFocus>,
+    mut buttons: Query<(Entity, &Hovered, Option<&ButtonBase>, &mut BackgroundColor), With<Button>>,
+) {
+    for (entity, hovered, base, mut background) in &mut buttons {
+        background.0 = if hovered.get() || focus.get() == Some(entity) {
             BUTTON_HOVER
         } else {
-            BUTTON_BG
+            base.map_or(BUTTON_BG, |b| b.0)
         };
     }
 }
@@ -306,6 +441,7 @@ fn hover_buttons(mut buttons: Query<(&Hovered, &mut BackgroundColor), With<Butto
 fn label(text: impl Into<String>, size: f32, color: Color) -> impl Bundle {
     (
         Text::new(text),
+        Pickable::IGNORE,
         TextFont {
             font_size: FontSize::Px(size),
             ..default()
@@ -317,6 +453,7 @@ fn label(text: impl Into<String>, size: f32, color: Color) -> impl Bundle {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use bevy::input_focus::InputFocusVisible;
 
     const WAV: &[u8] = include_bytes!("../../../examples/hello-story/assets/chime.wav");
     const PNG: &[u8] = include_bytes!("../../../examples/hello-story/assets/room.png");
@@ -345,5 +482,120 @@ mod tests {
             let error = decode_image("bad-background", ext, bytes).unwrap_err();
             assert!(error.contains("asset `bad-background` is not a readable image"));
         }
+    }
+    pub(super) fn input_app() -> App {
+        let story = Story::load(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-story"),
+        )
+        .unwrap();
+        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
+        let compiled = CompiledDialogue::from_artifact_bytes(include_bytes!(
+            "../../weftora-yarn/tests/fixtures/budget.json"
+        ))
+        .unwrap();
+        let runner = DialogueRunner::new(&compiled, state.clone());
+        let (presenter, pending) = Presenter::new(runner, "Start");
+        let mut app = App::new();
+        app.insert_non_send(Player {
+            story,
+            state,
+            presenter,
+            pending,
+            dirty: true,
+        })
+        .init_resource::<ButtonInput<KeyCode>>()
+        .init_resource::<InputFocus>()
+        .init_resource::<InputFocusVisible>()
+        .init_resource::<Intents>()
+        .init_resource::<Ui>()
+        .init_resource::<Assets<Image>>()
+        .init_resource::<Assets<AudioSource>>()
+        .add_message::<AppExit>()
+        .add_systems(Update, drive);
+        app
+    }
+    #[test]
+    fn duplicate_progress_intents_advance_only_one_line() {
+        let mut app = input_app();
+        for _ in 0..2 {
+            app.world_mut()
+                .resource_mut::<Intents>()
+                .push(Intent::Action {
+                    layer: None,
+                    action: UiAction::Advance,
+                });
+        }
+        app.update();
+        assert!(
+            matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Line { text, .. } if text == "Second")
+        );
+    }
+    #[test]
+    fn focused_enter_and_button_action_do_not_advance_dialogue() {
+        let mut app = input_app();
+        let entity = app
+            .world_mut()
+            .spawn((
+                Button,
+                observe(|_: On<Activate>, mut intents: ResMut<Intents>| {
+                    intents.push(Intent::Action {
+                        layer: None,
+                        action: UiAction::SetState {
+                            key: "curious".into(),
+                            value: weftora_api::Value::Bool(true),
+                        },
+                    });
+                }),
+            ))
+            .id();
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(entity, bevy::input_focus::FocusCause::Navigated);
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Enter);
+        app.world_mut().trigger(Activate { entity });
+        app.update();
+        let player = app.world().non_send::<Player>();
+        assert!(matches!(player.presenter.screen(), Screen::Line { text, .. } if text == "First"));
+        assert_eq!(
+            player.state.read().unwrap().get("curious"),
+            Ok(&weftora_api::Value::Bool(true))
+        );
+        assert_eq!(player.state.write().unwrap().drain_changes().len(), 1);
+    }
+    pub(super) fn hello_app() -> App {
+        let mut app = input_app();
+        let compiled =
+            CompiledDialogue::from_artifact_bytes(include_bytes!("../tests/fixtures/hello.json"))
+                .unwrap();
+        let player = &mut *app.world_mut().non_send_mut::<Player>();
+        compiled
+            .verify_sources(&player.story.dialogue_sources().unwrap())
+            .unwrap();
+        let (presenter, pending) = Presenter::new(
+            DialogueRunner::new(&compiled, player.state.clone()),
+            "Start",
+        );
+        player.presenter = presenter;
+        player.pending = pending;
+        app
+    }
+    #[test]
+    fn oversized_image_is_rejected_from_header_before_decode() {
+        // A PNG header with valid CRC and no pixel data: dimensions alone must reject it.
+        let mut bytes = PNG.to_vec();
+        bytes[16..20].copy_from_slice(&100_000u32.to_be_bytes());
+        bytes[20..24].copy_from_slice(&100_000u32.to_be_bytes());
+        let mut crc = !0u32;
+        for b in &bytes[12..29] {
+            crc ^= u32::from(*b);
+            for _ in 0..8 {
+                crc = (crc >> 1) ^ (0xEDB88320u32 & (0u32.wrapping_sub(crc & 1)));
+            }
+        }
+        bytes[29..33].copy_from_slice(&(!crc).to_be_bytes());
+        let error = decode_image("oversized", "png", &bytes).unwrap_err();
+        assert!(error.contains("decode budget"), "{error}");
     }
 }

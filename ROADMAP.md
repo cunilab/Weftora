@@ -59,10 +59,10 @@ Goal: full Yarn integration and the presentation primitives a visual novel needs
 - [x] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats. [Automated P2-03 evidence](./docs/evidence/phase-2.md#verified-revision).
 - [ ] Views and layers: background, characters, CG, overlay; position, scale, opacity, fade, move, crossfade.
 - [ ] Audio channels: music, effects, ambience, voice; fades, user volume.
-- [ ] Choose the declarative UI renderer (Bevy UI or alternative) by ADR.
+- [x] Choose the declarative UI renderer (Bevy UI or alternative) by ADR.
 - [ ] Declarative UI v1: screen, panel, text, image, button, list, choice list, overlay; state bindings; keyboard/mouse focus.
-- [ ] Asset catalogs for images, audio and fonts.
-- [ ] Pin Bevy and Yarn versions; record a dependency licence inventory.
+- [x] Asset catalogs for images, audio and fonts; native font/rendering checks remain in issue #5.
+- [x] Pin Bevy and Yarn versions; record a dependency licence inventory.
 - [ ] Measure a Windows performance baseline; confirm or revise the budgets in [PRD R15](./PRD.md#5-requirements) by ADR.
 
 ## Phase 3 — First playable visual novel (Story A) and saves

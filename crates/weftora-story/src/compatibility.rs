@@ -3,7 +3,7 @@ use semver::{Comparator, Op, Version, VersionReq};
 use serde::Deserialize;
 
 pub const ENGINE_API: &str = "0.1.0";
-pub const CAPABILITIES: &[&str] = &["dialogue.yarn/1", "assets.catalog/1"];
+pub const CAPABILITIES: &[&str] = &["dialogue.yarn/1", "assets.catalog/1", "ui.screens/1"];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
