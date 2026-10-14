@@ -1,0 +1,286 @@
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:47.9982303Z ##[group]Run cargo test --workspace --locked
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:47.9982814Z ^[[36;1mcargo test --workspace --locked^[[0m
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:48.0056477Z shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:48.0056921Z env:
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:48.0057188Z   CARGO_TERM_COLOR: always
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:48.0057470Z   CACHE_ON_FAILURE: false
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:48.0057745Z   CARGO_INCREMENTAL: 0
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:48.0058012Z ##[endgroup]
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:49.0247867Z ^[[1m^[[92m   Compiling^[[0m weftora-api v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-api)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:49.0252241Z ^[[1m^[[92m   Compiling^[[0m serde_json v1.0.154
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:49.0290356Z ^[[1m^[[92m   Compiling^[[0m prost v0.14.4
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:49.3016095Z ^[[1m^[[92m   Compiling^[[0m weftora-core v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-core)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:49.6793105Z ^[[1m^[[92m   Compiling^[[0m yarnspinner_core v0.9.0
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:50.6635016Z ^[[1m^[[92m   Compiling^[[0m weftora-story v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-story)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:51.8879600Z ^[[1m^[[92m   Compiling^[[0m yarnspinner_runtime v0.9.0 (D:\a\Weftora\Weftora\vendor\yarnspinner_runtime)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:54.0408356Z ^[[1m^[[92m   Compiling^[[0m weftora-yarn v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-yarn)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:55.5974402Z ^[[1m^[[92m   Compiling^[[0m yarnspinner_compiler v0.9.0
+Windows (required)	UNKNOWN STEP	2026-10-14T08:45:58.5447263Z ^[[1m^[[92m   Compiling^[[0m weftora-render-bevy v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-render-bevy)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:02.3122805Z ^[[1m^[[92m   Compiling^[[0m weftora-yarn-compiler v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-yarn-compiler)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:04.6272124Z ^[[1m^[[92m   Compiling^[[0m xtask v0.0.1 (D:\a\Weftora\Weftora\xtask)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:16.0943454Z ^[[1m^[[92m   Compiling^[[0m weftora-player v0.0.1 (D:\a\Weftora\Weftora\apps\weftora-player)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:53.5050144Z ^[[1m^[[92m   Compiling^[[0m weftora-cli v0.0.1 (D:\a\Weftora\Weftora\apps\weftora-cli)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.4686595Z ^[[1m^[[92m    Finished^[[0m `test` profile [unoptimized + debuginfo] target(s) in 1m 09s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5078908Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_api-7aabbe3a1ab65d00.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5208681Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5209201Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5209571Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5210092Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5210831Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5228872Z ^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\weftora-03ea76ee4f0966fd.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5332277Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5332574Z running 4 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5493772Z test check_tests::check_reports_initial_state_integer_precision ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5495039Z test headless::tests::actual_story_service_rolls_back_partial_startup_and_releases_state ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5496309Z test check_tests::check_reports_initial_state_type_mismatch ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5497319Z test tests::incomplete_export_fails_reference_verification ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5497790Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5498107Z test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5498529Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5520189Z ^[[1m^[[92m     Running^[[0m tests\cli.rs (target\debug\deps\cli-81776d75f39608d5.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5622323Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5622742Z running 18 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5786070Z test check_fails_on_missing_story ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5863232Z test check_fails_on_broken_story ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.5947233Z test check_and_headless_run_reject_the_same_invalid_package ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6017316Z test check_rejects_case_mismatched_dialogue_on_case_insensitive_filesystems ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6021437Z test check_and_run_reject_invalid_yarn_defaults_before_startup ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6045052Z test check_ok_on_hello_story ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6633105Z test export_rejects_overlapping_directories_without_writes ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6649408Z test export_skips_unreferenced_hidden_content_and_keeps_references ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6800739Z test export_copies_player_and_story ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6936905Z test hidden_dialogue_is_rejected_by_check_and_export ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.6941823Z test missing_manifest_diagnostic_names_story_root ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.7099657Z test headless_choices_are_required_valid_and_exhausted ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.7124854Z test real_startup_failure_emits_no_gameplay_trace ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.7175718Z test run_without_player_reports_clear_error ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.7374255Z test startup_preserves_multiline_diagnostics_byte_for_byte ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.7385265Z test version_prints_hash ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:57.8591172Z test scoped_replay_defaults_notifications_and_signals_match_ten_fresh_runs ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0497010Z test headless_golden_traces_match_in_ten_fresh_runs_per_branch ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0497499Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0497812Z test result: ok. 18 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0498255Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0519724Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_core-33691a33ec59ad09.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0623257Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0623706Z running 5 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0630837Z test state::tests::key_validation ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0633260Z test state::tests::double_underscore_is_reserved ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0634348Z test state::tests::set_get_remove_exists ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0635056Z test state::tests::add_numbers ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0635633Z test state::tests::with_values_validates ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0635914Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0636233Z test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0636650Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0653602Z ^[[1m^[[92m     Running^[[0m tests\kernel.rs (target\debug\deps\kernel-cf6c0d339c2d751c.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0750707Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0750955Z running 7 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0759084Z test catalogs_report_duplicate_and_missing_ids_without_overwrite ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0761244Z test lifecycle_order_failure_cleanup_and_no_restart ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0763269Z test commands_validate_arguments_results_failure_and_cancellation ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0765287Z test async_command_completes_after_yielding_and_cancellation_does_not_poll ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0767078Z test signals_are_fifo_unsubscribable_and_bounded ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0767929Z test state_types_defaults_scopes_and_notifications ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0886699Z test state_numeric_properties_and_atomic_rejections ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0887223Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0887543Z test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0887918Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.0905475Z ^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\weftora_player-5c86cf5af77bb1be.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1063369Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1063772Z running 3 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1193209Z test tests::player_rejects_unknown_format_stale_sources_and_missing_node_before_window ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1211991Z test tests::packaged_and_explicit_preview_artifacts_load_without_a_compiler ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1311375Z test tests::oversized_artifact_file_is_rejected_by_the_player ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1311869Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1312153Z test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1312566Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1340432Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_render_bevy-fb7950f79b691407.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1504395Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1505180Z running 11 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1515548Z test presenter::tests::choices_hide_unavailable_and_select_maps_to_runner_index ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1517019Z test presenter::tests::advance_moves_to_next_line_then_end ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1518607Z test presenter::tests::choose_failure_and_renderer_failure_show_errors ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1520354Z test presenter::tests::bad_commands_become_error_screens ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1521351Z test presenter::tests::commands_run_before_first_line_and_line_waits ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1522418Z test presenter::tests::no_available_choices_is_an_error ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1523268Z test presenter::tests::runner_errors_become_error_screens ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1526130Z test tests::valid_wav_passes_audio_validation ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1528366Z test tests::invalid_audio_returns_asset_specific_error ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1529234Z test tests::invalid_images_return_asset_specific_error ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1573309Z test tests::valid_png_decodes ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1573886Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1574308Z test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1574738Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1600546Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_story-a24fba0a00217235.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1705420Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1705834Z running 17 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1713538Z test jsonc::tests::plain_json_is_unchanged ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1715829Z test compatibility::tests::adr_phase_one_version_matrix ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1718854Z test jsonc::tests::errors_keep_original_line_numbers ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1720057Z test jsonc::tests::keeps_comment_markers_and_commas_inside_strings ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1721023Z test jsonc::tests::strips_line_and_block_comments ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1722152Z test jsonc::tests::strips_trailing_commas ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1723299Z test jsonc::tests::unterminated_block_comment_is_an_error ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1726245Z test paths::tests::case_collision_policy_covers_ascii_and_unicode_on_every_host ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1728393Z test paths::tests::windows_names_are_rejected_on_every_host ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1811210Z test paths::tests::inventory_limits_fail_before_loading ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1816190Z test tests::json_error_has_line ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1824607Z test tests::collects_all_diagnostics ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1845968Z test tests::loads_good_story ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1914259Z test tests::rejects_bad_paths ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1915134Z test tests::rejects_dot_segments_with_traversal_diagnostic ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.1943677Z test tests::rejects_case_mismatched_references_on_case_insensitive_filesystems ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2099272Z test tests::rejects_hidden_references ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2099998Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2100519Z test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2101237Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2122443Z ^[[1m^[[92m     Running^[[0m tests\phase_one.rs (target\debug\deps\phase_one-2fa7dcf7b5d26484.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2228176Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2228579Z running 10 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2302551Z test declaration_errors_do_not_hide_override_type_mismatches ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2375948Z test unsupported_schema_wins_over_future_fields_and_missing_legacy_fields ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2501980Z test oversized_file_is_rejected_without_reading_it ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2503258Z test duplicate_sources_and_noncanonical_separators_are_rejected ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2518074Z test catalog_duplicate_missing_ids_and_duplicate_json_keys_report_source ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2695203Z test v1_defaults_scopes_and_rejected_compatibility ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2755724Z test windows_symlink_escape_is_rejected_before_activation ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2772345Z test whole_loader_enforces_the_real_total_size_boundary ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:46:58.2824134Z test windows_junction_escape_and_case_alias_are_rejected_before_activation ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2487147Z test whole_loader_enforces_the_real_file_count_boundary ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2487535Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2487831Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 2.03s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2488286Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2510061Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_yarn-0073bcb5ea8bfd2e.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2626053Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2626555Z running 10 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2633361Z test artifact::tests::future_format_takes_priority_over_missing_current_fields ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2645792Z test artifact::tests::raw_body_checksum_is_independent_of_wrapper_key_order ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2650238Z test artifact::tests::supported_artifact_round_trips_without_byte_changes ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2654816Z test storage::tests::integer_conversion_checks_extremes_and_exact_boundaries ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2659104Z test artifact::tests::unknown_wrapper_fields_compiler_and_body_corruption_are_rejected ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2662911Z test storage::tests::invalid_defaults_do_not_skip_valid_defaults ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2669773Z test tests::zero_budget_executes_no_instruction ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2680620Z test tests::configurable_budget_resets_between_continue_calls ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2683290Z test artifact::tests::file_limit_and_source_identity_are_enforced ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2684472Z test artifact::tests::malformed_bytecode_is_rejected_even_with_a_recomputed_checksum ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2685180Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2685505Z test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2685887Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2711063Z ^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_yarn_compiler-660380a14b950d90.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2815149Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2816124Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2816486Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2817597Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2818024Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2834600Z ^[[1m^[[92m     Running^[[0m tests\artifact.rs (target\debug\deps\artifact-706a763b8c240eb8.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2941749Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2942224Z running 2 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.2950195Z test compiler_identity_matches_the_locked_dependency ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3251526Z test fresh_compilations_and_loaded_artifacts_produce_identical_bytes_and_events ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3252125Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3252412Z test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3252829Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3279697Z ^[[1m^[[92m     Running^[[0m tests\hello_story.rs (target\debug\deps\hello_story-8076fb927c4db9c6.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3397572Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3398251Z running 25 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3481037Z test canonical_state_rejects_runtime_type_change_without_breaking_dialogue ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3500437Z test compiler_panic_becomes_diagnostic ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3586953Z test command_jump_loop_fails_after_one_thousand_commands ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3598988Z test compiles_hello_story ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3639266Z test initial_state_types_are_checked_before_start ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3644671Z test declared_default_does_not_overwrite_existing_state ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3680609Z test integer_precision_boundaries_never_panic ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3734618Z test invalid_choice_is_rejected ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3751839Z test invalid_default_is_rejected_before_any_canonical_defaults_are_written ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3770000Z test large_initial_int_is_rejected_before_start ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3789286Z test namespaced_and_typed_variables ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3856573Z test no_branch_leaves_curious_false ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3875046Z test non_integral_number_to_int_key_errors ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3919440Z test removed_declaration_mismatch_rejects_all_defaults_before_initialization ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3937365Z test removed_integer_declaration_keeps_its_type_during_yarn_default_fill ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.3957074Z test runtime_panic_is_caught_and_runner_cannot_be_restarted ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.4014850Z test rust_written_state_is_seen_by_yarn ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.5730514Z test self_jump_exhausts_budget_and_fails_runner ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.5792412Z test start_missing_node ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.5811062Z test state_precision_check_only_checks_declared_numbers ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.5825195Z test syntax_error_has_file_and_line ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.5887696Z test yes_branch_sets_curious_true ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:00.8437732Z test instruction_budget_is_cumulative_across_commands ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:01.0947668Z test a_blocking_event_is_allowed_after_exactly_one_thousand_commands ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6128260Z test blocking_lines_and_choices_reset_progress_budgets ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6128932Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6129464Z test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.27s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6130410Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6161016Z ^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\xtask-aaeea7fbab05e305.exe)
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6264226Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6264640Z running 31 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6282746Z test deps::tests::clean_graph ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6283647Z test deps::tests::compiler_is_forbidden_in_player_even_transitively ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6284680Z test deps::tests::dev_dependencies_ignored_but_mixed_edges_checked ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6285517Z test deps::tests::example_dependency ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6286915Z test deps::tests::optional_dependencies_are_resolved ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6290268Z test deps::tests::transitive_bevy ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6292309Z test docs::tests::bad_header ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6293490Z test docs::tests::broken_anchor ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6294716Z test docs::tests::all_reference_forms_resolve_case_insensitively ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6297899Z test docs::tests::broken_link ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6299077Z test docs::tests::deeply_indented_list_fences_ignored ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6300555Z test docs::tests::duplicate_id ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6301481Z test docs::tests::fences_ignored ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6303727Z test docs::tests::front_matter_is_not_a_heading ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6305672Z test docs::tests::footnotes_are_not_links_or_definitions ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6306492Z test docs::tests::heading_link_labels_define_slugs ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6307235Z test docs::tests::images_inside_links_are_checked_once ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6312455Z test docs::tests::inline_code_links_ignored ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6313831Z test docs::tests::labels_cannot_span_blank_lines ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6314562Z test docs::tests::links_inside_link_text_are_checked_once ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6319448Z test docs::tests::literal_brackets_do_not_hide_inner_links ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6321123Z test docs::tests::link_paths_require_exact_case_for_every_component ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6321999Z test docs::tests::multiline_inline_links_keep_line_numbers ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6323258Z test docs::tests::query_strings_and_repo_root_links_resolve ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6327368Z test docs::tests::references_in_code_and_escaped_brackets_are_ignored ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6328365Z test docs::tests::reference_targets_are_checked ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6329414Z test docs::tests::title_mismatch ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6330060Z test docs::tests::undefined_shortcuts_are_literal_text ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6333396Z test docs::tests::unresolved_references_report_use_lines ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6333993Z test docs::tests::valid_header ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6335362Z test docs::tests::valid_anchors_and_external_links ... ok
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6335669Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6335933Z test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6336306Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.6353979Z ^[[1m^[[92m   Doc-tests^[[0m weftora_api
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.7384690Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.7385551Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.7385764Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.7386077Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.7386809Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.7484818Z ^[[1m^[[92m   Doc-tests^[[0m weftora_core
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.8150052Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.8150664Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.8150973Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.8151517Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.8152285Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:03.8238199Z ^[[1m^[[92m   Doc-tests^[[0m weftora_render_bevy
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0042159Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0043253Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0043621Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0044047Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0044521Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0143348Z ^[[1m^[[92m   Doc-tests^[[0m weftora_story
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0830249Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0830858Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0831284Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0831731Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0832343Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.0915633Z ^[[1m^[[92m   Doc-tests^[[0m weftora_yarn
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.1914535Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.1915057Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.1915417Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.1915967Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.1916773Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.2001301Z ^[[1m^[[92m   Doc-tests^[[0m weftora_yarn_compiler
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.2664512Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.2665224Z running 0 tests
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.2665520Z 
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.2665981Z test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+Windows (required)	UNKNOWN STEP	2026-10-14T08:47:04.2666506Z 

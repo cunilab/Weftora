@@ -56,7 +56,7 @@ Goal: full Yarn integration and the presentation primitives a visual novel needs
 **Status:** in progress. The first implementation separates the authoring compiler from the player and adds versioned compiled dialogue. See [Phase 2 implementation evidence](./docs/evidence/phase-2.md). No Phase 2 gate is claimed yet; views, audio, declarative UI and Windows performance evidence remain outstanding.
 
 - [ ] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
-- [ ] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats.
+- [x] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats. [Automated P2-03 evidence](./docs/evidence/phase-2.md#verified-revision).
 - [ ] Views and layers: background, characters, CG, overlay; position, scale, opacity, fade, move, crossfade.
 - [ ] Audio channels: music, effects, ambience, voice; fades, user volume.
 - [ ] Choose the declarative UI renderer (Bevy UI or alternative) by ADR.

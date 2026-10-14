@@ -17,6 +17,14 @@ Phase 2 is **in progress**, not a passed gate. The first slice implements P2-03'
 - CLI tests verify exported artifact identity/hash and source correspondence; a Unix fake-player fixture confirms the preview exists during the child process, its exit status propagates, and the temporary artifact is removed afterward. This preview process fixture is not claimed as Windows UI evidence.
 - CLI and player share state/default, entrypoint, command schema, asset reference and command provenance checks. The CLI also validates its serialize/load round trip; export checks the copied package before reporting success.
 
+## Verified revision
+
+Code/test commit `9d1db87545c0fc0982bd0ffc6f2a563f27f57d50` passed all three jobs in [CI run 38537227113](https://github.com/cunilab/Weftora/actions/runs/38537227113): required Windows workspace tests/Clippy/format/docs/dependencies, required dependency audit, and macOS headless tests/dependency guard. Windows ran 143 tests with zero failures. Full raw [workspace test step](./artifacts/phase-2-windows/workspace-tests.txt) and [player dependency tree](./artifacts/phase-2-windows/player-dependencies.txt) are preserved, including timestamps and blank-line whitespace. The tree has no compiler or ANTLR dependency. The job reported Rust 1.98.0; Yarn core/compiler/runtime are pinned 0.9.0 and Bevy remains locked 0.20.0.
+
+Claude Opus 5.5 at medium effort advised and reviewed the implementation using only Read/Glob/Grep. Its final focused verdict was **ship**. Codex implemented the changes and ran verification. Reports are local-only on MacBookAir under `/tmp/weftora-phase2-{advice,review,final-review}/`; the durable behavior and remaining limits are recorded here.
+
+Latest local headless/compiler/CLI/xtask tests, workspace Clippy, dependency direction and documentation checks passed. An earlier overlapping native test/build used stale build inputs while review fixes were edited; that result is not used as evidence. The immutable CI checkout above is the full workspace test evidence. No new native player/renderer/audio behavior is claimed by this slice.
+
 ## Reproduction
 
 ```text
@@ -38,7 +46,7 @@ A fresh direct source-folder launch now needs the CLI to compile a preview; the 
 | --- | --- |
 | P2-01 canonical state read by a real Engine presentation primitive | NOT_RUN; earlier adapter tests cover state but do not prove the new UI/view integration |
 | P2-02 file/node diagnostics and no-panic errors | OPEN; existing compiler/runtime panic containment is not the complete criterion |
-| P2-03 versioned artifact and compiler-free player | IMPLEMENTED; current commit/CI results to be attached after verification |
+| P2-03 versioned artifact and compiler-free player | PASS for automated criterion at `9d1db87`; see immutable CI, player negative-format fixture and dependency tree above |
 | P2-04 views and transitions | NOT_RUN |
 | P2-05 audio channels/fades/volume | NOT_RUN |
 | P2-06 declarative UI and focus | NOT_RUN |
