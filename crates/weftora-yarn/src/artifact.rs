@@ -81,7 +81,13 @@ impl CompiledDialogue {
         sites: Vec<CommandSite>,
         input_hash: String,
     ) -> Result<Self, String> {
+        let node_files = sites
+            .iter()
+            .filter(|site| !site.file.is_empty())
+            .map(|site| (site.node.clone(), site.file.clone()))
+            .collect();
         let dialogue = Self {
+            node_files,
             program,
             strings,
             sites,
@@ -181,9 +187,32 @@ impl CompiledDialogue {
         Self::from_artifact_bytes(&bytes).map_err(|e| format!("{}: {e}", path.display()))
     }
 
-    pub fn verify_sources(&self, sources: &[DialogueSource]) -> Result<(), String> {
+    pub fn verify_sources(&mut self, sources: &[DialogueSource]) -> Result<(), String> {
         if self.input_hash != input_hash(sources) {
             return Err("stale dialogue artifact: inputHash does not match the Story sources; use `weftora run` or export again".into());
+        }
+        for source in sources {
+            let mut body = false;
+            for line in source.contents.lines() {
+                let line = line.trim_start_matches('\u{FEFF}').trim();
+                if line == "---" {
+                    body = true;
+                } else if line == "===" {
+                    body = false;
+                } else if !body
+                    && let Some(name) = line.strip_prefix("title:").map(str::trim)
+                    && self.program.nodes.contains_key(name)
+                {
+                    self.node_files.insert(name.into(), source.file.clone());
+                }
+            }
+        }
+        if sources.len() == 1 {
+            for node in self.program.nodes.keys() {
+                self.node_files
+                    .entry(node.clone())
+                    .or_insert_with(|| sources[0].file.clone());
+            }
         }
         Ok(())
     }
@@ -192,14 +221,35 @@ impl CompiledDialogue {
         if self.program.nodes.is_empty() || self.program.nodes.len() > MAX_NODES {
             return Err("dialogue must contain 1..1024 nodes".into());
         }
+        if self.program.initial_values.len() > 2048 {
+            return Err("dialogue exceeds 2048 variable declarations".into());
+        }
+        for (id, text) in &self.strings {
+            if id.len() > 256 || text.len() > yarnspinner_runtime::resource_limits::MAX_STRING_BYTES
+            {
+                return Err("dialogue string ID/text exceeds 256 bytes/16 KiB".into());
+            }
+        }
         for (name, value) in &self.program.initial_values {
+            if name.len() > 512 {
+                return Err("Yarn variable name exceeds 512 bytes".into());
+            }
+            if name.starts_with("$Yarn.Internal.")
+                && (!name
+                    .strip_prefix("$Yarn.Internal.Visiting.")
+                    .is_some_and(|node| self.program.nodes.contains_key(node))
+                    || !matches!(&value.value, Some(OperandValue::FloatValue(_))))
+            {
+                return Err("unsupported internal Yarn declaration".into());
+            }
             validate_operand(value).map_err(|e| format!("Yarn declaration `{name}`: {e}"))?;
         }
         let library = Library::standard_library();
         let mut total = 0;
         let mut commands = Vec::new();
         for (name, node) in &self.program.nodes {
-            if name != &node.name
+            if name.len() > 256
+                || name != &node.name
                 || node.instructions.is_empty()
                 || node.instructions.len() > MAX_NODE_INSTRUCTIONS
             {
@@ -212,6 +262,9 @@ impl CompiledDialogue {
                 return Err("dialogue exceeds 65536 instructions".into());
             }
             for (label, offset) in &node.labels {
+                if label.len() > 256 {
+                    return Err("Yarn label exceeds 256 bytes".into());
+                }
                 if *offset < 0 || *offset as usize >= node.instructions.len() {
                     return Err(format!(
                         "node `{name}`: label `{label}` has invalid offset {offset}"
@@ -269,9 +322,22 @@ impl CompiledDialogue {
                 {
                     return Err(fail("missing destination label"));
                 }
+                if matches!(op, OpCode::PushVariable | OpCode::StoreVariable) {
+                    let name = string(0);
+                    if name.len() > 512 {
+                        return Err(fail("variable name exceeds 512 bytes"));
+                    }
+                    if name.starts_with("$Yarn.Internal.")
+                        && !name
+                            .strip_prefix("$Yarn.Internal.Visiting.")
+                            .is_some_and(|node| self.program.nodes.contains_key(node))
+                    {
+                        return Err(fail("unsupported internal Yarn variable"));
+                    }
+                }
                 if matches!(op, OpCode::PushVariable | OpCode::StoreVariable)
                     && !self.program.initial_values.contains_key(string(0))
-                    && !string(0).starts_with("$Yarn.Internal.")
+                    && (op == OpCode::PushVariable || !string(0).starts_with("$Yarn.Internal."))
                 {
                     return Err(fail("undeclared variable"));
                 }
@@ -321,6 +387,11 @@ impl CompiledDialogue {
 fn validate_operand(operand: &Operand) -> Result<(), String> {
     match &operand.value {
         Some(OperandValue::FloatValue(n)) if !n.is_finite() => Err("non-finite number".into()),
+        Some(OperandValue::StringValue(text))
+            if text.len() > yarnspinner_runtime::resource_limits::MAX_STRING_BYTES =>
+        {
+            Err("string operand exceeds 16 KiB".into())
+        }
         None => Err("missing operand value".into()),
         _ => Ok(()),
     }
@@ -458,7 +529,7 @@ mod tests {
                 .unwrap_err()
                 .contains("exceeds 16 MiB")
         );
-        let loaded = CompiledDialogue::from_artifact_bytes(FIXTURE).unwrap();
+        let mut loaded = CompiledDialogue::from_artifact_bytes(FIXTURE).unwrap();
         assert!(
             loaded
                 .verify_sources(&[])

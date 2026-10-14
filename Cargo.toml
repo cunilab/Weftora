@@ -33,7 +33,7 @@ yarnspinner_core = { version = "=0.9.0", default-features = false, features = ["
 yarnspinner_runtime = { version = "=0.9.0", default-features = false, features = ["std"] }
 yarnspinner_compiler = { version = "=0.9.0", default-features = false }
 weftora-yarn-compiler = { path = "crates/weftora-yarn-compiler" }
-bevy = { version = "0.20.0", default-features = false, features = ["2d", "ui", "audio"] }
+bevy = { version = "=0.20.0", default-features = false, features = ["2d", "ui", "audio"] }
 
 [workspace.lints.rust]
 unsafe_code = "forbid"

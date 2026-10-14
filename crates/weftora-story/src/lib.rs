@@ -5,6 +5,7 @@
 pub mod compatibility;
 pub mod jsonc;
 pub mod paths;
+pub mod ui;
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
@@ -32,6 +33,9 @@ pub struct Manifest {
     pub state: BTreeMap<String, StateDefinition>,
     #[serde(default)]
     pub catalogs: BTreeMap<String, Vec<String>>,
+    #[serde(default)]
+    pub screens: Vec<String>,
+    pub initial_screen: Option<String>,
     /// Reverse-domain Story ID, e.g. `com.example.hello-story`.
     pub id: String,
     pub story_version: String,
@@ -48,12 +52,50 @@ pub struct Manifest {
     pub initial_state: BTreeMap<String, Value>,
 }
 
+/// Declared media type for catalog assets. Legacy manifest assets remain untyped.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AssetKind {
+    Image,
+    Audio,
+    Font,
+}
+impl AssetKind {
+    pub fn category(self) -> &'static str {
+        match self {
+            Self::Image => "images",
+            Self::Audio => "audio",
+            Self::Font => "fonts",
+        }
+    }
+    fn from_category(category: &str) -> Option<Self> {
+        match category {
+            "images" => Some(Self::Image),
+            "audio" => Some(Self::Audio),
+            "fonts" => Some(Self::Font),
+            _ => None,
+        }
+    }
+}
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct AssetEntry {
+    id: String,
+    path: String,
+}
+#[derive(Debug, Clone)]
+struct Asset {
+    kind: Option<AssetKind>,
+    path: String,
+}
+
 /// A loaded, validated Story package.
 #[derive(Debug, Clone)]
 pub struct Story {
     root: PathBuf,
     manifest: Manifest,
     catalogs: BTreeMap<String, Catalog<serde_json::Value>>,
+    assets: Catalog<Asset>,
+    screens: Catalog<ui::ScreenDefinition>,
 }
 
 /// One Yarn source file read from the Story.
@@ -147,10 +189,37 @@ impl Story {
         } else if manifest.requires.is_some()
             || !manifest.state.is_empty()
             || !manifest.catalogs.is_empty()
+            || !manifest.screens.is_empty()
+            || manifest.initial_screen.is_some()
         {
             diags.push(manifest_diag(
                 None,
-                "requires, state and catalogs need manifestSchema 1".into(),
+                "requires, state, catalogs and screens need manifestSchema 1".into(),
+            ));
+        }
+        if manifest
+            .catalogs
+            .keys()
+            .any(|category| AssetKind::from_category(category).is_some())
+            && !manifest
+                .requires
+                .as_ref()
+                .is_some_and(|r| r.capabilities.iter().any(|c| c == "assets.catalog/1"))
+        {
+            diags.push(manifest_diag(
+                None,
+                "typed asset catalogs require `assets.catalog/1` in requires.capabilities".into(),
+            ));
+        }
+        if (!manifest.screens.is_empty() || manifest.initial_screen.is_some())
+            && !manifest
+                .requires
+                .as_ref()
+                .is_some_and(|r| r.capabilities.iter().any(|c| c == "ui.screens/1"))
+        {
+            diags.push(manifest_diag(
+                None,
+                "declarative screens require `ui.screens/1` in requires.capabilities".into(),
             ));
         }
         for (name, value) in [
@@ -209,12 +278,27 @@ impl Story {
             }
         }
 
+        let mut assets = Catalog::default();
+        for (id, path) in &manifest.assets {
+            if let Err(error) = assets.insert(
+                id,
+                Asset {
+                    kind: None,
+                    path: path.clone(),
+                },
+                MANIFEST_FILE,
+                &format!("/assets/{id}"),
+            ) {
+                diags.push(error);
+            }
+        }
         let mut catalogs = BTreeMap::new();
         for (category, files) in &manifest.catalogs {
-            if category != "data" {
+            let kind = AssetKind::from_category(category);
+            if category != "data" && kind.is_none() {
                 diags.push(manifest_diag(
                     None,
-                    format!("unsupported Phase 1 catalog category `{category}` (supports data)"),
+                    format!("unsupported catalog category `{category}` (supports data, images, audio, fonts)"),
                 ));
                 continue;
             }
@@ -243,7 +327,7 @@ impl Story {
                     Err(error) => {
                         diags.push(Diagnostic::new(
                             file,
-                            u32::try_from(error.line()).ok(),
+                            u32::try_from(error.line()).ok().filter(|line| *line > 0),
                             error.to_string(),
                         ));
                         continue;
@@ -263,6 +347,50 @@ impl Story {
                         ));
                         continue;
                     };
+                    if let Some(kind) = kind {
+                        let asset: AssetEntry = match serde_json::from_value(entry.clone()) {
+                            Ok(asset) => asset,
+                            Err(error) => {
+                                diags.push(Diagnostic::new(
+                                    file,
+                                    None,
+                                    format!("/{index}: {error}"),
+                                ));
+                                continue;
+                            }
+                        };
+                        match resolve_in_root(root, &asset.path) {
+                            Ok(path) if path.is_file() => {}
+                            Ok(_) => {
+                                diags.push(Diagnostic::new(
+                                    file,
+                                    None,
+                                    format!("/{index}/path: `{}` is not a file", asset.path),
+                                ));
+                                continue;
+                            }
+                            Err(error) => {
+                                diags.push(Diagnostic::new(
+                                    file,
+                                    None,
+                                    format!("/{index}/path: `{}`: {}", asset.path, error.message),
+                                ));
+                                continue;
+                            }
+                        }
+                        if let Err(error) = assets.insert(
+                            &asset.id,
+                            Asset {
+                                kind: Some(kind),
+                                path: asset.path,
+                            },
+                            file,
+                            &location,
+                        ) {
+                            diags.push(error);
+                            continue;
+                        }
+                    }
                     if let Err(error) = catalog.insert(&id, entry, file, &location) {
                         diags.push(error);
                     }
@@ -270,15 +398,41 @@ impl Story {
             }
             catalogs.insert(category.clone(), catalog);
         }
-        if diags.is_empty() {
-            Ok(Story {
-                root: root.to_path_buf(),
-                manifest,
-                catalogs,
-            })
-        } else {
-            Err(diags)
+        let screens = match ui::load(root, &manifest) {
+            Ok(screens) => screens,
+            Err(errors) => {
+                diags.extend(errors);
+                Catalog::default()
+            }
+        };
+        if !diags.is_empty() {
+            return Err(diags);
         }
+        let story = Story {
+            root: root.to_path_buf(),
+            manifest,
+            catalogs,
+            assets,
+            screens,
+        };
+        let errors = ui::reference_errors(&story);
+        if errors.is_empty() {
+            Ok(story)
+        } else {
+            Err(errors)
+        }
+    }
+
+    pub fn screen(&self, id: &str) -> Result<&ui::ScreenDefinition, Diagnostic> {
+        self.screens.get(id, MANIFEST_FILE, "screen reference")
+    }
+    pub fn screens(&self) -> impl Iterator<Item = (&str, &ui::ScreenDefinition)> {
+        self.screens.iter()
+    }
+    pub fn asset_kind(&self, id: &str) -> Result<Option<AssetKind>, Diagnostic> {
+        self.assets
+            .get(id, MANIFEST_FILE, "asset reference")
+            .map(|a| a.kind)
     }
 
     pub fn root(&self) -> &Path {
@@ -314,16 +468,53 @@ impl Story {
         resolve_in_root(&self.root, relative)
     }
 
-    /// Resolves an asset ID declared in the manifest to its file.
+    /// Resolves any legacy or catalog asset ID through the Story path policy.
     pub fn asset_path(&self, asset_id: &str) -> Result<PathBuf, Diagnostic> {
-        let relative = self.manifest.assets.get(asset_id).ok_or_else(|| {
-            Diagnostic::new(
+        let asset = self
+            .assets
+            .get(asset_id, MANIFEST_FILE, "asset reference")
+            .map_err(|_| {
+                Diagnostic::new(
+                    MANIFEST_FILE,
+                    None,
+                    format!("unknown asset ID `{asset_id}`"),
+                )
+            })?;
+        self.resolve(&asset.path)
+    }
+
+    /// Enforces declared catalog types. Legacy entries accept any type; the adapter must decode them.
+    pub fn asset_path_of(&self, kind: AssetKind, asset_id: &str) -> Result<PathBuf, Diagnostic> {
+        let asset = self.assets.get(
+            asset_id,
+            MANIFEST_FILE,
+            &format!("{} reference", kind.category()),
+        )?;
+        if let Some(actual) = asset.kind
+            && actual != kind
+        {
+            return Err(Diagnostic::new(
                 MANIFEST_FILE,
                 None,
-                format!("unknown asset ID `{asset_id}`"),
-            )
-        })?;
-        self.resolve(relative)
+                format!(
+                    "asset `{asset_id}` belongs to {}, expected {}",
+                    actual.category(),
+                    kind.category()
+                ),
+            ));
+        }
+        self.resolve(&asset.path)
+    }
+
+    pub fn asset_count(&self) -> usize {
+        self.assets.iter().count()
+    }
+
+    /// Includes typed catalog media paths, not just the legacy manifest map.
+    pub fn asset_references(&self) -> impl Iterator<Item = (&str, &str)> {
+        self.assets
+            .iter()
+            .map(|(id, asset)| (id, asset.path.as_str()))
     }
 
     /// Reads every Yarn file listed in the manifest.

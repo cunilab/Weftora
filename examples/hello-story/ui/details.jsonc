@@ -1,0 +1,19 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "overlay", "id": "details", "background": "#000000A0",
+    "layout": {"width": "100%", "height": "100%", "padding": 80},
+    "children": [
+      {
+        "type": "panel", "background": "#202438FF", "layout": {"padding": 24, "gap": 16},
+        "children": [
+          {"type": "text", "text": "Story-defined overlay", "size": 32},
+          {"type": "text", "text": "This button changes the same state used by Yarn. Offered choices keep their current conditions until the next dialogue step."},
+          {"type": "text", "bind": {"state": "curious"}},
+          {"type": "button", "id": "curious", "text": "Set curious to true", "action": {"do": "state.set", "key": "curious", "value": true}, "layout": {"padding": 12}},
+          {"type": "button", "id": "close", "text": "Close", "action": {"do": "screen.close"}, "layout": {"padding": 12}}
+        ]
+      }
+    ]
+  }
+}

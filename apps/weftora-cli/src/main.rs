@@ -97,8 +97,9 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
     let bytes = dialogue
         .to_artifact_bytes()
         .map_err(|e| vec![format!("compiled dialogue: {e}")])?;
-    let dialogue = CompiledDialogue::from_artifact_bytes(&bytes)
+    let mut dialogue = CompiledDialogue::from_artifact_bytes(&bytes)
         .map_err(|e| vec![format!("compiled dialogue: {e}")])?;
+    dialogue.verify_sources(&sources).map_err(|e| vec![e])?;
     let errors: Vec<_> = weftora_yarn::check_story(&story, &dialogue)
         .iter()
         .map(ToString::to_string)
@@ -120,7 +121,7 @@ fn check_command(dir: &Path) -> CliResult {
         manifest.id,
         manifest.story_version,
         checked.dialogue.node_names().len(),
-        manifest.assets.len(),
+        checked.story.asset_count(),
         checked.dialogue.commands().len()
     );
     Ok(ExitCode::SUCCESS)
@@ -199,7 +200,7 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
     }
     // Use the same resolved destination for writes and failure cleanup.
     let out = output_root.as_path();
-    let checked = check(dir).map_err(Failure::Messages)?;
+    let mut checked = check(dir).map_err(Failure::Messages)?;
     let artifact_bytes = checked.dialogue.to_artifact_bytes().map_err(Failure::one)?;
     let player = player_path()?;
     let io_err = |what: &str, e: io::Error| Failure::one(format!("error: {what}: {e}"));
@@ -400,7 +401,8 @@ fn verify_copied_references(
     let manifest = story.manifest();
     for reference in std::iter::once(weftora_story::MANIFEST_FILE)
         .chain(manifest.dialogue.iter().map(String::as_str))
-        .chain(manifest.assets.values().map(String::as_str))
+        .chain(manifest.screens.iter().map(String::as_str))
+        .chain(story.asset_references().map(|(_, path)| path))
         .chain(manifest.catalogs.values().flatten().map(String::as_str))
     {
         let relative = reference
@@ -492,7 +494,8 @@ mod tests {
         assert!(verify_copied_references(&story, &copied).is_ok());
         for reference in std::iter::once(weftora_story::MANIFEST_FILE)
             .chain(story.manifest().dialogue.iter().map(String::as_str))
-            .chain(story.manifest().assets.values().map(String::as_str))
+            .chain(story.manifest().screens.iter().map(String::as_str))
+            .chain(story.asset_references().map(|(_, path)| path))
             .chain(
                 story
                     .manifest()
