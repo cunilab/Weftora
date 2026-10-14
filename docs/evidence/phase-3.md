@@ -1,5 +1,5 @@
 ---
-id: WFT-EVID-006
+id: WFT-EVID-007
 title: Phase 3 Implementation Evidence
 status: proposed
 ---
@@ -20,4 +20,4 @@ On MacBookAir, the full workspace passed 227 tests across 25 suites with zero fa
 
 Claude Opus 5.5 medium was restricted to Read/Grep for advice and independent review. Its storage-core verdict was SHIP after float-roundtrip and typed-error fixes; the focused lock/file-kind follow-up also returned SHIP. Codex performed all edits and tests.
 
-Windows CI evidence will be recorded against an immutable source revision. These automated file/codec tests do not prove game save eligibility, player view restoration, native user-data paths or Windows UI. Runtime checkpoints, CLI/player integration, Story A and tutorial remain to implement. All actual Windows device/result/performance fields remain blank and maintainer-owned in issue #5.
+Windows x64 CI [run 38610052974](https://github.com/cunilab/Weftora/actions/runs/38610052974) passed all three jobs at source revision 8895fd0cd3a85965ade369b6a65afd8559cd5952. The workspace test job passed 216 tests across 25 suites with zero failures; [raw output](phase-3-save-core-windows.txt) preserves the test step. These automated file/codec tests do not prove game save eligibility, player view restoration, native user-data paths or Windows UI. Runtime checkpoints, CLI/player integration, Story A and tutorial remain to implement. All actual Windows device/result/performance fields remain blank and maintainer-owned in issue #5.
