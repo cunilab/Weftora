@@ -7,8 +7,8 @@ use std::sync::{Arc, RwLock};
 use bevy_platform::collections::HashMap;
 use weftora_api::Value;
 use weftora_core::SharedState;
-use yarnspinner::core::YarnValue;
-use yarnspinner::runtime::{VariableStorage, VariableStorageError};
+use yarnspinner_core::prelude::YarnValue;
+use yarnspinner_runtime::prelude::{VariableStorage, VariableStorageError};
 
 use crate::DialogueError;
 

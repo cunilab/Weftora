@@ -37,7 +37,7 @@ Goal: prove the stack end to end with the thinnest possible slice. The phase end
 
 Goal: replace spike code with the real, tested core.
 
-**Status:** revised after independent review; all Phase 1 headless checks passed on Windows at `c49cede`. Implementation is proposed in [PR #7](https://github.com/cunilab/Weftora/pull/7). Evidence: [Phase 1 evidence](./docs/evidence/phase-1.md).
+**Status:** revised after independent review; all Phase 1 headless checks passed on Windows at `c49cede`. Implementation is merged in [PR #7](https://github.com/cunilab/Weftora/pull/7). Evidence: [Phase 1 evidence](./docs/evidence/phase-1.md).
 
 - [x] Lifecycle (boot → load → ready → play → shutdown) with ordered init and reverse teardown.
 - [x] Canonical typed state: scalar values, defaults, scopes, change notifications.
@@ -52,6 +52,8 @@ Goal: replace spike code with the real, tested core.
 ## Phase 2 — Dialogue and presentation
 
 Goal: full Yarn integration and the presentation primitives a visual novel needs.
+
+**Status:** in progress. The first implementation separates the authoring compiler from the player and adds versioned compiled dialogue. See [Phase 2 implementation evidence](./docs/evidence/phase-2.md). No Phase 2 gate is claimed yet; views, audio, declarative UI and Windows performance evidence remain outstanding.
 
 - [ ] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
 - [ ] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats.

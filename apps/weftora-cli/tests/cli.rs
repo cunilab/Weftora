@@ -348,7 +348,26 @@ fn export_copies_player_and_story() {
 
     let report: serde_json::Value =
         serde_json::from_slice(&fs::read(out_dir.join("weftora-export.json")).unwrap()).unwrap();
-    assert_eq!(report["exportFormat"], 0);
+    assert_eq!(report["exportFormat"], 1);
+    let artifact = out_dir.join(weftora_yarn::ARTIFACT_FILE);
+    let bytes = fs::read(&artifact).unwrap();
+    let compiled = weftora_yarn::CompiledDialogue::from_artifact_bytes(&bytes).unwrap();
+    let exported_story = weftora_story::Story::load(&out_dir.join("story")).unwrap();
+    compiled
+        .verify_sources(&exported_story.dialogue_sources().unwrap())
+        .unwrap();
+    assert_eq!(report["dialogue"]["file"], weftora_yarn::ARTIFACT_FILE);
+    assert_eq!(report["dialogue"]["dialogueArtifactFormat"], 1);
+    assert_eq!(
+        report["dialogue"]["compiler"]["version"],
+        weftora_yarn::COMPILER_VERSION
+    );
+    assert_eq!(report["dialogue"]["inputHash"], compiled.input_hash());
+    use sha2::Digest;
+    assert_eq!(
+        report["dialogue"]["sha256"],
+        format!("{:x}", sha2::Sha256::digest(&bytes))
+    );
     assert_eq!(report["story"]["id"], "dev.weftora.hello-story");
     assert_eq!(report["story"]["storyVersion"], "0.1.0");
     assert_eq!(report["cli"]["version"], env!("CARGO_PKG_VERSION"));
@@ -542,4 +561,34 @@ fn startup_preserves_multiline_diagnostics_byte_for_byte() {
     assert_eq!(run.status.code(), Some(1));
     assert_eq!(check.stderr, run.stderr);
     assert!(check.stderr.windows(2).any(|pair| pair == b"\r\n"));
+}
+
+#[cfg(unix)]
+#[test]
+fn preview_passes_a_live_artifact_and_cleans_it_without_story_writes() {
+    use std::os::unix::fs::PermissionsExt;
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    let before: Vec<_> = fs::read_dir(&story)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    let player = tmp.path().join("inspect-player");
+    fs::write(&player, b"#!/bin/sh\ntest \"$2\" = --dialogue || exit 11\ntest -s \"$3\" || exit 12\nprintf '%s' \"$3\"\nexit 23\n").unwrap();
+    fs::set_permissions(&player, fs::Permissions::from_mode(0o755)).unwrap();
+    let output = weftora()
+        .env("WEFTORA_PLAYER", &player)
+        .arg("run")
+        .arg(&story)
+        .output()
+        .unwrap();
+    assert_eq!(output.status.code(), Some(23), "{}", stderr(&output));
+    let path = std::path::PathBuf::from(String::from_utf8(output.stdout).unwrap());
+    assert!(!path.exists(), "preview artifact was not cleaned up");
+    let after: Vec<_> = fs::read_dir(&story)
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    assert_eq!(before, after);
 }

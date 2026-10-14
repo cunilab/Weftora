@@ -39,7 +39,8 @@ Story packages never load native code.
                                │  depended on by
 ┌──────────────────────────────┴──────────────────────────────┐
 │ Adapters                                                     │
-│   weftora-yarn         Yarn compiler/runtime (yarnspinner)   │
+│   weftora-yarn         Yarn runtime + compiled artifacts   │
+│   weftora-yarn-compiler  authoring-only Yarn compiler         │
 │   weftora-script       Rhai host                             │
 │   weftora-render-bevy  window, views, audio, input, assets   │
 │   weftora-ui-bevy      declarative UI renderer               │
@@ -175,13 +176,13 @@ input → screen button / Yarn choice → command → actions or Rhai
 
 ## 6. Dialogue (Yarn Spinner)
 
-- Use the **Bevy-independent `yarnspinner` crates** inside `weftora-yarn`. Do not use `bevy_yarnspinner`: it ties Weftora's Bevy upgrades to a third-party crate's release schedule. The Rust port is community-maintained and labelled work-in-progress; Phase 0 tests it and records the fallback.
+- Use the **Bevy-independent `yarnspinner` crates** inside `weftora-yarn`. Do not use `bevy_yarnspinner`: it ties Weftora's Bevy upgrades to a third-party crate's release schedule. `weftora-yarn-compiler` contains source compilation and is used only by the CLI; the player depends on `weftora-yarn` plus direct core/runtime crates. A separate crate prevents workspace feature unification from pulling compilation into the player. The Rust port is community-maintained and labelled work-in-progress; Phase 0 tests it and records the fallback.
 - Fallback options, in order: patch or fork the Rust port; bundle the official Yarn Spinner command-line compiler with the CLI and run its compiled output on the Rust runtime (output compatibility must be verified first); switch dialogue language (new ADR).
 - Yarn variables are a view onto canonical state, not a separate store. Missing defaults and write timing are specified and tested.
 - Variable names (provisional, Phase 0): Yarn `$name` maps to state key `name`; `__` inside a Yarn name stands for `.` in the key, so `$world__day` is `world.day`.
 - Type mapping: Yarn (Rust port) has only `bool`, `string` and a 32-bit float `number`. `bool` and `string` map directly; `float` maps to `number`; `int` maps to `number` only within ±2^24 and reading a larger value from Yarn is a Story error, not silent rounding. Lists and maps are **not** exposed to Yarn; Stories expose scalar views of them through Yarn functions backed by declarative actions or Rhai.
 - Before Phase 4, Yarn commands map to Engine primitive commands only. From Phase 4, Story-defined commands (declarative or Rhai) can also be called from Yarn.
-- `weftora check` compiles Yarn and reports errors with file and node. `weftora run` recompiles changed files. `weftora export` ships compiled dialogue with its own `dialogueArtifactFormat` version, compiler identity and content hash. The player never contains the compiler and refuses unknown artifact formats. (Phase 0 shortcut: the player compiles Yarn at startup; P2-03 removes this.)
+- `weftora check` compiles Yarn and reports errors with file and node. `weftora run` recompiles changed files. `weftora export` ships compiled dialogue with its own `dialogueArtifactFormat` version, compiler identity and content hash. The player never contains the compiler and refuses unknown artifact formats. Format 1 and its loading checks are defined in [ADR 0002](./adr/0002-versioning-compatibility.md#compiled-dialogue-format-1).
 
 ## 7. Rules scripting (Rhai)
 

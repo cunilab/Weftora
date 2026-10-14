@@ -10,11 +10,12 @@ use std::process::{Command, ExitCode};
 
 use sha2::{Digest, Sha256};
 use weftora_story::Story;
-use weftora_yarn::{CompiledDialogue, check_state, compile};
+use weftora_yarn::CompiledDialogue;
+use weftora_yarn_compiler::compile;
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 const PLAYER_ENV: &str = "WEFTORA_PLAYER";
-const EXPORT_FORMAT: u32 = 0;
+const EXPORT_FORMAT: u32 = 1;
 
 const USAGE: &str = "usage:
   weftora --version
@@ -93,31 +94,15 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
     let dialogue =
         compile(&sources).map_err(|d| d.iter().map(ToString::to_string).collect::<Vec<_>>())?;
 
-    let mut errors = Vec::new();
-    match story.initial_state() {
-        Ok(state) => errors.extend(
-            check_state(&dialogue, &state)
-                .into_iter()
-                .map(|error| format!("manifest.jsonc: {error}")),
-        ),
-        Err(error) => errors.push(format!("manifest.jsonc: initialState: {error}")),
-    }
-    let entrypoint = &story.manifest().entrypoint;
-    if !dialogue.node_names().contains(entrypoint) {
-        errors.push(format!(
-            "manifest.jsonc: entrypoint `{entrypoint}` is not a node in the dialogue files"
-        ));
-    }
-    let registry = presentation_commands();
-    for site in dialogue.command_sites() {
-        if let Some(message) = command_problem(&story, &registry, &site.command) {
-            let location = match site.line {
-                Some(line) => format!("{}:{line}", site.file),
-                None => site.file.clone(),
-            };
-            errors.push(format!("{location}: {message} (node `{}`)", site.node));
-        }
-    }
+    let bytes = dialogue
+        .to_artifact_bytes()
+        .map_err(|e| vec![format!("compiled dialogue: {e}")])?;
+    let dialogue = CompiledDialogue::from_artifact_bytes(&bytes)
+        .map_err(|e| vec![format!("compiled dialogue: {e}")])?;
+    let errors: Vec<_> = weftora_yarn::check_story(&story, &dialogue)
+        .iter()
+        .map(ToString::to_string)
+        .collect();
     if errors.is_empty() {
         Ok(Checked { story, dialogue })
     } else {
@@ -125,48 +110,7 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
     }
 }
 
-fn presentation_commands() -> weftora_core::command::CommandRegistry {
-    use weftora_core::command::{CommandRegistry, ValueType};
-    let mut registry = CommandRegistry::default();
-    for name in ["background", "sound"] {
-        registry
-            .register(name, vec![ValueType::String], ValueType::Bool, |_| {
-                Box::pin(async { Ok(weftora_api::Value::Bool(true)) })
-            })
-            .expect("unique built-in command IDs");
-    }
-    registry
-}
-
-fn command_problem(
-    story: &Story,
-    registry: &weftora_core::command::CommandRegistry,
-    command: &weftora_api::StoryCommand,
-) -> Option<String> {
-    let arguments: Vec<_> = command
-        .args
-        .iter()
-        .cloned()
-        .map(weftora_api::Value::String)
-        .collect();
-    if let Err(error) = registry.validate(&command.name, &arguments) {
-        return Some(error.to_string());
-    }
-    let id = command.args.first()?;
-    if id.contains('{') {
-        return Some(format!(
-            "`{}` needs a literal asset ID, expressions are not supported",
-            command.name
-        ));
-    }
-    if !story.manifest().assets.contains_key(id) {
-        return Some(format!(
-            "`{}` uses undeclared asset ID `{id}`",
-            command.name
-        ));
-    }
-    None
-}
+use weftora_yarn::presentation_commands;
 
 fn check_command(dir: &Path) -> CliResult {
     let checked = check(dir).map_err(Failure::Messages)?;
@@ -204,10 +148,20 @@ fn player_path() -> Result<PathBuf, Failure> {
 }
 
 fn run_command(dir: &Path) -> CliResult {
-    check(dir).map_err(Failure::Messages)?;
+    let checked = check(dir).map_err(Failure::Messages)?;
     let player = player_path()?;
+    let preview = tempfile::tempdir()
+        .map_err(|e| Failure::one(format!("cannot create dialogue preview: {e}")))?;
+    let artifact = preview.path().join("dialogue.json");
+    fs::write(
+        &artifact,
+        checked.dialogue.to_artifact_bytes().map_err(Failure::one)?,
+    )
+    .map_err(|e| Failure::one(format!("cannot write dialogue preview: {e}")))?;
     let status = Command::new(&player)
         .arg(dir)
+        .arg("--dialogue")
+        .arg(&artifact)
         .status()
         .map_err(|e| Failure::one(format!("error: cannot start `{}`: {e}", player.display())))?;
     Ok(status
@@ -246,6 +200,7 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
     // Use the same resolved destination for writes and failure cleanup.
     let out = output_root.as_path();
     let checked = check(dir).map_err(Failure::Messages)?;
+    let artifact_bytes = checked.dialogue.to_artifact_bytes().map_err(Failure::one)?;
     let player = player_path()?;
     let io_err = |what: &str, e: io::Error| Failure::one(format!("error: {what}: {e}"));
 
@@ -300,9 +255,32 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
         let mut copied = BTreeMap::new();
         copy_story(dir, &story_out, "", &mut copied)?;
         verify_copied_references(&checked.story, &copied)?;
+        // Verify that the copied package still matches the checked artifact.
+        let copied_story = Story::load(&story_out)
+            .map_err(|d| Failure::Messages(d.iter().map(ToString::to_string).collect()))?;
+        checked
+            .dialogue
+            .verify_sources(
+                &copied_story
+                    .dialogue_sources()
+                    .map_err(|d| Failure::Messages(d.iter().map(ToString::to_string).collect()))?,
+            )
+            .map_err(Failure::one)?;
+        let copied_errors: Vec<_> = weftora_yarn::check_story(&copied_story, &checked.dialogue)
+            .iter()
+            .map(ToString::to_string)
+            .collect();
+        if !copied_errors.is_empty() {
+            return Err(Failure::Messages(copied_errors));
+        }
+        let artifact_path = out.join(weftora_yarn::ARTIFACT_FILE);
+        fs::create_dir(out.join("compiled"))
+            .map_err(|e| io_err("creating compiled directory", e))?;
+        fs::write(&artifact_path, &artifact_bytes)
+            .map_err(|e| io_err("writing compiled dialogue", e))?;
 
         let exe = std::env::current_exe().map_err(|e| io_err("locating weftora", e))?;
-        let manifest = checked.story.manifest();
+        let manifest = copied_story.manifest();
         let report = serde_json::json!({
             "exportFormat": EXPORT_FORMAT,
             "cli": {
@@ -314,6 +292,13 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
                 "sha256": sha256_file(&player).map_err(|e| io_err("hashing player", e))?,
             },
             "story": { "id": manifest.id, "storyVersion": manifest.story_version },
+            "dialogue": {
+                "file": weftora_yarn::ARTIFACT_FILE,
+                "dialogueArtifactFormat": weftora_yarn::ARTIFACT_FORMAT,
+                "compiler": { "id": weftora_yarn::COMPILER_ID, "version": weftora_yarn::COMPILER_VERSION },
+                "inputHash": checked.dialogue.input_hash(),
+                "sha256": sha256_file(&artifact_path).map_err(|e| io_err("hashing dialogue", e))?,
+            },
             "files": copied
                 .iter()
                 .map(|(path, hash)| serde_json::json!({ "path": path, "sha256": hash }))

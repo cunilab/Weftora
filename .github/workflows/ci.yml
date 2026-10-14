@@ -24,6 +24,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo test --workspace --locked
       - run: cargo xtask deps
+      - run: cargo tree -p weftora-player --edges normal,build --locked
       - run: cargo xtask docs
 
   deny:
@@ -47,5 +48,5 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --locked -p weftora-api -p weftora-core -p weftora-story -p weftora-yarn
+      - run: cargo test --locked -p weftora-api -p weftora-core -p weftora-story -p weftora-yarn -p weftora-yarn-compiler
       - run: cargo xtask deps

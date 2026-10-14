@@ -103,7 +103,7 @@ fn check_graph(metadata: &Value) -> Result<Vec<String>, String> {
         edges.insert(id, dependencies);
     }
     let mut problems = Vec::new();
-    for headless in HEADLESS {
+    for headless in HEADLESS.iter().chain(std::iter::once(&"weftora-player")) {
         let start = names
             .iter()
             .find_map(|(&id, &name)| {
@@ -123,7 +123,16 @@ fn check_graph(metadata: &Value) -> Result<Vec<String>, String> {
                 }
                 let mut next_path = path.clone();
                 next_path.push(next);
-                if forbidden.contains(next) {
+                if (headless == &"weftora-player"
+                    && matches!(
+                        names[next],
+                        "yarnspinner_compiler"
+                            | "weftora-yarn-compiler"
+                            | "antlr-rust"
+                            | "yarnspinner"
+                    ))
+                    || (headless != &"weftora-player" && forbidden.contains(next))
+                {
                     let path = next_path
                         .iter()
                         .map(|id| format!("{} ({id})", names[id]))
@@ -154,18 +163,20 @@ mod tests {
     fn fixture() -> Value {
         serde_json::from_str(r#"{
             "workspace_root":"/repo",
-            "workspace_members":["api","core","story"],
+            "workspace_members":["api","core","story","player"],
             "packages":[
                 {"id":"api","name":"weftora-api","manifest_path":"/repo/crates/api/Cargo.toml"},
                 {"id":"core","name":"weftora-core","manifest_path":"/repo/crates/core/Cargo.toml"},
                 {"id":"story","name":"weftora-story","manifest_path":"/repo/crates/story/Cargo.toml"},
-                {"id":"helper","name":"helper","manifest_path":"/registry/helper/Cargo.toml"}
+                {"id":"helper","name":"helper","manifest_path":"/registry/helper/Cargo.toml"},
+                {"id":"player","name":"weftora-player","manifest_path":"/repo/apps/player/Cargo.toml"}
             ],
             "resolve":{"nodes":[
                 {"id":"api","deps":[]},
                 {"id":"core","deps":[{"pkg":"helper","dep_kinds":[{"kind":null}]}]},
                 {"id":"story","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]},
-                {"id":"helper","deps":[]}
+                {"id":"helper","deps":[]},
+                {"id":"player","deps":[]}
             ]}
         }"#).unwrap()
     }
@@ -208,5 +219,21 @@ mod tests {
         graph["resolve"]["nodes"][1]["deps"][0]["dep_kinds"] =
             serde_json::json!([{"kind":"dev"},{"kind":"build"}]);
         assert_eq!(check_graph(&graph).unwrap().len(), 1);
+    }
+    #[test]
+    fn compiler_is_forbidden_in_player_even_transitively() {
+        let mut graph = fixture();
+        graph["packages"][3]["name"] = "yarnspinner_compiler".into();
+        graph["resolve"]["nodes"][1]["deps"] = serde_json::json!([]);
+        graph["resolve"]["nodes"][4]["deps"] =
+            serde_json::json!([{"pkg":"story","dep_kinds":[{"kind":null}]}]);
+        graph["resolve"]["nodes"][2]["deps"] =
+            serde_json::json!([{"pkg":"helper","dep_kinds":[{"kind":"build"}]}]);
+        let problems = check_graph(&graph).unwrap();
+        assert!(
+            problems
+                .iter()
+                .any(|p| p.contains("weftora-player") && p.contains("yarnspinner_compiler"))
+        );
     }
 }

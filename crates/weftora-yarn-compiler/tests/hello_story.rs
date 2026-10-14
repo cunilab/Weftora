@@ -4,9 +4,8 @@ use std::sync::{Arc, RwLock};
 use weftora_api::{StoryCommand, Value};
 use weftora_core::{SharedState, State};
 use weftora_story::{DialogueSource, Story};
-use weftora_yarn::{
-    Choice, CompiledDialogue, DialogueError, DialogueEvent, DialogueRunner, compile,
-};
+use weftora_yarn::{Choice, CompiledDialogue, DialogueError, DialogueEvent, DialogueRunner};
+use weftora_yarn_compiler::compile;
 
 fn hello_dir() -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../examples/hello-story")

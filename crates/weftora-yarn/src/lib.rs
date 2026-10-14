@@ -8,17 +8,22 @@
 //! maps to Yarn's `f32` number. `Int` maps to number only within ±2^24; reading a larger `Int` is an error.
 //! A Yarn number written to a key that holds an `Int` must be integral, otherwise it is a type error.
 
-use std::collections::{HashMap, VecDeque};
+use serde::{Deserialize, Serialize};
+use std::collections::{BTreeMap, VecDeque};
 
+use weftora_api::StoryCommand;
 use weftora_api::Value;
-use weftora_api::{Diagnostic, StoryCommand};
 use weftora_core::{SharedState, State};
-use weftora_story::DialogueSource;
-use yarnspinner::compiler::{Compiler, DiagnosticSeverity, File as YarnFile};
-use yarnspinner::core::{Program, YarnValue};
-use yarnspinner::runtime::{Dialogue, OptionId, StringTableTextProvider};
+use yarnspinner_core::prelude::{Program, YarnValue};
+use yarnspinner_runtime::prelude::{Dialogue, OptionId, StringTableTextProvider};
 
+mod artifact;
 mod storage;
+mod validation;
+pub use artifact::{
+    ARTIFACT_FILE, ARTIFACT_FORMAT, COMPILER_ID, COMPILER_VERSION, MAX_ARTIFACT_BYTES, input_hash,
+};
+pub use validation::{check_story, presentation_commands};
 
 use storage::StateStorage;
 
@@ -28,7 +33,8 @@ const MAX_CONSECUTIVE_CONTINUES: usize = 1_000;
 const MAX_INSTRUCTIONS_BEFORE_BLOCKING: usize = 100_000;
 
 /// A static use of a Yarn command, found by scanning the compiled program.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct CommandSite {
     /// Story-relative Yarn file, empty when unknown.
     pub file: String,
@@ -43,8 +49,9 @@ pub struct CommandSite {
 #[derive(Clone)]
 pub struct CompiledDialogue {
     program: Program,
-    strings: HashMap<yarnspinner::core::LineId, String>,
+    strings: BTreeMap<String, String>,
     sites: Vec<CommandSite>,
+    input_hash: String,
 }
 
 impl std::fmt::Debug for CompiledDialogue {
@@ -72,105 +79,6 @@ impl CompiledDialogue {
     pub fn command_sites(&self) -> &[CommandSite] {
         &self.sites
     }
-}
-
-/// `OpCode::RunCommand` in `yarnspinner_core` (the enum is not re-exported by `yarnspinner`).
-const OPCODE_RUN_COMMAND: i32 = 3;
-
-/// Compiles Yarn sources. Errors carry the Story-relative file and line.
-pub fn compile(sources: &[DialogueSource]) -> Result<CompiledDialogue, Vec<Diagnostic>> {
-    let mut compiler = Compiler::new();
-    for source in sources {
-        compiler.add_file(YarnFile {
-            file_name: source.file.clone(),
-            source: source.contents.clone(),
-        });
-    }
-    // The Rust port's parser can panic on some malformed input (for example `<<set $x = >>`);
-    // treat that as a compile failure rather than aborting the tool.
-    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| compiler.compile()));
-    let Ok(outcome) = outcome else {
-        return Err(vec![Diagnostic::new(
-            sources.first().map(|s| s.file.as_str()).unwrap_or_default(),
-            None,
-            "the Yarn compiler crashed on malformed input; check the dialogue syntax",
-        )]);
-    };
-    let compilation = match outcome {
-        Ok(c) => c,
-        Err(e) => {
-            let diags: Vec<Diagnostic> =
-                e.0.iter()
-                    .filter(|d| d.severity == DiagnosticSeverity::Error)
-                    .map(|d| {
-                        let line = d
-                            .range
-                            .as_ref()
-                            .map(|r| r.start.line)
-                            .unwrap_or(d.start_line);
-                        Diagnostic::new(
-                            d.file_name.clone().unwrap_or_default(),
-                            u32::try_from(line + 1).ok(),
-                            d.message.clone(),
-                        )
-                    })
-                    .collect();
-            return Err(if diags.is_empty() {
-                vec![Diagnostic::new("", None, "Yarn compilation failed")]
-            } else {
-                diags
-            });
-        }
-    };
-    let Some(program) = compilation.program else {
-        return Err(vec![Diagnostic::new(
-            "",
-            None,
-            "Yarn compilation produced no program",
-        )]);
-    };
-
-    let strings = compilation
-        .string_table
-        .into_iter()
-        .map(|(id, info)| (id, info.text))
-        .collect();
-
-    let mut sites = Vec::new();
-    for (name, node) in &program.nodes {
-        let debug = compilation.debug_info.get(name);
-        for (i, instruction) in node.instructions.iter().enumerate() {
-            if instruction.opcode != OPCODE_RUN_COMMAND {
-                continue;
-            }
-            let text: String = instruction.read_operand(0);
-            let mut parts = split_command(&text);
-            if parts.is_empty() {
-                continue;
-            }
-            let command = StoryCommand {
-                name: parts.remove(0),
-                args: parts,
-            };
-            let info = debug.and_then(|d| d.try_get_line_info(i));
-            let line = info
-                .as_ref()
-                .and_then(|l| l.position)
-                .and_then(|p| u32::try_from(p.line + 1).ok());
-            sites.push(CommandSite {
-                file: debug.map(|d| d.file_name.clone()).unwrap_or_default(),
-                line,
-                node: name.clone(),
-                command,
-            });
-        }
-    }
-
-    Ok(CompiledDialogue {
-        program,
-        strings,
-        sites,
-    })
 }
 
 /// Checks canonical state values against the compiled Yarn variable types.
@@ -230,7 +138,8 @@ fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
 }
 
 /// Splits command text on whitespace, honouring double quotes and `\"` / `\\` escapes inside them.
-fn split_command(input: &str) -> Vec<String> {
+#[doc(hidden)]
+pub fn split_command(input: &str) -> Vec<String> {
     let mut parts = Vec::new();
     let mut current = String::new();
     let mut chars = input.chars().peekable();
@@ -338,7 +247,12 @@ impl std::fmt::Debug for DialogueRunner {
 impl DialogueRunner {
     pub fn new(dialogue: &CompiledDialogue, state: SharedState) -> Self {
         let mut text = StringTableTextProvider::new();
-        text.extend_base_language(dialogue.strings.clone());
+        text.extend_base_language(dialogue.strings.iter().map(|(id, text)| {
+            (
+                yarnspinner_core::prelude::LineId::from(id.clone()),
+                text.clone(),
+            )
+        }));
         let storage = StateStorage::new(state.clone());
         let mut yarn = Dialogue::new(Box::new(storage), Box::new(text));
         let default_error = match state.read() {
@@ -431,11 +345,11 @@ impl DialogueRunner {
             .set_instruction_budget(remaining.min(per_call_budget));
         let result = self.runtime_call(|dialogue| {
             dialogue.continue_().map_err(|error| match error {
-                yarnspinner::runtime::DialogueError::InstructionBudgetExceeded {
+                yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
                     node_name,
                     ..
                 } if remaining < per_call_budget => {
-                    yarnspinner::runtime::DialogueError::InstructionBudgetExceeded {
+                    yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
                         node_name,
                         budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
                     }
@@ -449,13 +363,13 @@ impl DialogueRunner {
         let events = result?;
         for event in events {
             match event {
-                yarnspinner::runtime::DialogueEvent::Line(line) => {
+                yarnspinner_runtime::prelude::DialogueEvent::Line(line) => {
                     self.queue.push_back(DialogueEvent::Line {
                         character: line.character_name().map(str::to_string),
                         text: line.text_without_character_name(),
                     });
                 }
-                yarnspinner::runtime::DialogueEvent::Options(options) => {
+                yarnspinner_runtime::prelude::DialogueEvent::Options(options) => {
                     let choices: Vec<Choice> = options
                         .iter()
                         .map(|o| Choice {
@@ -468,7 +382,7 @@ impl DialogueRunner {
                         Some(choices.iter().map(|c| (c.index, c.available)).collect());
                     self.queue.push_back(DialogueEvent::Choices(choices));
                 }
-                yarnspinner::runtime::DialogueEvent::Command(command) => {
+                yarnspinner_runtime::prelude::DialogueEvent::Command(command) => {
                     let mut parts = split_command(&command.raw);
                     if parts.is_empty() {
                         continue;
@@ -478,15 +392,15 @@ impl DialogueRunner {
                         args: parts,
                     }));
                 }
-                yarnspinner::runtime::DialogueEvent::DialogueComplete => {
+                yarnspinner_runtime::prelude::DialogueEvent::DialogueComplete => {
                     self.ended = true;
                     self.queue.push_back(DialogueEvent::End);
                 }
-                yarnspinner::runtime::DialogueEvent::NodeStart(node) => {
+                yarnspinner_runtime::prelude::DialogueEvent::NodeStart(node) => {
                     self.current_node = node;
                 }
-                yarnspinner::runtime::DialogueEvent::NodeComplete(_)
-                | yarnspinner::runtime::DialogueEvent::LineHints(_) => {}
+                yarnspinner_runtime::prelude::DialogueEvent::NodeComplete(_)
+                | yarnspinner_runtime::prelude::DialogueEvent::LineHints(_) => {}
             }
         }
         match self.queue.pop_front() {
@@ -562,7 +476,7 @@ impl DialogueRunner {
     // A VM error may leave its stack/program counter partly changed. Never resume it.
     fn runtime_call<T>(
         &mut self,
-        call: impl FnOnce(&mut Dialogue) -> Result<T, yarnspinner::runtime::DialogueError>,
+        call: impl FnOnce(&mut Dialogue) -> Result<T, yarnspinner_runtime::prelude::DialogueError>,
     ) -> Result<T, DialogueError> {
         self.ensure_healthy()?;
         let result =
@@ -576,8 +490,8 @@ impl DialogueRunner {
     }
 }
 
-fn map_dialogue_error(error: yarnspinner::runtime::DialogueError) -> DialogueError {
-    use yarnspinner::runtime::DialogueError as Y;
+fn map_dialogue_error(error: yarnspinner_runtime::prelude::DialogueError) -> DialogueError {
+    use yarnspinner_runtime::prelude::DialogueError as Y;
     match error {
         Y::InvalidNode { node_name } => DialogueError::MissingNode(node_name),
         Y::VariableStorageError(e) => storage::map_storage_error(e),
@@ -592,11 +506,9 @@ mod tests {
 
     #[test]
     fn configurable_budget_resets_between_continue_calls() {
-        let compiled = compile(&[DialogueSource {
-            file: "test.yarn".into(),
-            contents: "title: Start\n---\nFirst\nSecond\n===\n".into(),
-        }])
-        .unwrap();
+        let compiled =
+            CompiledDialogue::from_artifact_bytes(include_bytes!("../tests/fixtures/budget.json"))
+                .unwrap();
         let mut runner = DialogueRunner::new(&compiled, Arc::new(RwLock::new(State::new())));
         runner.dialogue.set_instruction_budget(1);
         runner.start("Start").unwrap();
@@ -613,11 +525,9 @@ mod tests {
 
     #[test]
     fn zero_budget_executes_no_instruction() {
-        let compiled = compile(&[DialogueSource {
-            file: "test.yarn".into(),
-            contents: "title: Start\n---\n<<set $n = 1>>\n===\n".into(),
-        }])
-        .unwrap();
+        let compiled =
+            CompiledDialogue::from_artifact_bytes(include_bytes!("../tests/fixtures/budget.json"))
+                .unwrap();
         let state = Arc::new(RwLock::new(State::new()));
         let mut runner = DialogueRunner::new(&compiled, state.clone());
         runner.dialogue.set_instruction_budget(0);

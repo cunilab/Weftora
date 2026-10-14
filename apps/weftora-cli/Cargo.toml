@@ -15,11 +15,11 @@ weftora-api.workspace = true
 weftora-core.workspace = true
 weftora-story.workspace = true
 weftora-yarn.workspace = true
+weftora-yarn-compiler.workspace = true
+tempfile = "3"
 serde_json.workspace = true
 sha2 = "0.10"
 
-[dev-dependencies]
-tempfile = "3"
 
 [lints]
 workspace = true
