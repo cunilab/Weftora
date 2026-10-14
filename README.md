@@ -2,7 +2,7 @@
 
 Weftora is a standalone engine for narrative and story-driven 2D games: visual novels, life-sims, and anything in between. It is written in Rust, but **game authors never write Rust**. They write Yarn dialogue, data, rules and screens, and run them on a prebuilt player.
 
-> **Status:** Phase 0 walking skeleton is implemented; see the [verification evidence](./docs/evidence/phase-0.md). Clean Windows export evidence (P0-10) is deferred to [issue #5](https://github.com/cunilab/Weftora/issues/5). In progress: [Phase 1 — headless kernel](./ROADMAP.md#phase-1--headless-kernel).
+> **Status:** Phase 0 walking skeleton is implemented; see the [verification evidence](./docs/evidence/phase-0.md). Clean Windows export evidence (P0-10) is deferred to [issue #5](https://github.com/cunilab/Weftora/issues/5). [Phase 1 headless checks](./docs/evidence/phase-1.md) pass; the implementation is proposed in [PR #7](https://github.com/cunilab/Weftora/pull/7).
 
 ## How it is meant to work
 
