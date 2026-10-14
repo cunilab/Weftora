@@ -63,4 +63,4 @@ If you find the same rule in two places, delete one and link to the other.
 - [ ] No claim that something is implemented or passing without linked evidence.
 - [ ] Contract changes carry an ADR.
 
-Link and header checks become automated in Phase 0 CI (see [success criteria](./success-criteria.md)).
+Link and header checks run in Phase 0 CI; recorded results are in [Phase 0 evidence](./evidence/phase-0.md).

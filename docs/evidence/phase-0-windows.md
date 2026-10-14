@@ -8,7 +8,7 @@ status: proposed
 
 Windows x64 results for the [Phase 0 checks](../success-criteria.md#phase-0--spikes-and-walking-skeleton) that
 the [Phase 0 evidence page](./phase-0.md) recorded as `NOT_RUN`. These runs close P0-01, P0-02, P0-03, P0-05,
-P0-06 and P0-07 on Windows. P0-10 stays open; see [what is still outstanding](#what-is-still-outstanding).
+P0-06 and P0-07 on Windows. P0-10 is explicitly deferred from the Phase 0 gate; its partial evidence is unchanged. See [what is still outstanding](#what-is-still-outstanding).
 
 All artefacts on this page are committed under
 [`artifacts/phase-0-windows/`](./artifacts/phase-0-windows) so every claim below is a link to a
@@ -232,13 +232,13 @@ renderer running, alive 40s with no panic. The SHA-256 it printed is computed at
 disk and matches the staged file. Logs:
 [`p10-rustfree-account.txt`](./artifacts/phase-0-windows/p10-rustfree-account.txt).
 
-**Still partial, for two stated reasons.** First, this is a fresh *account*, not a separate *machine*:
+**Evidence remains partial, for two stated reasons.** First, this is a fresh *account*, not a separate *machine*:
 `C:\Users\andre\.cargo` is still on the same disk. The isolation is real at the account boundary but a reviewer
 can object that the host is not literally Rust-free. Second, no frame was captured from that account — the
 player lands in a separate logon session on a non-interactive window station, and `PrintWindow` refuses those
-handles with `ERROR_INVALID_WINDOW_HANDLE` (1400) even when elevated. That is a Windows session boundary, not a
-player fault, and the check's required evidence ("steps, machine description, log") is all present. Closing it
-properly needs either an interactive logon as `weftora-p010` for a captured frame, or a genuinely separate VM.
+handles with `ERROR_INVALID_WINDOW_HANDLE` (1400) even when elevated. An interactive logon as `weftora-p010`
+could supply a frame, but would not remove Rust from the host. Clean-machine evidence needs a genuinely
+separate Rust-free Windows machine or VM.
 
 ## Method: driving the player without stealing focus
 
@@ -261,8 +261,6 @@ run.
 
 | Check | State | Why |
 | --- | --- | --- |
-| P0-10 export on a Rust-free machine | PARTIAL | Export is self-contained (7 files, no Cargo residue) and the full render pipeline runs under a Rust-free local account, but that is a fresh *account* on the same disk — not a machine with Rust uninstalled — and no frame was captured from it (session boundary blocks `PrintWindow`). Windows Sandbox, the intended route, has been unbootable on this host since 2026-07-20. |
+| P0-10 export on a Rust-free machine | DEFERRED; evidence partial | Export is self-contained (7 files, no Cargo residue) and the full render pipeline runs under a Rust-free local account, but that is a fresh *account* on the same disk — not a machine with Rust uninstalled — and no frame was captured from it (session boundary blocks `PrintWindow`). Windows Sandbox, the intended route, has been unbootable on this host since 2026-07-20. |
 
-P0-10 is the only check left open, and what remains is a *machine-boundary* question, not a question about the
-export. Either an interactive logon as `weftora-p010` (one operator action, no reboot) or a separate VM closes
-it; [Phase 0 is otherwise passing](./phase-0.md).
+On 2026-10-14 the maintainer reported having tested the export and requested keeping the implementation and deferring P0-10 to [issue #5](https://github.com/cunilab/Weftora/issues/5). No new clean-machine record was supplied, so the captured results above remain partial. The [revised criteria](../success-criteria.md#phase-0--spikes-and-walking-skeleton) exclude this check from the Phase 0 gate; [ADR 0001](../adr/0001-rust-native-engine.md#phase-0-go-no-go-decision) records GO for Phase 1. A separate Windows machine or VM without Rust or Cargo must supply the missing evidence before Phase 6; P6-02/P6-03 remain required.

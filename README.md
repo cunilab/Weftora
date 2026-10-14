@@ -2,7 +2,7 @@
 
 Weftora is a standalone engine for narrative and story-driven 2D games: visual novels, life-sims, and anything in between. It is written in Rust, but **game authors never write Rust**. They write Yarn dialogue, data, rules and screens, and run them on a prebuilt player.
 
-> **Status:** design proposal. No code exists yet. Everything below is planned, not implemented.
+> **Status:** Phase 0 walking skeleton is implemented; see the [verification evidence](./docs/evidence/phase-0.md). Clean Windows export evidence (P0-10) is deferred to [issue #5](https://github.com/cunilab/Weftora/issues/5). Next: [Phase 1 — headless kernel](./ROADMAP.md#phase-1--headless-kernel).
 
 ## How it is meant to work
 
@@ -24,7 +24,7 @@ Author edits a Story folder (Yarn, data, screens, images, audio)
 
 Windows x64 is the first and only release target until the foundation release. Development also works on macOS and Linux, but they are not supported releases. See the [platform plan](./docs/platforms.md).
 
-## Planned repository layout
+## Repository layout
 
 ```text
 crates/     Engine libraries (internal to Weftora)

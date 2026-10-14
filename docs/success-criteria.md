@@ -6,11 +6,11 @@ status: proposed
 
 # Weftora Success Criteria
 
-Pass/fail checks for each phase of the [roadmap](../ROADMAP.md). Nothing here has been run yet.
+Pass/fail checks for each phase of the [roadmap](../ROADMAP.md). Recorded results are linked from the [documentation index](./README.md).
 
 ## Rules
 
-- A phase **passes** only when every check in it passes with linked, repeatable evidence. Anything failed or untested means the phase is **blocked**.
+- A phase **passes** only when every required check in it passes with linked, repeatable evidence. Anything failed or untested means the phase is **blocked**, unless this document explicitly defers that check through a reviewed change with a tracking issue. Deferred checks are not test passes.
 - Checks from earlier phases must keep passing. A new phase cannot quietly break an old one.
 - Dropping a check requires a reviewed change to this document and the roadmap, not an exception.
 - **Where checks run:** everything involving the player, rendering, audio, input, export or performance is verified on **Windows x64**. Headless checks may also run on the maintainer's development host; see [platforms](./platforms.md).
@@ -32,8 +32,10 @@ Pass/fail checks for each phase of the [roadmap](../ROADMAP.md). Nothing here ha
 | P0-07 | Editing `hello-story`'s Yarn text and re-running shows the new text with the **same player SHA-256** | Hash before and after, screenshot or log of the new line |
 | P0-08 | The loader rejects a Story file reference outside the Story root (absolute path, `..`) with a clear error | Two negative fixtures |
 | P0-09 | The Story authoring file format is chosen by ADR | ADR with `hello-story` files in the chosen format |
-| P0-10 | **Export spike:** a folder containing only the built player and `hello-story` runs on a Windows machine with no Rust or Cargo installed | Steps, machine description, log |
+| P0-10 | **Export spike (DEFERRED from the Phase 0 gate):** a folder containing only the built player and `hello-story` runs on a Windows machine with no Rust or Cargo installed | Existing evidence remains partial; [issue #5](https://github.com/cunilab/Weftora/issues/5) tracks clean-machine evidence before Phase 6. P6-02/P6-03 remain required |
 | P0-11 | ADR 0001 records the Phase 0 go/no-go decision | Updated ADR |
+
+P0-10 is explicitly deferred at the maintainer's request on 2026-10-14: retain the current implementation and proceed to Phase 1. The maintainer reports having tested the export; no new repeatable clean-machine record was supplied with this decision. [ADR 0001](./adr/0001-rust-native-engine.md#phase-0-go-no-go-decision) records the gate decision. All other checks remain required.
 
 ## Phase 1 — Headless kernel
 
