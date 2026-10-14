@@ -1,0 +1,15 @@
+Phase 1 review-fix validation
+Commit: c49cede9a01e7f8efa33b1d7eb479950d1cf9a79
+CI run: https://github.com/cunilab/Weftora/actions/runs/38532373998
+Windows job: 115747025431
+Fixture: workspace tests and three replay scenarios at that commit
+Toolchain: pinned Rust 1.98.0 x86_64-pc-windows-msvc
+Expected: every test passes; actual Story startup rollback releases state; invalid defaults make no partial writes; all three scopes and signals replay identically; all loader limits reject before activation.
+Actual: 131 passed, zero failed across 17 suites; thirty fresh replay processes pass.
+Raw test step: workspace-tests.txt (complete cargo test step as received from gh, no selected test-line curation).
+
+Windows merge checks: formatting, Clippy, workspace tests, dependency boundaries and docs all PASS.
+Dependencies job: PASS.
+macOS headless job: PASS.
+
+Scope: no fresh rendering/audio, clean-machine export, OneDrive or deduplication verification. Collision policy is tested logically on Windows and physically where a case-sensitive development volume permits it. Empty-directory entry cap uses a synthetic budget; file-count and total-size fixtures use the production limits through Story::load.

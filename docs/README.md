@@ -21,6 +21,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [ADR 0003 — Story rules language](./adr/0003-story-rules-language.md) | WFT-ADR-003 | Declarative actions + Rhai, collection state |
 | [ADR 0004 — Story authoring format](./adr/0004-story-authoring-format.md) | WFT-ADR-004 | JSONC for non-Yarn Story files |
 | [Phase 0 evidence](./evidence/phase-0.md) | WFT-EVID-001 | Phase 0 check results and P0-10 deferral |
+| [Phase 1 evidence](./evidence/phase-1.md) | WFT-EVID-003 | Headless kernel checks and Windows CI evidence |
 | [Phase 0 Windows evidence](./evidence/phase-0-windows.md) | WFT-EVID-002 | Windows verification artifacts and export evidence limits |
 
 To add a document, copy the [template](./templates/document.md) and follow the [standards](./standards.md).

@@ -6,7 +6,7 @@ use serde::{Deserialize, Serialize};
 
 /// A typed game-state value.
 ///
-/// Phase 0 supports scalars only. Lists and maps arrive in Phase 4 (ADR 0003).
+/// Phases 0–1 support scalars only. Lists and maps arrive in Phase 4 (ADR 0003).
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(untagged)]
 pub enum Value {
@@ -43,12 +43,14 @@ impl Value {
 pub enum StateError {
     #[error("state key `{0}` does not exist")]
     MissingKey(String),
-    #[error("state key `{key}` holds a {actual}, expected {expected}")]
+    #[error("state key `{key}`: expected {expected}, got {actual}")]
     TypeMismatch {
         key: String,
         expected: &'static str,
         actual: &'static str,
     },
+    #[error("state key `{0}` is already declared")]
+    DuplicateKey(String),
     #[error("float values must be finite")]
     NonFinite,
     #[error("invalid state key `{0}`: use lowercase letters, digits, `_` and `.` separators")]

@@ -1,0 +1,15 @@
+{
+  "manifestSchema": 1,
+  "id": "test.scoped-replay",
+  "storyVersion": "0.1.0",
+  "title": "Scoped Replay",
+  "requires": {"engineApi": ">=0.1.0 <0.2.0", "capabilities": ["dialogue.yarn/1"]},
+  "entrypoint": "Start",
+  "dialogue": ["main.yarn"],
+  "state": {
+    "world.day": {"default": 1, "scope": "persistent"},
+    "session.flag": {"default": false, "scope": "session"},
+    "ui.language": {"default": "en", "scope": "settings"}
+  },
+  "catalogs": {"data": ["items.jsonc"]}
+}

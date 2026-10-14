@@ -65,6 +65,25 @@ pub(crate) fn map_storage_error(error: VariableStorageError) -> DialogueError {
     }
 }
 
+/// Check declaration defaults before the upstream runtime can silently discard storage errors.
+pub(crate) fn validate_default(
+    name: &str,
+    value: &YarnValue,
+    state: &weftora_core::State,
+) -> std::result::Result<(), DialogueError> {
+    if is_internal(name) {
+        return Ok(());
+    }
+    let key = key_for(name).map_err(map_storage_error)?;
+    let declaration = if state.exists(&key) {
+        None
+    } else {
+        state.default_value(&key).ok()
+    };
+    from_yarn(name, declaration, value).map_err(map_storage_error)?;
+    Ok(())
+}
+
 /// Yarn `$a__b` to state key `a.b`.
 fn key_for(name: &str) -> Result<String> {
     let stripped =
@@ -188,7 +207,11 @@ impl VariableStorage for StateStorage {
         }
         let key = key_for(&name)?;
         let mut state = self.state.write().map_err(|_| poisoned(&name))?;
-        let converted = from_yarn(&name, state.get(&key).ok(), &value)?;
+        let current = state
+            .get(&key)
+            .ok()
+            .or_else(|| state.default_value(&key).ok());
+        let converted = from_yarn(&name, current, &value)?;
         state
             .set(&key, converted)
             .map_err(|e| var_error(&name, e.to_string()))
@@ -232,6 +255,8 @@ impl VariableStorage for StateStorage {
     /// Declared defaults only fill in missing keys; they never overwrite state that Rust or a save already set.
     fn extend(&mut self, values: HashMap<String, YarnValue>) -> Result<()> {
         let mut first_error = None;
+        let mut values: Vec<_> = values.into_iter().collect();
+        values.sort_by(|(a, _), (b, _)| a.cmp(b));
         for (name, value) in values {
             if !self.contains(&name)
                 && let Err(error) = self.set(name, value)

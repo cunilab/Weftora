@@ -1,0 +1,75 @@
+Phase 1 Windows x64 validation
+Commit: 727d36522dcf1939b2ae6ddbf536241ae3b0b3d1
+CI: https://github.com/cunilab/Weftora/actions/runs/38521226907
+Job: Windows (required), 115711128406
+OS: Windows Server 2025 Datacenter 10.0.26100
+Runner image: windows-2025-vs2026, 20260925.250.1
+Toolchain: Rust 1.98.0 x86_64-pc-windows-msvc (rust-toolchain.toml)
+Fixture: workspace tests and examples/hello-story at the commit above
+Expected: all tests pass; Windows links and case aliases reject before activation; both headless branches match golden traces in ten fresh processes each.
+Actual: 118 tests passed; zero failed. Junction, symlink and golden-replay fixtures all passed.
+
+Required merge gate:
+cargo fmt --all -- --check: PASS
+cargo clippy --workspace --all-targets --locked -- -D warnings: PASS
+cargo test --workspace --locked: PASS
+cargo xtask deps: PASS
+cargo xtask docs: PASS
+Dependencies (required), cargo deny check: PASS (separate Ubuntu job in the same run)
+macOS headless (non-blocking): PASS (separate macOS job in the same run)
+
+Selected captured Windows test output (timestamps removed):
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 3 tests
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+running 14 tests
+test check_and_headless_run_reject_the_same_invalid_package ... ok
+test headless_choices_are_required_valid_and_exhausted ... ok
+test headless_golden_traces_match_in_ten_fresh_runs_per_branch ... ok
+test result: ok. 14 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.43s
+running 5 tests
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 7 tests
+test lifecycle_order_failure_cleanup_and_no_restart ... ok
+test catalogs_report_duplicate_and_missing_ids_without_overwrite ... ok
+test async_command_completes_after_yielding_and_cancellation_does_not_poll ... ok
+test commands_validate_arguments_results_failure_and_cancellation ... ok
+test signals_are_fifo_unsubscribable_and_bounded ... ok
+test state_types_defaults_scopes_and_notifications ... ok
+test state_numeric_properties_and_atomic_rejections ... ok
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 11 tests
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+running 17 tests
+test compatibility::tests::adr_phase_one_version_matrix ... ok
+test paths::tests::case_collision_policy_covers_ascii_and_unicode_on_every_host ... ok
+test paths::tests::windows_names_are_rejected_on_every_host ... ok
+test paths::tests::inventory_limits_fail_before_loading ... ok
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.04s
+running 5 tests
+test oversized_file_is_rejected_without_reading_it ... ok
+test catalog_duplicate_missing_ids_and_duplicate_json_keys_report_source ... ok
+test v1_defaults_scopes_and_rejected_compatibility ... ok
+test windows_junction_escape_and_case_alias_are_rejected_before_activation ... ok
+test windows_symlink_escape_is_rejected_before_activation ... ok
+test result: ok. 5 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+running 4 tests
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+running 22 tests
+test state_precision_check_only_checks_declared_numbers ... ok
+test result: ok. 22 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 3.23s
+running 30 tests
+test result: ok. 30 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+running 0 tests
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s

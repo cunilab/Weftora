@@ -6,7 +6,6 @@ use std::sync::{Arc, RwLock};
 
 use sha2::{Digest, Sha256};
 use weftora_api::Diagnostic;
-use weftora_core::State;
 use weftora_story::Story;
 
 fn main() -> ExitCode {
@@ -73,7 +72,7 @@ type Loaded = (
 
 fn load(dir: &std::path::Path) -> Result<Loaded, Vec<Diagnostic>> {
     let story = Story::load(dir)?;
-    let state = State::with_values(story.manifest().initial_state.iter()).map_err(|e| {
+    let state = story.initial_state().map_err(|e| {
         vec![Diagnostic::new(
             weftora_story::MANIFEST_FILE,
             None,

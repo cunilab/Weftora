@@ -1,5 +1,7 @@
 //! The `weftora` command-line tool: check, run and export Story folders.
 
+mod headless;
+
 use std::collections::BTreeMap;
 use std::fs;
 use std::io;
@@ -18,6 +20,7 @@ const USAGE: &str = "usage:
   weftora --version
   weftora check <story-dir>
   weftora run <story-dir>
+  weftora run <story-dir> --headless [--choices <id,id,...>]
   weftora export <story-dir> --out <dir>";
 
 fn main() -> ExitCode {
@@ -31,6 +34,9 @@ fn main() -> ExitCode {
         ["--version"] | ["-V"] => version(),
         ["check", dir] => check_command(Path::new(dir)),
         ["run", dir] => run_command(Path::new(dir)),
+        ["run", dir, "--headless"] => headless::run(Path::new(dir), &[]),
+        ["run", dir, "--headless", "--choices", choices] => headless::parse_choices(choices)
+            .and_then(|choices| headless::run(Path::new(dir), &choices)),
         ["export", dir, "--out", out] | ["export", "--out", out, dir] => {
             export_command(Path::new(dir), Path::new(out))
         }
@@ -88,7 +94,7 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
         compile(&sources).map_err(|d| d.iter().map(ToString::to_string).collect::<Vec<_>>())?;
 
     let mut errors = Vec::new();
-    match weftora_core::State::with_values(&story.manifest().initial_state) {
+    match story.initial_state() {
         Ok(state) => errors.extend(
             check_state(&dialogue, &state)
                 .into_iter()
@@ -102,8 +108,9 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
             "manifest.jsonc: entrypoint `{entrypoint}` is not a node in the dialogue files"
         ));
     }
+    let registry = presentation_commands();
     for site in dialogue.command_sites() {
-        if let Some(message) = command_problem(&story, &site.command) {
+        if let Some(message) = command_problem(&story, &registry, &site.command) {
             let location = match site.line {
                 Some(line) => format!("{}:{line}", site.file),
                 None => site.file.clone(),
@@ -118,28 +125,47 @@ fn check(dir: &Path) -> Result<Checked, Vec<String>> {
     }
 }
 
-fn command_problem(story: &Story, command: &weftora_api::StoryCommand) -> Option<String> {
-    match command.name.as_str() {
-        "background" | "sound" => match command.args.as_slice() {
-            [id] if id.contains('{') => Some(format!(
-                "`{}` needs a literal asset ID, expressions are not supported",
-                command.name
-            )),
-            [id] if story.manifest().assets.contains_key(id) => None,
-            [id] => Some(format!(
-                "`{}` uses undeclared asset ID `{id}`",
-                command.name
-            )),
-            args => Some(format!(
-                "`{}` takes exactly one asset ID, found {} arguments",
-                command.name,
-                args.len()
-            )),
-        },
-        other => Some(format!(
-            "unknown command `{other}` (Phase 0 supports `background` and `sound`)"
-        )),
+fn presentation_commands() -> weftora_core::command::CommandRegistry {
+    use weftora_core::command::{CommandRegistry, ValueType};
+    let mut registry = CommandRegistry::default();
+    for name in ["background", "sound"] {
+        registry
+            .register(name, vec![ValueType::String], ValueType::Bool, |_| {
+                Box::pin(async { Ok(weftora_api::Value::Bool(true)) })
+            })
+            .expect("unique built-in command IDs");
     }
+    registry
+}
+
+fn command_problem(
+    story: &Story,
+    registry: &weftora_core::command::CommandRegistry,
+    command: &weftora_api::StoryCommand,
+) -> Option<String> {
+    let arguments: Vec<_> = command
+        .args
+        .iter()
+        .cloned()
+        .map(weftora_api::Value::String)
+        .collect();
+    if let Err(error) = registry.validate(&command.name, &arguments) {
+        return Some(error.to_string());
+    }
+    let id = command.args.first()?;
+    if id.contains('{') {
+        return Some(format!(
+            "`{}` needs a literal asset ID, expressions are not supported",
+            command.name
+        ));
+    }
+    if !story.manifest().assets.contains_key(id) {
+        return Some(format!(
+            "`{}` uses undeclared asset ID `{id}`",
+            command.name
+        ));
+    }
+    None
 }
 
 fn check_command(dir: &Path) -> CliResult {
@@ -390,6 +416,7 @@ fn verify_copied_references(
     for reference in std::iter::once(weftora_story::MANIFEST_FILE)
         .chain(manifest.dialogue.iter().map(String::as_str))
         .chain(manifest.assets.values().map(String::as_str))
+        .chain(manifest.catalogs.values().flatten().map(String::as_str))
     {
         let relative = reference
             .split('/')
@@ -481,6 +508,14 @@ mod tests {
         for reference in std::iter::once(weftora_story::MANIFEST_FILE)
             .chain(story.manifest().dialogue.iter().map(String::as_str))
             .chain(story.manifest().assets.values().map(String::as_str))
+            .chain(
+                story
+                    .manifest()
+                    .catalogs
+                    .values()
+                    .flatten()
+                    .map(String::as_str),
+            )
         {
             let hash = copied.remove(reference).unwrap();
             let Err(Failure::Messages(messages)) = verify_copied_references(&story, &copied) else {

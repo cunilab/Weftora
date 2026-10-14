@@ -5935,6 +5935,9 @@ dependencies = [
 name = "weftora-core"
 version = "0.0.1"
 dependencies = [
+ "serde",
+ "serde_json",
+ "thiserror 2.0.21",
  "weftora-api",
 ]
 
@@ -5966,6 +5969,7 @@ dependencies = [
 name = "weftora-story"
 version = "0.0.1"
 dependencies = [
+ "semver",
  "serde",
  "serde_json",
  "tempfile",
