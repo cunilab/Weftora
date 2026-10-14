@@ -69,12 +69,18 @@ pub(crate) fn map_storage_error(error: VariableStorageError) -> DialogueError {
 pub(crate) fn validate_default(
     name: &str,
     value: &YarnValue,
+    state: &weftora_core::State,
 ) -> std::result::Result<(), DialogueError> {
     if is_internal(name) {
         return Ok(());
     }
-    key_for(name).map_err(map_storage_error)?;
-    from_yarn(name, None, value).map_err(map_storage_error)?;
+    let key = key_for(name).map_err(map_storage_error)?;
+    let declaration = if state.exists(&key) {
+        None
+    } else {
+        state.default_value(&key).ok()
+    };
+    from_yarn(name, declaration, value).map_err(map_storage_error)?;
     Ok(())
 }
 
@@ -201,7 +207,11 @@ impl VariableStorage for StateStorage {
         }
         let key = key_for(&name)?;
         let mut state = self.state.write().map_err(|_| poisoned(&name))?;
-        let converted = from_yarn(&name, state.get(&key).ok(), &value)?;
+        let current = state
+            .get(&key)
+            .ok()
+            .or_else(|| state.default_value(&key).ok());
+        let converted = from_yarn(&name, current, &value)?;
         state
             .set(&key, converted)
             .map_err(|e| var_error(&name, e.to_string()))

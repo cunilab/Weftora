@@ -180,19 +180,19 @@ pub fn check_state(dialogue: &CompiledDialogue, state: &State) -> Vec<DialogueEr
     check_program_state(&dialogue.program, state)
 }
 
-fn check_defaults(program: &Program) -> Vec<DialogueError> {
+fn check_defaults(program: &Program, state: &State) -> Vec<DialogueError> {
     let mut defaults: Vec<_> = program.initial_values.iter().collect();
     defaults.sort_by_key(|(name, _)| *name);
     defaults
         .into_iter()
         .filter_map(|(name, operand)| {
-            storage::validate_default(name, &operand.clone().into()).err()
+            storage::validate_default(name, &operand.clone().into(), state).err()
         })
         .collect()
 }
 
 fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
-    let mut errors = check_defaults(program);
+    let mut errors = check_defaults(program, state);
     errors.extend(state.iter().filter_map(|(key, value)| {
         let variable = format!("${}", key.replace('.', "__"));
         let declared: YarnValue = program.initial_values.get(&variable)?.clone().into();
@@ -341,10 +341,13 @@ impl DialogueRunner {
         text.extend_base_language(dialogue.strings.clone());
         let storage = StateStorage::new(state.clone());
         let mut yarn = Dialogue::new(Box::new(storage), Box::new(text));
-        let default_error = check_defaults(&dialogue.program)
-            .into_iter()
-            .next()
-            .map(|error| error.to_string());
+        let default_error = match state.read() {
+            Ok(state) => check_defaults(&dialogue.program, &state)
+                .into_iter()
+                .next()
+                .map(|error| error.to_string()),
+            Err(_) => Some("state lock is poisoned".into()),
+        };
         let initialization = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
             if default_error.is_none() {
                 yarn.replace_program(dialogue.program.clone());

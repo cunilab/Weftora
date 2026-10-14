@@ -126,6 +126,14 @@ impl State {
             .ok_or_else(|| StateError::MissingKey(key.into()))
     }
 
+    /// The declaration survives removal and supplies the type for a later write or default fill.
+    pub fn default_value(&self, key: &str) -> Result<&Value, StateError> {
+        self.definitions
+            .get(key)
+            .map(|definition| &definition.default)
+            .ok_or_else(|| StateError::MissingKey(key.into()))
+    }
+
     /// Restores a declared default, including a key removed earlier.
     pub fn reset(&mut self, key: &str) -> Result<(), StateError> {
         let default = self

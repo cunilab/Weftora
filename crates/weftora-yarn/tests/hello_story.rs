@@ -580,3 +580,37 @@ fn invalid_default_is_rejected_before_any_canonical_defaults_are_written() {
     );
     assert_eq!(state.read().unwrap().iter().count(), 0);
 }
+
+#[test]
+fn removed_integer_declaration_keeps_its_type_during_yarn_default_fill() {
+    let compiled = compile(&source(
+        "title: Start\n---\n<<declare $counter = 2>>\nCounter {$counter}.\n===\n",
+    ))
+    .unwrap();
+    let state = shared(&[("counter", Value::Int(1))]);
+    state.write().unwrap().remove("counter").unwrap();
+    let mut runner = DialogueRunner::new(&compiled, state.clone());
+    runner.start("Start").unwrap();
+    assert_eq!(state.read().unwrap().get("counter"), Ok(&Value::Int(2)));
+    assert_eq!(
+        state.read().unwrap().default_value("counter"),
+        Ok(&Value::Int(1))
+    );
+    assert!(
+        matches!(runner.next_event().unwrap(), DialogueEvent::Line { text, .. } if text == "Counter 2.")
+    );
+}
+
+#[test]
+fn removed_declaration_mismatch_rejects_all_defaults_before_initialization() {
+    let compiled = compile(&source(
+        "title: Start\n---\n<<declare $flag = 2>>\n<<declare $other = true>>\nHello.\n===\n",
+    ))
+    .unwrap();
+    let state = shared(&[("flag", Value::Bool(true))]);
+    state.write().unwrap().remove("flag").unwrap();
+    assert!(!weftora_yarn::check_state(&compiled, &state.read().unwrap()).is_empty());
+    let mut runner = DialogueRunner::new(&compiled, state.clone());
+    assert!(runner.start("Start").is_err());
+    assert_eq!(state.read().unwrap().iter().count(), 0);
+}
