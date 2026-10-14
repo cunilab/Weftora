@@ -557,3 +557,26 @@ fn runtime_panic_is_caught_and_runner_cannot_be_restarted() {
         Err(DialogueError::Runtime(_))
     ));
 }
+
+#[test]
+fn invalid_default_is_rejected_before_any_canonical_defaults_are_written() {
+    let compiled = compile(&source(
+        "title: Start\n---\n<<declare $Bad = true>>\n<<declare $good = true>>\nHello.\n===\n",
+    ))
+    .unwrap();
+    let state = shared(&[]);
+    assert!(
+        weftora_yarn::check_state(&compiled, &state.read().unwrap())
+            .iter()
+            .any(|error| error.to_string().contains("$Bad"))
+    );
+    let mut runner = DialogueRunner::new(&compiled, state.clone());
+    assert!(
+        runner
+            .start("Start")
+            .unwrap_err()
+            .to_string()
+            .contains("$Bad")
+    );
+    assert_eq!(state.read().unwrap().iter().count(), 0);
+}

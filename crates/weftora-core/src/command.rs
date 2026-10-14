@@ -32,7 +32,7 @@ pub enum CommandError {
     Duplicate(String),
     #[error("invalid command ID `{0}`")]
     InvalidId(String),
-    #[error("command `{command}` expected {expected} arguments, got {actual}")]
+    #[error("command `{command}` argument count: expected {expected}, got {actual}")]
     Arity {
         command: String,
         expected: usize,

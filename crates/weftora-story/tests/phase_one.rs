@@ -240,10 +240,16 @@ fn declaration_errors_do_not_hide_override_type_mismatches() {
 #[test]
 fn duplicate_sources_and_noncanonical_separators_are_rejected() {
     let dir = fixture();
+    fs::create_dir(dir.path().join("sub")).unwrap();
+    fs::rename(
+        dir.path().join("main.yarn"),
+        dir.path().join("sub/main.yarn"),
+    )
+    .unwrap();
     change(
         &dir,
         "\"dialogue\":[\"main.yarn\"]",
-        "\"dialogue\":[\"main.yarn\",\"main//yarn\"]",
+        "\"dialogue\":[\"sub/main.yarn\",\"sub//main.yarn\"]",
     );
     assert!(
         Story::load(dir.path())

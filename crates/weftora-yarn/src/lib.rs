@@ -180,43 +180,53 @@ pub fn check_state(dialogue: &CompiledDialogue, state: &State) -> Vec<DialogueEr
     check_program_state(&dialogue.program, state)
 }
 
-fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
-    state
-        .iter()
-        .filter_map(|(key, value)| {
-            let variable = format!("${}", key.replace('.', "__"));
-            let declared: YarnValue = program.initial_values.get(&variable)?.clone().into();
-            let expected = match declared {
-                YarnValue::Boolean(_) => "bool",
-                YarnValue::String(_) => "string",
-                YarnValue::Number(_) => "number",
-            };
-            let matches = matches!(
-                (value, expected),
-                (Value::Bool(_), "bool")
-                    | (Value::String(_), "string")
-                    | (Value::Int(_) | Value::Float(_), "number")
-            );
-            if !matches {
-                return Some(DialogueError::StateTypeMismatch {
-                    key: key.to_string(),
-                    variable,
-                    actual: value.type_name(),
-                    expected,
-                });
-            }
-            if let Value::Int(value) = value
-                && !(-storage::MAX_EXACT_INT..=storage::MAX_EXACT_INT).contains(value)
-            {
-                return Some(DialogueError::StatePrecision {
-                    key: key.to_string(),
-                    variable,
-                    value: *value,
-                });
-            }
-            None
+fn check_defaults(program: &Program) -> Vec<DialogueError> {
+    let mut defaults: Vec<_> = program.initial_values.iter().collect();
+    defaults.sort_by_key(|(name, _)| *name);
+    defaults
+        .into_iter()
+        .filter_map(|(name, operand)| {
+            storage::validate_default(name, &operand.clone().into()).err()
         })
         .collect()
+}
+
+fn check_program_state(program: &Program, state: &State) -> Vec<DialogueError> {
+    let mut errors = check_defaults(program);
+    errors.extend(state.iter().filter_map(|(key, value)| {
+        let variable = format!("${}", key.replace('.', "__"));
+        let declared: YarnValue = program.initial_values.get(&variable)?.clone().into();
+        let expected = match declared {
+            YarnValue::Boolean(_) => "bool",
+            YarnValue::String(_) => "string",
+            YarnValue::Number(_) => "number",
+        };
+        let matches = matches!(
+            (value, expected),
+            (Value::Bool(_), "bool")
+                | (Value::String(_), "string")
+                | (Value::Int(_) | Value::Float(_), "number")
+        );
+        if !matches {
+            return Some(DialogueError::StateTypeMismatch {
+                key: key.to_string(),
+                variable,
+                actual: value.type_name(),
+                expected,
+            });
+        }
+        if let Value::Int(value) = value
+            && !(-storage::MAX_EXACT_INT..=storage::MAX_EXACT_INT).contains(value)
+        {
+            return Some(DialogueError::StatePrecision {
+                key: key.to_string(),
+                variable,
+                value: *value,
+            });
+        }
+        None
+    }));
+    errors
 }
 
 /// Splits command text on whitespace, honouring double quotes and `\"` / `\\` escapes inside them.
@@ -331,16 +341,24 @@ impl DialogueRunner {
         text.extend_base_language(dialogue.strings.clone());
         let storage = StateStorage::new(state.clone());
         let mut yarn = Dialogue::new(Box::new(storage), Box::new(text));
+        let default_error = check_defaults(&dialogue.program)
+            .into_iter()
+            .next()
+            .map(|error| error.to_string());
         let initialization = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            yarn.replace_program(dialogue.program.clone());
+            if default_error.is_none() {
+                yarn.replace_program(dialogue.program.clone());
+            }
         }));
         Self {
             dialogue: yarn,
             state,
             program: dialogue.program.clone(),
-            failure: initialization
-                .err()
-                .map(|_| "Yarn runtime panicked during initialization".into()),
+            failure: default_error.or_else(|| {
+                initialization
+                    .err()
+                    .map(|_| "Yarn runtime panicked during initialization".into())
+            }),
             current_node: String::new(),
             consecutive_commands: 0,
             consecutive_continues: 0,

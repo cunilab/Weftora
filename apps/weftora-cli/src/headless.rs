@@ -86,8 +86,14 @@ pub fn run(dir: &Path, choices: &[usize]) -> CliResult {
         observed: observed.clone(),
     })]);
     lifecycle.load().map_err(|error| match error {
-        LifecycleError::Init { message, .. } => {
-            Failure::Messages(message.lines().map(str::to_owned).collect())
+        LifecycleError::Init {
+            message, cleanup, ..
+        } => {
+            let mut messages = vec![message];
+            if !cleanup.is_empty() {
+                messages.push(format!("cleanup errors: {cleanup:?}"));
+            }
+            Failure::Messages(messages)
         }
         other => Failure::one(other.to_string()),
     })?;

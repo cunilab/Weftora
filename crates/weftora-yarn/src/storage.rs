@@ -65,6 +65,19 @@ pub(crate) fn map_storage_error(error: VariableStorageError) -> DialogueError {
     }
 }
 
+/// Check declaration defaults before the upstream runtime can silently discard storage errors.
+pub(crate) fn validate_default(
+    name: &str,
+    value: &YarnValue,
+) -> std::result::Result<(), DialogueError> {
+    if is_internal(name) {
+        return Ok(());
+    }
+    key_for(name).map_err(map_storage_error)?;
+    from_yarn(name, None, value).map_err(map_storage_error)?;
+    Ok(())
+}
+
 /// Yarn `$a__b` to state key `a.b`.
 fn key_for(name: &str) -> Result<String> {
     let stripped =

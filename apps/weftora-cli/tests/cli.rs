@@ -498,3 +498,48 @@ fn scoped_replay_defaults_notifications_and_signals_match_ten_fresh_runs() {
         assert_eq!(output.stdout, expected);
     }
 }
+
+#[test]
+fn check_and_run_reject_invalid_yarn_defaults_before_startup() {
+    let dir = tempfile::tempdir().unwrap();
+    minimal_story(dir.path(), "main.yarn");
+    fs::write(
+        dir.path().join("main.yarn"),
+        "title: Start\n---\n<<declare $Bad = true>>\nHello.\n===\n",
+    )
+    .unwrap();
+    let check = weftora().arg("check").arg(dir.path()).output().unwrap();
+    let run = weftora()
+        .arg("run")
+        .arg(dir.path())
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert_eq!(run.status.code(), Some(1));
+    assert_eq!(check.stderr, run.stderr);
+    assert!(run.stdout.is_empty());
+    assert!(stderr(&check).contains("$Bad"));
+}
+
+#[test]
+fn startup_preserves_multiline_diagnostics_byte_for_byte() {
+    let dir = tempfile::tempdir().unwrap();
+    minimal_story(dir.path(), "main.yarn");
+    let manifest_path = dir.path().join("manifest.jsonc");
+    let mut manifest: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest_path).unwrap()).unwrap();
+    manifest["initialState"] = serde_json::json!({"bad\r\nkey": 1});
+    fs::write(manifest_path, manifest.to_string()).unwrap();
+    let check = weftora().arg("check").arg(dir.path()).output().unwrap();
+    let run = weftora()
+        .arg("run")
+        .arg(dir.path())
+        .arg("--headless")
+        .output()
+        .unwrap();
+    assert_eq!(check.status.code(), Some(1));
+    assert_eq!(run.status.code(), Some(1));
+    assert_eq!(check.stderr, run.stderr);
+    assert!(check.stderr.windows(2).any(|pair| pair == b"\r\n"));
+}

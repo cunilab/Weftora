@@ -152,7 +152,9 @@ fn command_problem(
     if let Err(error) = registry.validate(&command.name, &arguments) {
         return Some(error.to_string());
     }
-    let id = &command.args[0]; // Registry validation guarantees one string argument for each built-in.
+    let Some(id) = command.args.first() else {
+        return None;
+    };
     if id.contains('{') {
         return Some(format!(
             "`{}` needs a literal asset ID, expressions are not supported",
