@@ -43,7 +43,7 @@ A Rust target compiling does **not** mean Weftora supports that platform.
 2. Backgrounds, characters, CG, dialogue, choices, custom UI, transitions, audio.
 3. Keyboard and mouse, focus loss, pause/resume.
 4. Story loading and export with spaces and Unicode in paths; the path policy in [architecture §4](./architecture.md#4-story-package).
-5. Saves in the user data directory (for example `%APPDATA%\Weftora\<storyId>\`); survive relaunch; corrupt and incompatible saves handled.
+5. Saves in the user data directory (for example `%LOCALAPPDATA%\Weftora\saves\<storyId>\`); survive relaunch; corrupt and incompatible saves handled.
 6. Clean Windows machine with no Rust or Cargo: CLI exports a game, both sample Stories run on the same player binary.
 7. Licence inventory of shipped dependencies; startup errors and logs; documented prerequisites.
 

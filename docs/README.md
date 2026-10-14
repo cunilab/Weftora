@@ -30,3 +30,5 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [Phase 0 Windows evidence](./evidence/phase-0-windows.md) | WFT-EVID-002 | Windows verification artifacts and export evidence limits |
 
 To add a document, copy the [template](./templates/document.md) and follow the [standards](./standards.md).
+
+- [ADR 0006: safe checkpoint saves](./adr/0006-safe-checkpoint-saves.md)

@@ -54,6 +54,10 @@ Node-file provenance stays in memory: compiler debug information supplies it dur
 
 `weftora run` compiles a fresh preview artifact outside the Story into a temporary directory that survives until the child exits. `weftora export` emits export metadata format 1 for the new layout, records artifact identity/hash separately from Story file hashes and verifies the copied sources and semantic checks before completing. The player accepts an explicit `--dialogue` path for previews, otherwise looks for `../compiled/dialogue.json` relative to the Story. Missing or stale artifacts direct authors to the CLI. `--validate` runs this activation validation without a window; it does not claim rendering, audio or full gameplay verification. Release-tool identity matching remains the Phase 6 requirement.
 
+## Save format 1
+
+[ADR 0006](./0006-safe-checkpoint-saves.md) defines the bounded/checksummed container and checkpoint replay contract. Stable checkpoint IDs are separate from Yarn node names and instruction offsets. Persistent removals are explicit null entries; compatible new fields keep current defaults. Session resets, current Settings are retained, and runtime visiting counters are restored separately. Until migrations exist, any save-schema mismatch refuses safely without modifying the live game or file. Format/storage implementation does not by itself prove player safe-point or view restoration.
+
 ## Required fixtures
 
 | Scenario | Expected | Phase |

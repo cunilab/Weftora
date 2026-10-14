@@ -53,7 +53,7 @@ Goal: replace spike code with the real, tested core.
 
 Goal: full Yarn integration and the presentation primitives a visual novel needs.
 
-**Status:** in progress. Compiled dialogue, typed catalogs, declarative UI and presentation media primitives are implemented with automated checks; see [Phase 2 implementation evidence](./docs/evidence/phase-2.md). Native rendering/audio/input/font/performance results remain maintainer-owned under issue #5. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 remains open until integration. No Phase 2 gate is claimed.
+**Status:** in progress. Compiled dialogue, typed catalogs, declarative UI and presentation media primitives are implemented with automated checks; see [Phase 2 implementation evidence](./docs/evidence/phase-2.md). Native rendering/audio/input/font/performance results remain maintainer-owned under issue #5. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 is resolved by the merged runtime fixes. No Phase 2 gate is claimed.
 
 - [x] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
 - [x] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats. [Automated P2-03 evidence](./docs/evidence/phase-2.md#verified-revision).
@@ -68,6 +68,8 @@ Goal: full Yarn integration and the presentation primitives a visual novel needs
 ## Phase 3 — First playable visual novel (Story A) and saves
 
 Goal: a short, complete visual novel played through the prebuilt player.
+
+**Status:** development started. [ADR 0006](./docs/adr/0006-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage and scoped candidate restoration are the first slice. Runtime checkpoints, player save/load and Story A remain to be integrated. Native Windows evidence remains maintainer-owned in issue #5; no Phase 3 gate is claimed.
 
 - [ ] Grow `examples/hello-story/` into Story A: menu, two branches, characters, CG, music, transitions, themed choice UI.
 - [ ] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.

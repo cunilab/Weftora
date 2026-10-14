@@ -5969,6 +5969,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "weftora-save"
+version = "0.0.1"
+dependencies = [
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "weftora-api",
+ "weftora-core",
+]
+
+[[package]]
 name = "weftora-story"
 version = "0.0.1"
 dependencies = [

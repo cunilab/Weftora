@@ -1,0 +1,21 @@
+[package]
+name = "weftora-save"
+description = "Bounded save containers, scoped restoration and atomic storage."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+weftora-api.workspace = true
+weftora-core.workspace = true
+serde.workspace = true
+serde_json = { workspace = true, features = ["raw_value", "float_roundtrip"] }
+tempfile = "3"
+sha2 = "0.10"
+semver = "1"
+thiserror.workspace = true
+
+[lints]
+workspace = true

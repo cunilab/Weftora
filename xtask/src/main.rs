@@ -1,6 +1,11 @@
 use std::{env, path::Path, process::Command};
 
-const HEADLESS: &[&str] = &["weftora-api", "weftora-core", "weftora-story"];
+const HEADLESS: &[&str] = &[
+    "weftora-api",
+    "weftora-core",
+    "weftora-story",
+    "weftora-save",
+];
 const FORBIDDEN: &[&str] = &[
     "bevy",
     "weftora-yarn",

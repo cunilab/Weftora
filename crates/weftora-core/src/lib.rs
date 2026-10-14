@@ -4,6 +4,7 @@
 
 pub mod catalog;
 pub mod command;
+pub mod json;
 pub mod lifecycle;
 pub mod presentation;
 pub mod signal;

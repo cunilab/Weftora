@@ -224,16 +224,22 @@ A valid dialogue screen file:
 
 Header fields: `saveFormat`, `storyId`, `storyVersion`, `saveSchema`, `checkpoint.id`, plus `writerEngineApi` and `writerEngineRelease` for diagnostics. Which of these decide compatibility is defined in [ADR 0002](./adr/0002-versioning-compatibility.md#compatibility-rules).
 
+Format 1 uses a bounded, checksummed envelope; its full contract is [ADR 0006](./adr/0006-safe-checkpoint-saves.md).
+
 ```json
 {
   "saveFormat": 1,
-  "writerEngineApi": "0.2.0",
-  "writerEngineRelease": "0.3.0-alpha.1",
-  "storyId": "com.example.hello-story",
-  "storyVersion": "1.2.1",
-  "saveSchema": 2,
-  "checkpoint": { "id": "scene.intro.after_choice" },
-  "state": {}
+  "bodySha256": "<SHA-256 of the domain-tagged raw body>",
+  "body": {
+    "writerEngineApi": "0.1.0",
+    "writerEngineRelease": "0.0.1",
+    "storyId": "com.example.hello-story",
+    "storyVersion": "1.2.1",
+    "saveSchema": 2,
+    "checkpoint": { "id": "scene.intro.after_choice" },
+    "state": {},
+    "dialogue": { "visits": {} }
+  }
 }
 ```
 

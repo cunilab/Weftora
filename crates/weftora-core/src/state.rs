@@ -17,6 +17,16 @@ pub enum Scope {
     Settings,
 }
 
+impl Scope {
+    fn label(self) -> &'static str {
+        match self {
+            Self::Persistent => "persistent",
+            Self::Session => "session",
+            Self::Settings => "settings",
+        }
+    }
+}
+
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct StateDefinition {
@@ -159,6 +169,42 @@ impl State {
             .collect()
     }
 
+    /// Includes removed declarations so restoring a save cannot resurrect their defaults.
+    pub fn snapshot_entries(&self, scope: Scope) -> BTreeMap<String, Option<Value>> {
+        self.definitions
+            .iter()
+            .filter(|(_, definition)| definition.scope == scope)
+            .map(|(key, _)| (key.clone(), self.values.get(key).cloned()))
+            .collect()
+    }
+
+    /// Applies known keys atomically; newly declared fields retain the receiver's defaults.
+    pub fn apply_snapshot(
+        &mut self,
+        scope: Scope,
+        entries: &BTreeMap<String, Option<Value>>,
+    ) -> Result<(), StateError> {
+        let mut candidate = self.clone();
+        for (key, value) in entries {
+            let actual = candidate.scope(key)?;
+            if actual != scope {
+                return Err(StateError::ScopeMismatch {
+                    key: key.clone(),
+                    expected: scope.label(),
+                    actual: actual.label(),
+                });
+            }
+            if let Some(value) = value {
+                candidate.set(key, value.clone())?;
+            } else if candidate.exists(key) {
+                candidate.remove(key)?;
+            }
+        }
+        candidate.changes.clear();
+        *self = candidate;
+        Ok(())
+    }
+
     /// Adds a number to an existing `Int` or `Float` value. Missing keys and type mismatches are errors.
     pub fn add(&mut self, key: &str, amount: &Value) -> Result<(), StateError> {
         let current = self
@@ -255,6 +301,50 @@ pub type SharedState = Arc<RwLock<State>>;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn save_snapshot_preserves_removal_and_additive_defaults() {
+        let mut original = State::new();
+        original.set("removed", Value::Bool(true)).unwrap();
+        original.remove("removed").unwrap();
+        let entries = original.snapshot_entries(Scope::Persistent);
+        assert_eq!(entries.get("removed"), Some(&None));
+        let mut updated = State::new();
+        updated.set("removed", Value::Bool(true)).unwrap();
+        updated.set("new_field", Value::Int(7)).unwrap();
+        updated.apply_snapshot(Scope::Persistent, &entries).unwrap();
+        assert!(!updated.exists("removed"));
+        assert_eq!(updated.default_value("removed"), Ok(&Value::Bool(true)));
+        assert_eq!(updated.get("new_field"), Ok(&Value::Int(7)));
+        assert!(updated.drain_changes().is_empty());
+    }
+
+    #[test]
+    fn rejected_snapshot_leaves_values_declarations_and_notifications_unchanged() {
+        let mut state = State::new();
+        state.set("a", Value::Bool(true)).unwrap();
+        state
+            .declare(
+                "setting",
+                StateDefinition {
+                    default: Value::Int(1),
+                    scope: Scope::Settings,
+                },
+            )
+            .unwrap();
+        for (key, value) in [
+            ("unknown", Some(Value::Bool(false))),
+            ("setting", Some(Value::Int(2))),
+            ("a", Some(Value::String("wrong".into()))),
+            ("a", Some(Value::Float(f64::NAN))),
+        ] {
+            let before = state.clone();
+            let entries =
+                BTreeMap::from([("a".into(), Some(Value::Bool(false))), (key.into(), value)]);
+            assert!(state.apply_snapshot(Scope::Persistent, &entries).is_err());
+            assert_eq!(state, before);
+        }
+    }
 
     #[test]
     fn key_validation() {
