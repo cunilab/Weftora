@@ -6,7 +6,7 @@ status: proposed
 
 # Weftora Architecture
 
-This document describes **how** Weftora is built. Product scope is in the [PRD](../PRD.md); phase order is in the [roadmap](../ROADMAP.md). Nothing here is implemented yet; all names and formats are proposals.
+This document describes **how** Weftora is built. Product scope is in the [PRD](../PRD.md); phase order is in the [roadmap](../ROADMAP.md). This is the target architecture; verified implementation results are recorded in [Phase 0 evidence](./evidence/phase-0.md). Later-phase contracts remain proposals.
 
 ## 1. Product boundary
 

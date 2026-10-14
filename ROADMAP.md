@@ -10,7 +10,7 @@ status: proposed
 
 **Rules for every phase**
 
-- A phase is done only when all of its checks in [success criteria](./docs/success-criteria.md) pass with evidence. A ticked box alone means nothing.
+- A phase is done only when its required checks in [success criteria](./docs/success-criteria.md) pass with evidence. Any explicit deferral must be recorded there and tracked by an issue; it is not a test pass. A ticked box alone means nothing.
 - Hardening work lands in the phase that introduces the thing it protects. For example, archive security fixtures arrive when an archive format exists.
 - Windows x64 is the only release target and the only place gates are signed off. Maintainers may develop on macOS or Linux; see [platforms](./docs/platforms.md).
 - Example Stories live in `examples/`; they are content, never Cargo workspace members, and the Engine never depends on them.
@@ -19,19 +19,19 @@ status: proposed
 
 Goal: prove the stack end to end with the thinnest possible slice. The phase ends with the go/no-go review in [ADR 0001](./docs/adr/0001-rust-native-engine.md).
 
-**Status:** in progress — built in PR #2; remaining items need a Windows machine. Evidence: [Phase 0 evidence](./docs/evidence/phase-0.md).
+**Status:** complete with an explicit P0-10 deferral — built in PR #2. Evidence: [Phase 0 evidence](./docs/evidence/phase-0.md); clean Windows export evidence is tracked in [issue #5](https://github.com/cunilab/Weftora/issues/5). [ADR 0001](./docs/adr/0001-rust-native-engine.md#phase-0-go-no-go-decision) records GO for Phase 1.
 
 - [x] Cargo workspace with `weftora-api`, `weftora-core`, `weftora-story`, `weftora-yarn`, `weftora-render-bevy`, `apps/weftora-player`, `apps/weftora-cli`. Pinned `rust-toolchain.toml`, committed `Cargo.lock`.
 - [x] CI runs the merge gate ([architecture §10](./docs/architecture.md#10-drift-protection)) on Windows; the player prints its release ID and build hash (`--version`).
 - [x] **Yarn spike:** compile and run a Yarn file with one choice and one variable using the Bevy-independent `yarnspinner` crates. Record the version, licence, gaps and the fallback.
-- [ ] **Bevy spike:** a window showing a background image, a text line, two clickable choices and a sound, on a real Windows GPU. *(Works on macOS; Windows run pending.)*
+- [x] **Bevy spike:** a window showing a background image, a text line, two clickable choices and a sound, on a real Windows GPU.
 - [x] Provisional manifest (`manifestSchema: 0`, explicitly unstable) and a directory loader that confines paths to the Story root.
 - [x] `examples/hello-story/`: manifest, one Yarn file, one background, one sound.
-- [ ] `weftora run examples/hello-story` launches the prebuilt player on it; one choice sets a state variable that the next line reads. *(Works on macOS; Windows run pending.)*
-- [ ] Editing `hello-story`'s Yarn text and re-running shows the change without rebuilding the player. *(Works on macOS; Windows run pending.)*
-- [ ] **Export spike:** copy the built player and `hello-story` into a folder; it runs on a Windows machine with no Rust installed. *(Export works on macOS; clean Windows run pending.)*
+- [x] `weftora run examples/hello-story` launches the prebuilt player on it; one choice sets a state variable that the next line reads.
+- [x] Editing `hello-story`'s Yarn text and re-running shows the change without rebuilding the player.
+- [ ] **Export spike (DEFERRED):** copy the built player and `hello-story` into a folder; it runs on a Windows machine with no Rust installed. Clean-machine evidence is deferred from this gate to [issue #5](https://github.com/cunilab/Weftora/issues/5); Phase 6 export checks still apply.
 - [x] Choose the Story authoring file format (JSON, JSONC, TOML, RON or YAML) by ADR, using the `hello-story` files.
-- [ ] Go/no-go review in ADR 0001: continue, change adapter, or revisit the stack. *(Provisional GO recorded; final after the Windows runs.)*
+- [x] Go/no-go review in ADR 0001: GO for Phase 1 with the explicit P0-10 deferral.
 
 ## Phase 1 — Headless kernel
 

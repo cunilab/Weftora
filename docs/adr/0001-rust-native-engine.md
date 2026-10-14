@@ -53,7 +53,9 @@ At the end of each gate phase the maintainer writes a short go/no-go decision in
 
 ## Phase 0 go-no-go decision
 
-**2026-10-13 — provisional GO.** On the macOS development host, `weftora run examples/hello-story` drives the prebuilt player through the `yarnspinner` 0.9 + Bevy 0.20 stack: background, lines, a choice that changes canonical state, sound, and an exported folder that runs on its own. No Yarn fallback was needed; the gaps found are listed in the [Phase 0 evidence](../evidence/phase-0.md). The decision becomes final when the Windows checks in that page pass; a Windows failure in rendering, audio or export reopens this review.
+**2026-10-13 — provisional GO.** On the macOS development host, `weftora run examples/hello-story` drives the prebuilt player through the `yarnspinner` 0.9 + Bevy 0.20 stack: background, lines, a choice that changes canonical state, sound, and an exported folder that runs on its own. No Yarn fallback was needed; the gaps found are listed in the [Phase 0 evidence](../evidence/phase-0.md). At that time the decision was provisional until the Windows checks passed; a Windows failure in rendering, audio or export would reopen the review.
+
+**2026-10-14 — GO for Phase 1, with P0-10 explicitly deferred.** The [Windows evidence](../evidence/phase-0-windows.md) now records the walking skeleton, both state branches, Story edits on the same player, and enforced CI gates. The maintainer reports having tested the export and directs us to retain the implementation and skip P0-10 for this gate. Existing committed export evidence remains partial; this decision does not convert it into a clean-machine PASS. The [success criteria](../success-criteria.md#phase-0--spikes-and-walking-skeleton) and [roadmap](../../ROADMAP.md#phase-0--spikes-and-walking-skeleton) record the deferral, tracked in [issue #5](https://github.com/cunilab/Weftora/issues/5). Clean-machine evidence must be completed before the Phase 6 release, whose export gates remain required. Continue with the headless kernel; no adapter or stack change is needed.
 
 ## Consequences
 
