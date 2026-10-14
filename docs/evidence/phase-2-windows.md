@@ -66,7 +66,7 @@ Run these only after the applicable implementation and demo are available. No re
 | P2-01 | Choice → canonical state → UI/view → later Yarn condition | | | |
 | P2-02 | Invalid syntax, missing node, unknown command; file/node diagnostics | | | |
 | P2-04 | Background, two characters, CG, overlay; position/scale/opacity/fade/move/crossfade | | | |
-| P2-05 | Music/effects/ambience/voice; fades and user volume | | | |
+| P2-05 | Music/effects/ambience/voice; fades and user volume | All four channels (220 Hz music loop, 330 Hz ambience loop, 440 Hz voice, 660 Hz effect) audible on Realtek HD Audio; loops wrap cleanly, fades smooth; per-channel mute/50%/100% and master change the currently playing cue without restart | PASS | [record](#p2-05--musiceffectsvoice-fades-and-user-volume), [demo frames](./artifacts/phase-2-windows-agent/) |
 | P2-06 | All widgets, live bindings, keyboard/mouse focus, resize and invalid-screen rejection | | | |
 | P2-09 | Actual image/audio/font catalog use, including font decoding/rendering | | | |
 | P2-08 | Release startup, UI latency and idle memory; compare PRD R15 | | | |
@@ -96,6 +96,48 @@ idle_memory_mib:
 logs_or_artifacts:
 tested_by:
 tested_at:
+```
+
+## Completed maintainer records
+
+Only checks the maintainer actually ran appear here, filled from their own observation. Everything else stays blank above.
+
+### P2-05 — musiceffectsvoice fades and user volume
+
+```yaml
+check: P2-05
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+cli_sha256: 912dc804a4de43006ad690a4bc44b3f78f75d06708d5f034c8e015e69c0268c6
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (+ Intel UHD)
+gpu_driver: 610.62 (Vulkan)
+audio_device: Realtek High Definition Audio
+audio_driver: Windows stock (WASAPI)
+fixture: examples/presentation-demo (release export)
+steps: >-
+  Launch exported presentation-demo; listen through the story while advancing
+  (music + ambience loop from the opening, voice/effect one-shots); observe the
+  1500 ms music/ambience fade-out and voice/effect fade-in near the end; open the
+  Volume overlay and exercise per-channel Mute/50%/100% and master
+  Mute/50%/100% against the already-playing cues.
+expected: >-
+  All four channels audible; loops wrap without click/gap; fades smooth;
+  volume/mute changes apply to the playing cue immediately, no restart.
+actual: >-
+  Maintainer listening test: all four channels heard; fades and loop boundaries
+  clean; volume and mute changes affected currently playing cues immediately
+  without restarting them. Verbatim answers: "yes all do great" (audibility,
+  fades, loops) and "yes do great" (live volume/mute without restart).
+result: PASS
+startup_ms:
+ui_latency_ms:
+idle_memory_mib:
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/
+tested_by: Andres-Holivin
+tested_at: 2026-10-15
 ```
 
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.
