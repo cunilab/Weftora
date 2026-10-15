@@ -1,0 +1,151 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen",
+    "id": "dialogue",
+    "layout": {
+      "width": "100%",
+      "height": "100%"
+    },
+    "children": [
+      {
+        "type": "text",
+        "text": "LAST SIGNAL",
+        "size": 28,
+        "color": "#F3C778",
+        "layout": {
+          "position": "absolute",
+          "left": 24,
+          "top": 44
+        }
+      },
+      {
+        "type": "panel",
+        "background": "#101D2EF0",
+        "layout": {
+          "position": "absolute",
+          "left": 24,
+          "right": 24,
+          "bottom": 20,
+          "padding": 20,
+          "gap": 10
+        },
+        "children": [
+          {
+            "type": "text",
+            "bind": {
+              "dialogue": "speaker"
+            },
+            "size": 22,
+            "color": "#F3C778"
+          },
+          {
+            "type": "text",
+            "bind": {
+              "dialogue": "text"
+            },
+            "size": 24,
+            "color": "#F4F1E8"
+          },
+          {
+            "type": "choiceList",
+            "id": "choices",
+            "size": 24,
+            "color": "#F3C778"
+          },
+          {
+            "type": "list",
+            "layout": {
+              "direction": "row",
+              "gap": 12
+            },
+            "children": [
+              {
+                "type": "button",
+                "id": "next",
+                "text": "Continue",
+                "action": {
+                  "do": "dialogue.advance"
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "volume",
+                "text": "Volume",
+                "action": {
+                  "do": "screen.open",
+                  "screen": "volume"
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "save",
+                "text": "Save (F5)",
+                "action": {
+                  "do": "save"
+                },
+                "layout": {
+                  "padding": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "load",
+                "text": "Load (F9)",
+                "action": {
+                  "do": "load"
+                },
+                "layout": {
+                  "padding": 8
+                }
+              }
+            ]
+          },
+          {
+            "type": "list",
+            "layout": {
+              "direction": "row",
+              "gap": 8
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "Route:",
+                "size": 16,
+                "color": "#9FB3C5"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "story.route"
+                },
+                "size": 16,
+                "color": "#F3C778"
+              },
+              {
+                "type": "text",
+                "text": "\u2022 Signal sent:",
+                "size": 16,
+                "color": "#9FB3C5"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "story.signal"
+                },
+                "size": 16,
+                "color": "#F3C778"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  }
+}

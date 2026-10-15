@@ -56,6 +56,28 @@ pub(crate) struct Ui {
     fonts: BTreeMap<String, Handle<Font>>,
 }
 impl Ui {
+    pub fn at_initial_base(&self, story: &weftora_story::Story) -> bool {
+        match &story.manifest().initial_screen {
+            Some(initial) => self.layers.len() == 1 && self.layers[0].id == *initial,
+            None => self.layers.is_empty(),
+        }
+    }
+    pub fn reset(&mut self, story: &weftora_story::Story) {
+        self.layers = story
+            .manifest()
+            .initial_screen
+            .iter()
+            .map(|id| Layer {
+                id: id.clone(),
+                return_focus: None,
+            })
+            .collect();
+        self.built.clear();
+        self.choices = None;
+        self.restore = None;
+        self.focus_first = true;
+        self.rebuild_choices = true;
+    }
     pub fn modal(&self) -> bool {
         self.layers.len() > 1
     }
@@ -426,10 +448,8 @@ pub(crate) fn sync_choices(
     ui.choices = Some(choices.clone());
     for (entity, list) in &lists {
         commands.entity(entity).despawn_children();
-        if choices.iter().any(|c| c.text.len() > 4096) {
-            player
-                .presenter
-                .fail(format!("{}: choice text exceeds 4096 bytes", list.source));
+        if let Err(error) = check_choices(&choices, &list.source) {
+            player.presenter.fail(error);
             player.dirty = true;
             return;
         }
@@ -512,6 +532,60 @@ fn value_text(value: &Value) -> String {
         Value::String(v) => v.clone(),
     }
 }
+pub(crate) fn checked_text(text: String, source: &str) -> Result<String, String> {
+    if text.len() > 4096 {
+        Err(format!("{source}: bound text exceeds 4096 bytes"))
+    } else {
+        Ok(text)
+    }
+}
+pub(crate) fn check_choices(
+    choices: &[crate::presenter::ChoiceView],
+    source: &str,
+) -> Result<(), String> {
+    if choices.iter().any(|choice| choice.text.len() > 4096) {
+        Err(format!("{source}: choice text exceeds 4096 bytes"))
+    } else {
+        Ok(())
+    }
+}
+pub(crate) fn validate_display(
+    story: &weftora_story::Story,
+    state: &weftora_core::State,
+    screen: &Screen,
+) -> Result<(), String> {
+    if let Screen::Choices(choices) = screen {
+        check_choices(choices, "loaded checkpoint")?;
+    }
+    for (_, definition) in story.screens() {
+        let errors = definition.state_errors(state);
+        if !errors.is_empty() {
+            return Err(errors
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n"));
+        }
+        for (path, widget) in definition.widgets() {
+            if let Some(binding) = &widget.bind {
+                let text = match binding {
+                    Binding::State { state: key } => {
+                        value_text(state.get(key).map_err(|e| e.to_string())?)
+                    }
+                    Binding::Dialogue { dialogue } => match (dialogue, screen) {
+                        (DialogueBinding::Text, Screen::Line { text, .. }) => text.clone(),
+                        (DialogueBinding::Speaker, Screen::Line { speaker, .. }) => {
+                            speaker.clone().unwrap_or_default()
+                        }
+                        _ => String::new(),
+                    },
+                };
+                checked_text(text, &format!("{}:{path}", definition.file))?;
+            }
+        }
+    }
+    Ok(())
+}
 pub(crate) fn update_bindings(
     mut player: NonSendMut<Player>,
     mut texts: Query<(&BoundText, &mut Text)>,
@@ -530,10 +604,10 @@ pub(crate) fn update_bindings(
                 let value = state
                     .get(key)
                     .map_err(|e| format!("{}: {e}", binding.source))?;
-                if matches!(value, Value::String(s) if s.len() > 4096) {
-                    return Err(format!("{}: bound text exceeds 4096 bytes", binding.source));
-                }
-                values.insert(key.clone(), value_text(value));
+                values.insert(
+                    key.clone(),
+                    checked_text(value_text(value), &binding.source)?,
+                );
             }
         }
         Ok::<_, String>(values)
@@ -552,9 +626,7 @@ pub(crate) fn update_bindings(
                     _ => String::new(),
                 },
             };
-            if value.len() > 4096 {
-                return Err(format!("{}: bound text exceeds 4096 bytes", binding.source));
-            }
+            let value = checked_text(value, &binding.source)?;
             if text.0 != value {
                 text.0 = value;
             }

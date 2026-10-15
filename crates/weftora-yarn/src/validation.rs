@@ -12,6 +12,19 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
                     .into_iter()
                     .map(|error| Diagnostic::new("manifest.jsonc", None, error.to_string())),
             );
+            for node in dialogue.checkpoints().values() {
+                for instruction in &dialogue.program.nodes[node].instructions {
+                    if instruction.opcode == yarnspinner_core::prelude::OpCode::PushVariable as i32
+                        && let Some(yarnspinner_core::prelude::OperandValue::StringValue(variable)) =
+                            instruction.operands.first().and_then(|o| o.value.as_ref())
+                        && let Ok(key) = crate::storage::key_for(variable)
+                        && state.scope(&key) == Ok(weftora_core::Scope::Session)
+                    {
+                        errors.push(Diagnostic::new(dialogue.node_file(node), None,
+                            format!("checkpoint node '{node}' cannot read Session variable {variable}; Session resets on load")));
+                    }
+                }
+            }
             if media_enabled(story)
                 && let Err(e) = weftora_core::presentation::volumes(&state)
             {
@@ -23,6 +36,13 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             None,
             format!("initialState: {error}"),
         )),
+    }
+    if story.manifest().save_schema.is_some() && dialogue.checkpoints().is_empty() {
+        errors.push(Diagnostic::new(
+            "manifest.jsonc",
+            None,
+            "saveSchema requires at least one checkpoint",
+        ));
     }
     let entrypoint = &story.manifest().entrypoint;
     if !dialogue.node_names().contains(entrypoint) {
@@ -62,6 +82,19 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
                     site.file, site.node
                 ),
             ));
+            continue;
+        }
+        if site.command.name == "checkpoint" {
+            if story.manifest().save_schema.is_none() {
+                errors.push(Diagnostic::new(
+                    &site.file,
+                    site.line,
+                    format!(
+                        "checkpoint requires saveSchema and save/1 (node '{}')",
+                        site.node
+                    ),
+                ));
+            }
             continue;
         }
         if let Some(message) = command_problem(story, &site.command) {

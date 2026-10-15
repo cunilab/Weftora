@@ -12,6 +12,7 @@ weftora-api.workspace = true
 weftora-core.workspace = true
 weftora-story.workspace = true
 weftora-yarn.workspace = true
+weftora-save.workspace = true
 bevy = { workspace = true, features = ["wav"] }
 rodio = { version = "=0.22.2", default-features = false, features = ["playback", "tracing", "hound", "lewton"] }
 
@@ -19,3 +20,8 @@ image = { version = "=0.25.10", default-features = false, features = ["png"] }
 
 [lints]
 workspace = true
+
+[dev-dependencies]
+serde_json.workspace = true
+tempfile = "3"
+weftora-yarn-compiler.workspace = true

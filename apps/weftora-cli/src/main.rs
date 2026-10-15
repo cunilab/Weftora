@@ -21,7 +21,7 @@ const USAGE: &str = "usage:
   weftora --version
   weftora check <story-dir>
   weftora run <story-dir>
-  weftora run <story-dir> --headless [--choices <id,id,...>]
+  weftora run <story-dir> --headless [--choices <id,id,...>] [--save-at <checkpoint>] [--load] [--save-dir <dir>]
   weftora export <story-dir> --out <dir>";
 
 fn main() -> ExitCode {
@@ -35,9 +35,8 @@ fn main() -> ExitCode {
         ["--version"] | ["-V"] => version(),
         ["check", dir] => check_command(Path::new(dir)),
         ["run", dir] => run_command(Path::new(dir)),
-        ["run", dir, "--headless"] => headless::run(Path::new(dir), &[]),
-        ["run", dir, "--headless", "--choices", choices] => headless::parse_choices(choices)
-            .and_then(|choices| headless::run(Path::new(dir), &choices)),
+        ["run", dir, "--headless", flags @ ..] => headless::parse_options(flags)
+            .and_then(|options| headless::run(Path::new(dir), options)),
         ["export", dir, "--out", out] | ["export", "--out", out, dir] => {
             export_command(Path::new(dir), Path::new(out))
         }

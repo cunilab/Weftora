@@ -13,6 +13,7 @@ path = "src/main.rs"
 [dependencies]
 weftora-api.workspace = true
 weftora-core.workspace = true
+weftora-save.workspace = true
 weftora-story.workspace = true
 weftora-yarn.workspace = true
 weftora-yarn-compiler.workspace = true
