@@ -69,14 +69,14 @@ Goal: full Yarn integration and the presentation primitives a visual novel needs
 
 Goal: a short, complete visual novel played through the prebuilt player.
 
-**Status:** development started. [ADR 0006](./docs/adr/0006-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, safe runtime checkpoints, headless save/load and candidate player restoration are implemented in review. Story A, its content-only edit proof and tutorial are next. Native Windows evidence remains maintainer-owned in issue #5; no Phase 3 gate is claimed.
+**Status:** development started. [ADR 0006](./docs/adr/0006-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, safe runtime checkpoints, headless save/load and candidate player restoration are implemented in review. Story A, its content-only edit proof, author tutorial and Windows test package are also implemented in review. Native Windows evidence remains maintainer-owned in issue #5; no Phase 3 gate is claimed.
 
-- [ ] Grow `examples/hello-story/` into Story A: menu, two branches, characters, CG, music, transitions, themed choice UI.
-- [ ] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.
-- [ ] Load pipeline: bounded read → compatibility check → migrate a temporary copy → validate → atomically activate.
+- [x] Add `examples/story-a/`, preserving Hello Story golden fixtures: menu, two branches, characters, CG, music, transitions, themed choice UI.
+- [x] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.
+- [x] Load pipeline: bounded read → compatibility check → isolated candidate → validate → atomically activate; unsupported migrations refuse safely.
 - [ ] Keyboard and mouse navigation, window resizing and readable scaled UI.
 - [ ] Prove that editing Story A's dialogue, screens and assets does not change the player binary.
-- [ ] Author tutorial: how to change Story A without touching Rust.
+- [x] Author tutorial: how to change Story A without touching Rust; independent Windows walkthrough remains in issue #5.
 - [ ] Optional: tag a Windows **developer alpha**. This is not the foundation release.
 
 ## Phase 4 — Story-defined rules

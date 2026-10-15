@@ -521,4 +521,157 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), good);
         assert!(!path.with_file_name("save.bak").exists());
     }
+    #[test]
+    fn story_a_every_checkpoint_reconstructs_the_same_settled_view_audio_and_state() {
+        fn settle(app: &mut App) {
+            app.world_mut().resource_mut::<Presentation>().now += Duration::from_secs(2);
+            app.update();
+        }
+        fn audio(app: &App) -> Vec<(Channel, String, f32)> {
+            let presentation = app.world().resource::<Presentation>();
+            let mut cues: Vec<_> = presentation
+                .audio
+                .cues
+                .iter()
+                .map(|cue| {
+                    (
+                        cue.channel,
+                        cue.asset.clone(),
+                        cue.envelope.sample(presentation.now),
+                    )
+                })
+                .collect();
+            cues.sort_by(|a, b| a.1.cmp(&b.1));
+            cues
+        }
+        for (target, branch) in [
+            ("scene.menu", 0),
+            ("scene.arrival", 0),
+            ("scene.decision", 0),
+            ("scene.repair", 0),
+            ("scene.roof", 1),
+            ("scene.dawn", 0),
+            ("scene.dawn", 1),
+        ] {
+            let directory = tempfile::tempdir().unwrap();
+            let root =
+                std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/story-a");
+            let story = weftora_story::Story::load(&root).unwrap();
+            let compiled =
+                weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+            let mut app = crate::tests::app_for(story.clone(), compiled);
+            app.world_mut().non_send_mut::<Player>().save_store =
+                Some(Ok(Store::new(directory.path().to_path_buf())));
+            app.world_mut()
+                .resource_mut::<Ui>()
+                .navigate(
+                    &weftora_story::ui::UiAction::Open {
+                        screen: "dialogue".into(),
+                    },
+                    &story,
+                    None,
+                )
+                .unwrap();
+            app.init_resource::<Assets<crate::media::LoopAudio>>()
+                .add_systems(
+                    Update,
+                    (crate::media::sync_views, crate::media::sync_audio)
+                        .chain()
+                        .after(crate::drive),
+                );
+            app.update();
+            let mut reached = false;
+            for _ in 0..100 {
+                let player = app.world().non_send::<Player>();
+                if player
+                    .presenter
+                    .source()
+                    .save_point()
+                    .is_ok_and(|point| point.checkpoint == target)
+                {
+                    reached = true;
+                    break;
+                }
+                let display = player.presenter.screen().clone();
+                match display {
+                    Screen::Line { .. } => request(&mut app, weftora_story::ui::UiAction::Advance),
+                    Screen::Choices(_) => {
+                        let position = if player.presenter.source().save_point().unwrap().checkpoint
+                            == "scene.decision"
+                        {
+                            branch
+                        } else {
+                            0
+                        };
+                        app.world_mut()
+                            .resource_mut::<Intents>()
+                            .push(Intent::Select {
+                                layer: None,
+                                position,
+                            });
+                        app.update();
+                    }
+                    other => panic!("did not reach {target}: {other:?}"),
+                }
+            }
+            assert!(reached, "{target}");
+            settle(&mut app);
+            let player = app.world().non_send::<Player>();
+            let state = player
+                .state
+                .read()
+                .unwrap()
+                .snapshot(weftora_core::Scope::Persistent);
+            let display = player.presenter.screen().clone();
+            let presentation = app.world().resource::<Presentation>();
+            let views = presentation.views.samples(presentation.now);
+            let cues = audio(&app);
+            request(&mut app, weftora_story::ui::UiAction::Save);
+            assert_eq!(
+                app.world().non_send::<Player>().save_status,
+                "Saved.",
+                "{target}"
+            );
+            match display {
+                Screen::Choices(_) => {
+                    app.world_mut()
+                        .resource_mut::<Intents>()
+                        .push(Intent::Select {
+                            layer: None,
+                            position: 0,
+                        });
+                    app.update();
+                }
+                _ => {
+                    request(&mut app, weftora_story::ui::UiAction::Advance);
+                    request(&mut app, weftora_story::ui::UiAction::Advance);
+                }
+            }
+            request(&mut app, weftora_story::ui::UiAction::Load);
+            assert_eq!(
+                app.world().non_send::<Player>().save_status,
+                "Loaded.",
+                "{target}"
+            );
+            settle(&mut app);
+            let player = app.world().non_send::<Player>();
+            assert_eq!(player.presenter.screen(), &display, "{target}");
+            assert_eq!(
+                player
+                    .state
+                    .read()
+                    .unwrap()
+                    .snapshot(weftora_core::Scope::Persistent),
+                state,
+                "{target}"
+            );
+            let presentation = app.world().resource::<Presentation>();
+            assert_eq!(
+                presentation.views.samples(presentation.now),
+                views,
+                "{target}"
+            );
+            assert_eq!(audio(&app), cues, "{target}");
+        }
+    }
 }

@@ -48,13 +48,33 @@ jobs:
           $mediaHash = (Get-FileHash (Join-Path $presentationPreview "weftora-player.exe") -Algorithm SHA256).Hash
           if ($helloHash -ne $mediaHash) { throw "Stories must export the same player binary" }
           Write-Output "Same player SHA256 for both Story exports: $mediaHash"
-      - uses: actions/upload-artifact@v4
+      - uses: actions/setup-python@v5
         with:
+          python-version: '3.13'
+      - name: Package Story A and prove content-only edits
+        shell: pwsh
+        run: |
+          $storyAPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-story-a-preview"
+          python scripts/verify-story-a-edits.py --cli target/debug/weftora.exe --player target/debug/weftora-player.exe --out $storyAPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-story-a-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-story-a-preview/
+          retention-days: 14
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
           name: weftora-windows-media-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-media-preview/
           retention-days: 14
       - uses: actions/upload-artifact@v4
+        if: always()
         with:
+          if-no-files-found: ignore
           name: weftora-windows-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-preview/
           retention-days: 14

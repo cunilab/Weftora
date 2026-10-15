@@ -66,3 +66,9 @@ For deterministic headless checks:
     weftora run <story-dir> --headless --load --choices 0
 
 Save stops at the eligible display and emits a saved record. Load validates and replays the opening before emitting gameplay events. Optional --save-dir <directory> selects an exact test directory outside the Story. Without it, the host user-data location is used: LOCALAPPDATA/Weftora/saves/Story-ID on Windows, ~/Library/Application Support/Weftora/saves/Story-ID on macOS, or XDG_DATA_HOME/Weftora/saves/Story-ID (otherwise ~/.local/share) on Linux. One save.json slot and the previous save.bak are maintained; corrupt or incompatible loads never overwrite either.
+
+## Story A: Last Signal
+
+[Story A](./examples/story-a/README.md) is a complete short example with a title menu, two routes, characters, CG, music, transitions, themed choices and checkpoint saves. Its CC0 rectangles and tones are prototype assets. Hello Story remains the unchanged earlier test fixture.
+
+Use the [author tutorial](./docs/story-a-tutorial.md) to edit dialogue, screens/theme and an image with prebuilt tools. Windows CI packages baseline and two edited variants with the same player hash. [Native Windows and independent-author steps](./docs/evidence/phase-3-windows.md) remain in issue #5 with blank results.
