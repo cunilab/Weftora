@@ -440,4 +440,40 @@ tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
 tested_at: 2026-10-15
 ```
 
+### P2-08 performance baseline + R15 ADR — agent run, maintainer decision (delegated)
+
+Covers the "P2-08: measure release cold-start-to-menu, input-to-feedback p95, idle memory and
+starter Story check time" bullet and the "Confirm or revise PRD R15 budgets by ADR" bullet. The
+ADR was explicitly accepted by the maintainer with the p95 gap left open rather than fabricated.
+
+```yaml
+check: P2-08 measure + R15 ADR confirmation (delegated, decision by Andres-Holivin)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (driver 610.62, Vulkan)
+fixture: exported hello-story (release), PowerShell launch/sampling harness
+steps: >-
+  Launch the exported player and sample the process; median/max across runs; run
+  `weftora check` on the starter Story repeatedly; then review measurements in
+  ADR 0006 and decide.
+expected: R15: cold start <= 5 s, input p95 <= 100 ms, idle <= 750 MiB, check <= 2 s; ADR confirms or revises
+actual: >-
+  Cold start: window-ready median 0.51 s, max 0.59 s warm, 1.86 s first-ever cold
+  launch (<= 5 s, confirmed). Idle: 371 MiB working set, ~625 MiB private bytes
+  (<= 750 MiB, confirmed). check: median 11 ms, max 17 ms (<= 2 s, confirmed).
+  Input-to-feedback p95: NOT measured — PrintWindow capture cost exceeds the
+  latency under test; recorded as an open gap in ADR 0006 instead of a number.
+  Maintainer decision: ADR 0006 accepted as proposed, p95-left-open framing
+  included (issue #5 interview, 2026-10-15).
+result: PASS (three budgets confirmed by measurement; p95 gap documented in accepted ADR 0006)
+logs_or_artifacts: >-
+  docs/adr/0006-performance-baseline.md,
+  docs/evidence/artifacts/phase-2-windows-agent/perf-release.txt, perf-debug.txt
+tested_by: agent on maintainer's machine (delegated); ADR decision by Andres-Holivin
+tested_at: 2026-10-15
+```
+
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.

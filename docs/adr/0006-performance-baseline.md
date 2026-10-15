@@ -1,7 +1,7 @@
 ---
 id: WFT-ADR-006
 title: ADR 0006 — Performance Baseline and PRD R15 Budgets
-status: proposed
+status: accepted
 ---
 
 # ADR 0006 — Performance Baseline and PRD R15 Budgets
@@ -36,6 +36,8 @@ measured: the only instrument available here is `PrintWindow` frame capture, who
 engine latency being measured, so a number read from it would reflect capture overhead rather than input
 latency. Measuring p95 honestly needs a dedicated harness — engine-side input timestamps or a
 desktop-duplication capture path — and is a separate task.
+
+**Accepted** by the maintainer (Andres-Holivin) on 2026-10-15, including the p95-left-open framing.
 
 ## Consequences
 
