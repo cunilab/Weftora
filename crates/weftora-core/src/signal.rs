@@ -96,7 +96,8 @@ impl SignalBus {
         Ok(trace)
     }
 }
-fn validate(signal: &Signal) -> Result<(), SignalError> {
+/// Validates a signal without delivering it or changing state.
+pub fn validate(signal: &Signal) -> Result<(), SignalError> {
     crate::state::validate_key(&signal.id)
         .map_err(|_| SignalError::InvalidId(signal.id.clone()))?;
     if let Value::Float(f) = &signal.value

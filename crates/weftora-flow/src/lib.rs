@@ -1,4 +1,6 @@
-//! Headless Story conditions. File formats and event scheduling are separate concerns.
+//! Headless Story conditions and deterministic events. Story file formats are separate concerns.
+
+pub mod events;
 
 use std::cmp::Ordering;
 use weftora_api::{StateError, Value};

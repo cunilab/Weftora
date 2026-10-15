@@ -84,9 +84,9 @@ Goal: a short, complete visual novel played through the prebuilt player.
 
 Goal: games define their own mechanics without Engine changes.
 
-**Status:** development in progress while earlier native acceptance remains queued in issue #5. The first slice adds headless scalar conditions in `weftora-flow`; [condition semantics and scope](./docs/rules.md) describe the API and remaining Story integration. No Phase 4 gate is claimed.
+**Status:** development in progress while earlier native acceptance remains queued in issue #5. Headless scalar conditions, deterministic events and ordered state actions are implemented in `weftora-flow`; [rule semantics and scope](./docs/rules.md) describe the API and remaining Story integration. No Phase 4 gate is claimed.
 
-- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling.
+- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling. Headless scheduler and golden traces implemented; Story integration follows.
 - [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not. Headless evaluator implemented; Story integration and Windows CI evidence follow.
 - [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)).
 - [ ] Rhai script host: allowlisted Engine API, operation/depth/size limits, errors mapped to Story diagnostics, no file/network/OS access.
