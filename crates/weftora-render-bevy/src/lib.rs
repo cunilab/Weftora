@@ -7,6 +7,7 @@
 mod declarative;
 mod media;
 pub mod presenter;
+mod saves;
 
 use std::sync::{Arc, Mutex};
 
@@ -44,6 +45,9 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Resu
     let player = Player {
         presenter,
         state,
+        save_store: saves::store(&story),
+        compiled: dialogue,
+        save_status: String::new(),
         story,
         pending: actions,
         dirty: true,
@@ -79,6 +83,7 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Resu
                 declarative::update_bindings,
                 media::sync_audio,
                 refresh_panel,
+                refresh_save_status,
                 hover_buttons,
                 remember_failure,
             )
@@ -112,13 +117,31 @@ struct Player {
     state: SharedState,
     pending: Vec<Action>,
     dirty: bool,
+    compiled: CompiledDialogue,
+    save_store: Option<Result<weftora_save::storage::Store, String>>,
+    save_status: String,
 }
 
 #[derive(Component)]
 struct Panel;
 
+#[derive(Component)]
+struct SaveStatus;
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
+    commands.spawn((
+        SaveStatus,
+        label("", 16.0, Color::WHITE),
+        Node {
+            position_type: PositionType::Absolute,
+            top: px(12),
+            left: px(24),
+            right: px(24),
+            ..default()
+        },
+        GlobalZIndex(1000),
+    ));
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
@@ -181,9 +204,15 @@ fn drive(
     let before = player.presenter.screen().clone();
     let before_revision = player.presenter.revision();
     let mut actions = std::mem::take(&mut player.pending);
+    let mut requested = None;
 
     let focused_button = focus.get().is_some_and(|e| buttons.contains(e));
-    if !ui.modal() {
+    if keys.just_pressed(KeyCode::F9) {
+        requested = Some(UiAction::Load);
+    } else if keys.just_pressed(KeyCode::F5) {
+        requested = Some(UiAction::Save);
+    }
+    if !ui.modal() && requested.is_none() {
         if let Some(position) = DIGIT_KEYS.iter().position(|k| keys.just_pressed(*k)) {
             intents.push(Intent::Select {
                 layer: None,
@@ -219,6 +248,10 @@ fn drive(
             continue;
         }
         let result = match action {
+            UiAction::Save | UiAction::Load => {
+                requested.get_or_insert(action);
+                Ok(())
+            }
             UiAction::Advance if !progressed => {
                 progressed = true;
                 actions.extend(player.presenter.advance());
@@ -248,6 +281,7 @@ fn drive(
         }
     }
 
+    let commands_ran = !actions.is_empty();
     for action in actions {
         if matches!(player.presenter.screen(), Screen::Error(_)) {
             break;
@@ -257,6 +291,46 @@ fn drive(
             player.presenter.fail(message);
             break;
         }
+    }
+
+    if let Some(request) = requested {
+        let result: Result<String, String> = (|| {
+            if progressed || commands_ran {
+                return Err("wait until dialogue and presentation commands have finished".into());
+            }
+            if matches!(player.presenter.screen(), Screen::Error(_)) {
+                return Err("save/load is unavailable after a Story error".into());
+            }
+            match request {
+                UiAction::Save => {
+                    if !ui.at_initial_base(&player.story) {
+                        return Err(
+                            "close overlays and return to the initial screen before saving".into(),
+                        );
+                    }
+                    if !media.settled() {
+                        return Err("wait for the view/audio transition before saving".into());
+                    }
+                    player.write_save()?;
+                    Ok("Saved.".to_string())
+                }
+                UiAction::Load => {
+                    let candidate = player.prepare_load()?;
+                    media.restore(&candidate.actions, &player.story)?;
+                    player.state = candidate.state;
+                    player.presenter = candidate.presenter;
+                    player.pending.clear();
+                    player.dirty = true;
+                    ui.reset(&player.story);
+                    Ok("Loaded.".to_string())
+                }
+                _ => unreachable!("save/load request"),
+            }
+        })();
+        player.save_status = match result {
+            Ok(message) => message,
+            Err(message) => format!("Save/load: {message}"),
+        };
     }
 
     if let Screen::Error(message) = player.presenter.screen()
@@ -418,6 +492,19 @@ fn refresh_panel(
     }
 }
 
+fn refresh_save_status(player: NonSend<Player>, mut text: Single<&mut Text, With<SaveStatus>>) {
+    let value = if !player.save_status.is_empty() {
+        player.save_status.as_str()
+    } else if player.save_store.is_some() {
+        "F5: save at checkpoint • F9: load"
+    } else {
+        ""
+    };
+    if text.0 != value {
+        text.0 = value.into();
+    }
+}
+
 fn hover_buttons(
     focus: Res<InputFocus>,
     mut buttons: Query<(Entity, &Hovered, Option<&ButtonBase>, &mut BackgroundColor), With<Button>>,
@@ -494,6 +581,9 @@ mod tests {
         let (presenter, pending) = Presenter::new(runner, "Start");
         let mut app = App::new();
         app.insert_non_send(Player {
+            save_store: saves::store(&story),
+            compiled,
+            save_status: String::new(),
             story,
             state,
             presenter,

@@ -34,3 +34,13 @@ On MacBookAir, full-workspace tests passed 242 tests across 26 suites, with zero
 Player save/load controls, transactional view/audio activation, Story A and the tutorial still follow. Native Windows save paths, player interaction/relaunch/view restoration and author walkthrough remain blank in issue #5. No Phase 3 gate is claimed.
 
 Windows x64 checkpoint-integration CI [run 38614730704](https://github.com/cunilab/Weftora/actions/runs/38614730704) passed all three jobs at source revision ed8d14a8803ac2a87b251ea375dce0bdd94c18bd: 230 tests across 26 suites, zero failures. [Raw test output](phase-3-checkpoints-windows.txt) records the automated run; native player/relaunch tests remain pending.
+
+## Player save/load integration
+
+The player now exposes save/load buttons through validated Story actions and F5/F9 shortcuts. Requests run after normal frame inputs/actions. Save refuses progress/commands in the same frame, active view/pose/audio fades, open overlays/non-initial base screens and invalid checkpoint data. Music and one-shots may continue playing. Errors use a separate nonfatal status line; load is unavailable after a terminal Story error.
+
+Restore builds an isolated default-initialized candidate with current Settings and reset Session, restores visits, primes its checkpoint presenter, and validates all screen/state/text/choice/volume constraints. Media stages a fresh scene while sharing immutable caches and retaining the audio-token sequence. Live state, dialogue and media replace together only after decoding succeeds. UI layers, choice focus and classic-panel dirtiness reset even when presenter revision numbers match. Existing synchronization stops old sinks; playback cursors are never serialized.
+
+The full workspace passed 248 tests across 26 suites before the final save-time binding hardening. After that addition, all 41 renderer tests passed, including the new regression, and workspace Clippy with warnings denied passed again. The existing dependency/docs/format checks passed. Regressions include settings retention/session reset, first-display replay, byte-identical resave, audio token/entity handoff, nonfatal corrupt-file/bound-text/decode failure with old state/view/audio and slot preserved, in-flight/overlay/changed-Persistent refusal, F5/F9 with Space and same-frame progress, UI capability validation and refusing a hidden invalid binding before overwriting a good slot.
+
+Claude Opus 5.5 medium Read/Grep advice and review returned SHIP with a recommendation to validate hidden bindings before saving. Codex added that check and its preservation test. Native Windows graphical/relaunch checks remain pending in issue #5. Story A, same-player edit proof and tutorial are the next slice; no Phase 3 gate is claimed.

@@ -42,6 +42,10 @@ pub enum DialogueBinding {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(tag = "do", deny_unknown_fields)]
 pub enum UiAction {
+    #[serde(rename = "save")]
+    Save,
+    #[serde(rename = "load")]
+    Load,
     #[serde(rename = "dialogue.advance")]
     Advance,
     #[serde(rename = "state.set")]
@@ -552,6 +556,15 @@ pub(crate) fn reference_errors(story: &crate::Story) -> Vec<Diagnostic> {
                         )),
                     }
                 }
+            }
+            if matches!(widget.action, Some(UiAction::Save | UiAction::Load))
+                && story.manifest().save_schema.is_none()
+            {
+                errors.push(Diagnostic::new(
+                    &screen.file,
+                    None,
+                    format!("{path}/action: save/load requires saveSchema and save/1"),
+                ));
             }
             if let Some(UiAction::Open { screen: id }) = &widget.action
                 && story.screen(id).is_err()

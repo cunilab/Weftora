@@ -68,6 +68,10 @@ impl<S: EventSource> Presenter<S> {
         (presenter, actions)
     }
 
+    pub(crate) fn source(&self) -> &S {
+        &self.source
+    }
+
     pub fn revision(&self) -> u64 {
         self.revision
     }

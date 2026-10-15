@@ -261,6 +261,9 @@ impl Tween {
     pub fn retarget(&mut self, to: f32, now: Duration, duration: Duration) {
         *self = Self::new(self.sample(now), to, now, duration);
     }
+    pub fn settled(self, now: Duration) -> bool {
+        now.saturating_sub(self.start) >= self.duration
+    }
     fn cleared(self, now: Duration) -> bool {
         self.to == 0.0 && now.saturating_sub(self.start) >= self.duration
     }
@@ -351,6 +354,16 @@ pub struct ViewSample {
     pub alpha: f32,
 }
 impl Views {
+    pub fn settled(&self, now: Duration) -> bool {
+        self.0.values().all(|view| {
+            view.outgoing.is_none()
+                && now.saturating_sub(view.pose.start) >= view.pose.duration
+                && view
+                    .current
+                    .as_ref()
+                    .is_none_or(|cue| cue.alpha.settled(now))
+        })
+    }
     pub fn apply(&mut self, request: &Request, now: Duration) {
         let (slot, image, duration) = match request {
             Request::Background(id) => (Slot::Background, Some(id), Duration::ZERO),
@@ -460,6 +473,11 @@ pub struct Audio {
     next_token: u64,
 }
 impl Audio {
+    pub fn settled(&self, now: Duration) -> bool {
+        self.cues
+            .iter()
+            .all(|cue| !cue.stopping && cue.envelope.settled(now))
+    }
     pub fn apply(&mut self, request: &Request, now: Duration) {
         let (channel, asset, duration) = match request {
             Request::Sound(id) => (Channel::Effects, Some(id), Duration::ZERO),
@@ -650,5 +668,30 @@ mod tests {
             .set("settings.audio.master", Value::Float(1.1))
             .unwrap();
         assert!(volumes(&state).is_err());
+    }
+    #[test]
+    fn settled_save_gate_tracks_fades_moves_and_stops_but_not_playback() {
+        let mut views = Views::default();
+        assert!(views.settled(ms(0)));
+        views.apply(&parse("show", &["left", "hero", "1000"]).unwrap(), ms(0));
+        assert!(!views.settled(ms(999)));
+        views.tick(ms(1000));
+        assert!(views.settled(ms(1000)));
+        views.apply(
+            &parse("move", &["left", "0.75", "0.5", "1", "1", "500"]).unwrap(),
+            ms(1000),
+        );
+        assert!(!views.settled(ms(1499)));
+        assert!(views.settled(ms(1500)));
+        let mut audio = Audio::default();
+        audio.apply(&parse("music", &["track", "500"]).unwrap(), ms(0));
+        assert!(!audio.settled(ms(499)));
+        assert!(audio.settled(ms(500)));
+        audio.apply(&parse("sound", &["effect"]).unwrap(), ms(500));
+        assert!(audio.settled(ms(500)));
+        audio.apply(&parse("music", &["none", "500"]).unwrap(), ms(500));
+        assert!(!audio.settled(ms(999)));
+        audio.tick(ms(1000));
+        assert!(audio.settled(ms(1000)));
     }
 }
