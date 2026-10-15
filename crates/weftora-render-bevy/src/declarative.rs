@@ -524,13 +524,16 @@ pub(crate) fn restore_focus(
     }
     ui.focus_first = false;
 }
-fn value_text(value: &Value) -> String {
-    match value {
+fn value_text(value: &Value) -> Result<String, String> {
+    Ok(match value {
         Value::Bool(v) => v.to_string(),
         Value::Int(v) => v.to_string(),
         Value::Float(v) => v.to_string(),
         Value::String(v) => v.clone(),
-    }
+        Value::List(_) | Value::Map(_) => {
+            return Err("text bindings require scalar state; expose a scalar view".into());
+        }
+    })
 }
 pub(crate) fn checked_text(text: String, source: &str) -> Result<String, String> {
     if text.len() > 4096 {
@@ -570,7 +573,7 @@ pub(crate) fn validate_display(
             if let Some(binding) = &widget.bind {
                 let text = match binding {
                     Binding::State { state: key } => {
-                        value_text(state.get(key).map_err(|e| e.to_string())?)
+                        value_text(state.get(key).map_err(|e| e.to_string())?)?
                     }
                     Binding::Dialogue { dialogue } => match (dialogue, screen) {
                         (DialogueBinding::Text, Screen::Line { text, .. }) => text.clone(),
@@ -606,7 +609,7 @@ pub(crate) fn update_bindings(
                     .map_err(|e| format!("{}: {e}", binding.source))?;
                 values.insert(
                     key.clone(),
-                    checked_text(value_text(value), &binding.source)?,
+                    checked_text(value_text(value)?, &binding.source)?,
                 );
             }
         }

@@ -108,6 +108,10 @@ fn name_for(key: &str) -> String {
 
 fn to_yarn(name: &str, value: &Value) -> Result<YarnValue> {
     match value {
+        Value::List(_) | Value::Map(_) => Err(var_error(
+            name,
+            "collections cannot be read by Yarn; expose a scalar state view",
+        )),
         Value::Bool(b) => Ok(YarnValue::Boolean(*b)),
         Value::String(s) if s.len() <= MAX_STRING_BYTES => Ok(YarnValue::String(s.clone())),
         Value::String(_) => Err(var_error(name, "string budget (16384 bytes) exceeded")),
@@ -199,10 +203,7 @@ impl StateStorage {
             .iter()
             .flat_map(|c| [&c.before, &c.after])
             .flatten()
-            .map(|v| match v {
-                Value::String(text) => text.len(),
-                _ => 0,
-            })
+            .map(Value::payload_bytes)
             .sum();
         let previous = self.write_bytes.fetch_add(bytes, Ordering::Relaxed);
         if bytes > MAX_WRITE_BYTES || previous > MAX_WRITE_BYTES.saturating_sub(bytes) {

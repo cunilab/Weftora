@@ -374,7 +374,7 @@ fn commands_reject_cycles_types_reserved_names_scopes_and_unknown_fields() {
         ),
         (
             json!([{"id":"bad","parameters":[{"name":"a","type":"int"}],"actions":[{"do":"state.set","key":"points","value":{"argument":"a","ignored":true}}]}]),
-            "did not match",
+            "collection action values require",
         ),
     ] {
         let temp = command_fixture(commands);
@@ -544,4 +544,138 @@ fn oversized_leaf_identifiers_are_rejected_before_repeated_expansion() {
             "{errors:?}"
         );
     }
+}
+
+fn collections_fixture() -> tempfile::TempDir {
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/collections-demo");
+    let temp = tempfile::tempdir().unwrap();
+    for file in [
+        "manifest.jsonc",
+        "main.yarn",
+        "events.jsonc",
+        "screen.jsonc",
+    ] {
+        fs::copy(root.join(file), temp.path().join(file)).unwrap();
+    }
+    temp
+}
+#[test]
+fn collections_use_explicit_action_literals_and_keep_argument_named_map_keys() {
+    use weftora_api::Value as V;
+    let temp = collections_fixture();
+    let story = Story::load(temp.path()).unwrap();
+    let mut state = story.initial_state().unwrap();
+    story.rules().call("pack", &[], &mut state, 0).unwrap();
+    assert_eq!(
+        state.get("items"),
+        Ok(&V::List(vec![
+            V::String("key".into()),
+            V::String("ticket".into())
+        ]))
+    );
+    let V::Map(schedule) = state.get("schedule").unwrap() else {
+        panic!("not a map")
+    };
+    assert_eq!(schedule["argument"], V::String("literal map entry".into()));
+    let from = state.pending_changes().len();
+    story.rules().call("unpack", &[], &mut state, from).unwrap();
+    assert_eq!(state.get("items"), Ok(&V::List(vec![])));
+    assert_eq!(state.get("schedule"), Ok(&V::Map(Default::default())));
+    for invalid in [
+        json!(["key"]),
+        json!({"argument":1}),
+        json!({"literal":1,"extra":true}),
+        json!({"key":"value"}),
+    ] {
+        update(temp.path(), "events.jsonc", |v| {
+            v["commands"][0]["actions"][0]["value"] = invalid
+        });
+        let errors = Story::load(temp.path()).unwrap_err();
+        assert!(
+            errors[0]
+                .message
+                .contains("collection action values require"),
+            "{errors:?}"
+        );
+    }
+}
+#[test]
+fn collection_capability_and_scalar_boundaries_fail_before_activation() {
+    let temp = collections_fixture();
+    update(temp.path(), "manifest.jsonc", |v| {
+        v["requires"]["capabilities"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|c| c != "state.collections/1")
+    });
+    assert!(
+        Story::load(temp.path())
+            .unwrap_err()
+            .iter()
+            .any(|e| e.message.contains("state.collections/1"))
+    );
+    for (action, expected) in [
+        (
+            json!({"do":"state.add","key":"items","amount":1}),
+            "int or float",
+        ),
+        (
+            json!({"do":"signal.emit","id":"test","value":{"literal":[]}}),
+            "scalar",
+        ),
+        (
+            json!({"do":"command.call","command":"unpack","args":[{"literal":[]}]}),
+            "expects 0",
+        ),
+    ] {
+        let temp = collections_fixture();
+        update(temp.path(), "events.jsonc", |v| {
+            v["commands"][0]["actions"] = json!([action])
+        });
+        let errors = Story::load(temp.path()).unwrap_err();
+        assert!(errors[0].message.contains(expected), "{errors:?}");
+    }
+    let temp = collections_fixture();
+    update(
+        temp.path(),
+        "events.jsonc",
+        |v| v["events"] = json!([{"id":"bad","trigger":"start","condition":{"op":"compare","operator":"==","left":{"state":"items"},"right":{"literal":[]}},"actions":[]}]),
+    );
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("does not accept list")
+    );
+    let temp = collections_fixture();
+    update(temp.path(), "screen.jsonc", |v| {
+        v["root"]["children"][2]["bind"] = json!({"state":"items"})
+    });
+    let story = Story::load(temp.path()).unwrap();
+    assert!(
+        story
+            .screen("dialogue")
+            .unwrap()
+            .state_errors(&story.initial_state().unwrap())
+            .iter()
+            .any(|e| e.message.contains("scalar"))
+    );
+}
+#[test]
+fn collection_payloads_are_charged_during_static_command_expansion() {
+    let temp = collections_fixture();
+    let payload = json!({"literal":["x".repeat(16300)]});
+    let calls = vec![json!({"do":"command.call","command":"zleaf"}); 256];
+    let mut commands: Vec<_> = (0..9)
+        .map(|i| json!({"id":format!("large{i}"),"actions":calls}))
+        .collect();
+    commands
+        .push(json!({"id":"zleaf","actions":[{"do":"state.set","key":"items","value":payload}]}));
+    update(temp.path(), "events.jsonc", |v| {
+        v["commands"] = commands.into()
+    });
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("expanded rule data exceeds 32 MiB")
+    );
 }

@@ -12,6 +12,8 @@ pub struct Signal {
 }
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum SignalError {
+    #[error("signal payloads support scalar values only")]
+    Collection,
     #[error("invalid signal ID `{0}`")]
     InvalidId(String),
     #[error("signal payload must be finite")]
@@ -100,6 +102,9 @@ impl SignalBus {
 pub fn validate(signal: &Signal) -> Result<(), SignalError> {
     crate::state::validate_key(&signal.id)
         .map_err(|_| SignalError::InvalidId(signal.id.clone()))?;
+    if signal.value.is_collection() {
+        return Err(SignalError::Collection);
+    }
     if let Value::Float(f) = &signal.value
         && !f.is_finite()
     {

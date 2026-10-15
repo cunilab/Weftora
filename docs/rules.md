@@ -6,7 +6,7 @@ status: proposed
 
 # Story Rules
 
-Phase 4 uses typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). [ADR 0008](./adr/0008-declarative-events.md) defines their JSONC Story format and shared dialogue notification boundary. Typed declarative commands and screen state writes use the same rule boundary. Arbitrary host writes, collections and Rhai remain to implement. Existing Stories without rules retain their behavior.
+Phase 4 uses typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). [ADR 0008](./adr/0008-declarative-events.md) defines their JSONC Story format and shared dialogue notification boundary. Typed declarative commands and screen state writes use the same rule boundary. Flat collection state is available through whole-value actions; arbitrary host writes and Rhai remain to implement. Existing Stories without rules retain their behavior.
 
 ## Story files
 
@@ -66,6 +66,14 @@ Screen `state.set` also settles its newly generated notifications before binding
 
 The [commands demo](../examples/commands-demo/README.md) exercises all three callers and checkpoint replay. Native checks are queued in issue #5.
 
+## Collection state
+
+Require `state.collections/1` when declaring a list or map in manifest state/defaults or `initialState`. Use normal JSON arrays/objects of scalar values. Root kinds remain fixed, contents may mix scalar types, and empty values are valid. Maps serialize with sorted keys; lists preserve order. There are no nested collections or null children.
+
+Whole-value set/reset/remove work through the existing actions. In rule action `value` slots use an explicit wrapper, for example `{"do":"state.set","key":"items","value":{"literal":["key","ticket"]}}`. The wrapper also permits a map containing `argument` or `literal` keys without confusing command argument references. Screen `state.set` accepts ordinary collection JSON directly.
+
+Limits are 256 entries and 16384 retained payload bytes per collection (eight bytes per entry, plus string/key UTF-8 bytes). Map keys are arbitrary strings of up to 512 bytes. Numeric add, conditions, command parameters, signals, Yarn variables and text bindings remain scalar-only. Maintain authored scalar views where needed. [ADR 0009](./adr/0009-flat-collection-state.md) defines encoding, resource accounting and save behavior; [collections-demo](../examples/collections-demo/README.md) demonstrates replay. Entry operations and Rhai remain later work.
+
 ## Scalar conditions
 
 `Operand` is a literal canonical `Value` or a canonical state key. `Condition` is a comparison, `And`, `Or` or `Not`. Conditions never write state or consume notifications.
@@ -115,4 +123,4 @@ Low-level dispatch only mutates its supplied `&mut State`; definitions contain n
 
 Run `cargo test -p weftora-flow --locked` for operator/type tables, nested boolean logic, invalid skipped branches, nonfinite values, live state and removal, i64 precision, no condition mutation, and depth/node boundaries. Event tests replay the priority/condition/action/FIFO golden fixture in ten fresh runs and pin a cycle's trace prefix; they also cover Core bus ordering parity, action/condition errors, notification preservation, schema drift, dispatch on a cloned state, repeated dispatches and definition/budget boundaries. `cargo test -p xtask --locked` includes a negative dependency fixture for Flow; `cargo xtask deps` checks the actual graph. Flow must never depend on Bevy, Yarn, Rhai, apps or Stories.
 
-Story/CLI rules tests cover authoring diagnostics, repeated real execution and save replay; the renderer candidate test covers live-state/file preservation on rule failure. [Phase 4 evidence](./evidence/phase-4.md) records results for the automated portions of P4-01/P4-02 and initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). Arbitrary host-write bridging, collections and Rhai remain separate work; no Phase 4 acceptance is claimed. Windows CI runs workspace tests; native checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking development.
+Story/CLI rules tests cover authoring diagnostics, repeated real execution and save replay; the renderer candidate test covers live-state/file preservation on rule failure. [Phase 4 evidence](./evidence/phase-4.md) records results for the automated portions of P4-01/P4-02 and initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). Arbitrary host-write bridging, collection operations and Rhai remain separate work; no Phase 4 acceptance is claimed. Windows CI runs workspace tests; native checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking development.

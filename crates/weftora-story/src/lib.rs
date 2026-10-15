@@ -274,6 +274,23 @@ impl Story {
                 ));
             }
         }
+        let collections = manifest
+            .state
+            .values()
+            .map(|d| &d.default)
+            .chain(manifest.initial_state.values())
+            .any(Value::is_collection);
+        if collections
+            && !manifest
+                .requires
+                .as_ref()
+                .is_some_and(|r| r.capabilities.iter().any(|c| c == "state.collections/1"))
+        {
+            diags.push(manifest_diag(
+                None,
+                "collection state requires state.collections/1".into(),
+            ));
+        }
         let mut scratch = State::new();
         for (key, definition) in &manifest.state {
             if let Err(error) = scratch.declare(key, definition.clone()) {

@@ -40,3 +40,5 @@ Each document's header shows whether it is proposed or accepted. What actually w
 To add a document, copy the [template](./templates/document.md) and follow the [standards](./standards.md).
 
 - [ADR 0007: safe checkpoint saves](./adr/0007-safe-checkpoint-saves.md)
+
+- [ADR 0009 — Flat collection state](./adr/0009-flat-collection-state.md)

@@ -117,9 +117,7 @@ fn check_notifications(state: &State, from: usize) -> Result<(), Diagnostic> {
     for change in changes {
         bytes = bytes.saturating_add(change.key.len());
         for value in [&change.before, &change.after].into_iter().flatten() {
-            if let Value::String(text) = value {
-                bytes = bytes.saturating_add(text.len());
-            }
+            bytes = bytes.saturating_add(value.payload_bytes());
         }
         if bytes > 32 * 1024 * 1024 {
             break;
@@ -136,6 +134,7 @@ fn check_notifications(state: &State, from: usize) -> Result<(), Diagnostic> {
 }
 
 fn value_limit(value: &Value) -> Result<(), String> {
+    value.validate().map_err(|e| e.to_string())?;
     if matches!(value, Value::String(text) if text.len() > 16 * 1024) {
         return Err("rule strings must not exceed 16384 bytes".into());
     }
@@ -312,11 +311,29 @@ impl Location {
     }
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(untagged, deny_unknown_fields)]
+#[derive(Debug, Clone)]
 enum SlotValue {
     Literal(Value),
     Argument { argument: String },
+}
+impl<'de> Deserialize<'de> for SlotValue {
+    fn deserialize<D: serde::Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        #[derive(Deserialize)]
+        #[serde(untagged, deny_unknown_fields)]
+        enum Input {
+            Argument { argument: String },
+            Explicit { literal: Value },
+            Scalar(Value),
+        }
+        match Input::deserialize(deserializer)? {
+            Input::Argument { argument } => Ok(Self::Argument { argument }),
+            Input::Explicit { literal } => Ok(Self::Literal(literal)),
+            Input::Scalar(value) if !value.is_collection() => Ok(Self::Literal(value)),
+            _ => Err(serde::de::Error::custom(
+                "collection action values require {literal: value}; argument references require exactly {argument: name}",
+            )),
+        }
+    }
 }
 impl SlotValue {
     fn bind(&self, bindings: &BTreeMap<String, Self>) -> Result<Self, String> {
@@ -564,9 +581,8 @@ fn charge_expansion(actions: &[LocatedAction], bytes: &mut usize) -> Result<(), 
 }
 fn slot_bytes(value: &SlotValue) -> usize {
     match value {
-        SlotValue::Literal(Value::String(text)) => text.len(),
+        SlotValue::Literal(value) => 8 + value.payload_bytes(),
         SlotValue::Argument { argument } => argument.len(),
-        _ => 8,
     }
 }
 

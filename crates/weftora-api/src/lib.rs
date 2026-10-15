@@ -4,43 +4,17 @@
 
 use serde::{Deserialize, Serialize};
 
-/// A typed game-state value.
-///
-/// Phases 0–1 support scalars only. Lists and maps arrive in Phase 4 (ADR 0003).
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[serde(untagged)]
-pub enum Value {
-    Bool(bool),
-    Int(i64),
-    /// Always finite; constructors reject NaN and infinity.
-    Float(f64),
-    String(String),
-}
-
-impl Value {
-    /// Builds a float value, rejecting NaN and infinity.
-    pub fn float(value: f64) -> Result<Self, StateError> {
-        if value.is_finite() {
-            Ok(Self::Float(value))
-        } else {
-            Err(StateError::NonFinite)
-        }
-    }
-
-    /// Human-readable type name used in diagnostics.
-    pub fn type_name(&self) -> &'static str {
-        match self {
-            Self::Bool(_) => "bool",
-            Self::Int(_) => "int",
-            Self::Float(_) => "float",
-            Self::String(_) => "string",
-        }
-    }
-}
+mod value;
+pub use value::{
+    MAX_COLLECTION_BYTES, MAX_COLLECTION_ENTRIES, MAX_COLLECTION_KEY_BYTES,
+    MAX_COLLECTION_STRING_BYTES, Value,
+};
 
 /// Errors from reading or writing game state.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum StateError {
+    #[error("invalid state value: {0}")]
+    InvalidValue(String),
     #[error("state key `{key}` has scope {actual}, expected {expected}")]
     ScopeMismatch {
         key: String,

@@ -280,10 +280,7 @@ fn replay(
                         + [&change.before, &change.after]
                             .into_iter()
                             .flatten()
-                            .map(|value| match value {
-                                Value::String(text) => text.len(),
-                                _ => 0,
-                            })
+                            .map(Value::payload_bytes)
                             .sum::<usize>()
                 })
                 .sum();

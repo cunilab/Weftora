@@ -314,6 +314,69 @@ mod tests {
     }
 
     #[test]
+    fn collection_restore_candidate_does_not_publish_on_failure() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/collections-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        player.write_save().unwrap();
+        let path = temp.path().join("data/save.json");
+        let bytes = std::fs::read(&path).unwrap();
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::SetState {
+                key: "items".into(),
+                value: Value::List(vec![]),
+            })
+            .unwrap();
+        assert!(player.presenter.source().save_point().is_err());
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("items"),
+            Ok(&Value::List(vec![
+                Value::String("key".into()),
+                Value::String("ticket".into())
+            ]))
+        );
+        assert_eq!(
+            player.state.read().unwrap().get("items"),
+            Ok(&Value::List(vec![]))
+        );
+        let mut rules: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.join("events.jsonc")).unwrap()).unwrap();
+        rules["commands"][0]["actions"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({"do":"state.add","key":"item_count","amount":i64::MAX}));
+        std::fs::write(root.join("events.jsonc"), rules.to_string()).unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let before = player.state.read().unwrap().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("candidate activated"),
+            Err(error) => error,
+        };
+        assert!(error.contains("overflow"), "{error}");
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+
+    #[test]
     fn rule_restore_uses_a_candidate_and_failure_preserves_live_state_and_slot() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("story");

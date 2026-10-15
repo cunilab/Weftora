@@ -1,0 +1,14 @@
+title: Start
+---
+<<declare $item_count = 0>>
+<<checkpoint collections.start>>
+<<pack>>
+Packed {$item_count} items
+<<jump Next>>
+===
+title: Next
+---
+<<checkpoint collections.next>>
+<<unpack>>
+Items after reset {$item_count}
+===

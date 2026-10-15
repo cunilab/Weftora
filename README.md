@@ -74,3 +74,5 @@ Save stops at the eligible display and emits a saved record. Load validates and 
 Use the [author tutorial](./docs/story-a-tutorial.md) to edit dialogue, screens/theme and an image with prebuilt tools. Windows CI packages baseline and two edited variants with the same player hash. [Native Windows and independent-author steps](./docs/evidence/phase-3-windows.md) remain in issue #5 with blank results.
 
 The [commands demo](./examples/commands-demo/README.md) exercises typed Story commands from Yarn, events and screen buttons, including checkpoint save replay. Native Windows checks remain queued in issue #5.
+
+The [collections demo](./examples/collections-demo/README.md) stores a flat list inventory and map schedule, with whole-value command edits and checkpoint replay.
