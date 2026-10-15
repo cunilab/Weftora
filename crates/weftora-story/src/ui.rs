@@ -50,6 +50,12 @@ pub enum UiAction {
     Advance,
     #[serde(rename = "state.set")]
     SetState { key: String, value: Value },
+    #[serde(rename = "command.call")]
+    CallCommand {
+        command: String,
+        #[serde(default)]
+        args: Vec<Value>,
+    },
     #[serde(rename = "screen.open")]
     Open { screen: String },
     #[serde(rename = "screen.close")]
@@ -564,6 +570,15 @@ pub(crate) fn reference_errors(story: &crate::Story) -> Vec<Diagnostic> {
                     &screen.file,
                     None,
                     format!("{path}/action: save/load requires saveSchema and save/1"),
+                ));
+            }
+            if let Some(UiAction::CallCommand { command, args }) = &widget.action
+                && let Err(error) = story.rules().validate_command(command, args)
+            {
+                errors.push(Diagnostic::new(
+                    &screen.file,
+                    None,
+                    format!("{path}/action: {error}"),
                 ));
             }
             if let Some(UiAction::Open { screen: id }) = &widget.action

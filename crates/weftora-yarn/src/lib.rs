@@ -428,6 +428,12 @@ impl DialogueRunner {
                     .len()
             };
             let event = self.next_event_one()?;
+            let story_command = match &event {
+                DialogueEvent::Command(command) if self.rules.has_command(&command.name) => {
+                    Some(command)
+                }
+                _ => None,
+            };
             if !self.rules.is_empty() {
                 let settled = self
                     .state
@@ -435,9 +441,19 @@ impl DialogueRunner {
                     .map_err(|_| "state lock is poisoned".to_string())
                     .and_then(|mut state| {
                         let after_vm = state.pending_changes().len();
-                        self.rules
-                            .settle(&mut state, from)
-                            .map_err(|e| e.to_string())?;
+                        if let Some(command) = story_command {
+                            let args = self
+                                .rules
+                                .parse_command(&command.name, &command.args, false)
+                                .map_err(|e| e.to_string())?;
+                            self.rules
+                                .call(&command.name, &args, &mut state, from)
+                                .map_err(|e| e.to_string())?;
+                        } else {
+                            self.rules
+                                .settle(&mut state, from)
+                                .map_err(|e| e.to_string())?;
+                        }
                         self.storage
                             .charge_rule_changes(&state.pending_changes()[after_vm..])
                             .map_err(|e| e.to_string())
@@ -445,6 +461,9 @@ impl DialogueRunner {
                 if let Err(error) = settled {
                     return self.fail_with_context(DialogueError::Runtime(error));
                 }
+            }
+            if story_command.is_some() {
+                continue;
             }
             if let DialogueEvent::Command(command) = &event
                 && command.name == "checkpoint"
@@ -454,6 +473,46 @@ impl DialogueRunner {
             }
             self.arm_checkpoint(&event);
             return Ok(event);
+        }
+    }
+
+    /// Apply a screen action through the same bounded rule bridge as Yarn commands.
+    pub fn ui_action(&mut self, action: &weftora_story::ui::UiAction) -> Result<(), DialogueError> {
+        self.ensure_healthy()?;
+        let result = (|| {
+            let mut state = self
+                .state
+                .write()
+                .map_err(|_| "state lock is poisoned".to_string())?;
+            let from = state.pending_changes().len();
+            match action {
+                weftora_story::ui::UiAction::SetState { key, value } => {
+                    state.get(key).map_err(|e| e.to_string())?;
+                    state.set(key, value.clone()).map_err(|e| e.to_string())?;
+                    self.rules
+                        .settle(&mut state, from)
+                        .map_err(|e| e.to_string())?;
+                }
+                weftora_story::ui::UiAction::CallCommand { command, args } => {
+                    self.rules
+                        .call(command, args, &mut state, from)
+                        .map_err(|e| e.to_string())?;
+                }
+                _ => return Err("expected a state or command UI action".into()),
+            }
+            // Each user action has its own bounded dispatch/notification budget.
+            // UI inputs are absent from checkpoint replay, including changes later reversed by rules.
+            if state.pending_changes()[from..]
+                .iter()
+                .any(|change| state.scope(&change.key) == Ok(weftora_core::Scope::Persistent))
+            {
+                self.capture = None;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(()),
+            Err(error) => self.fail_with_context(DialogueError::Runtime(error)),
         }
     }
 

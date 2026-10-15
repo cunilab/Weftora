@@ -158,3 +158,149 @@ fn checkpoint_loops_do_not_reset_the_shared_state_write_budget() {
     let error = String::from_utf8_lossy(&output.stderr);
     assert!(error.contains("state write budget (4096)"), "{error}");
 }
+
+fn commands_fixture() -> tempfile::TempDir {
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/commands-demo");
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join("story")).unwrap();
+    for file in [
+        "manifest.jsonc",
+        "main.yarn",
+        "events.jsonc",
+        "screen.jsonc",
+    ] {
+        fs::copy(example.join(file), temp.path().join("story").join(file)).unwrap();
+    }
+    temp
+}
+#[test]
+fn yarn_commands_execute_once_and_replay_before_checkpoint_display() {
+    let temp = commands_fixture();
+    let saved = success(run(temp.path(), &["--save-at", "commands.start"]));
+    assert_eq!(saved.last().unwrap()["state"]["points"], 2);
+    let slot = temp.path().join("saves/save.json");
+    let bytes = fs::read(&slot).unwrap();
+    let replay = success(run(temp.path(), &["--load", "--save-at", "commands.start"]));
+    let lines: Vec<_> = replay
+        .iter()
+        .filter(|v| v["event"] == "line")
+        .map(|v| v["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(lines, ["First points 2"]);
+    let resumed = success(run(temp.path(), &["--load"]));
+    assert_eq!(resumed.last().unwrap()["state"]["points"], 3);
+    assert_eq!(fs::read(&slot).unwrap(), bytes);
+    assert!(!replay.iter().any(|v| v["event"] == "command"));
+    let rules_file = temp.path().join("story/events.jsonc");
+    let mut rules: Value = serde_json::from_slice(&fs::read(&rules_file).unwrap()).unwrap();
+    rules["commands"][1]["actions"] = json!([
+        {"do":"state.set","key":"points","value":20},
+        {"do":"state.add","key":"points","amount":i64::MAX}
+    ]);
+    fs::write(rules_file, rules.to_string()).unwrap();
+    let failed = run(temp.path(), &["--load"]);
+    assert!(!failed.status.success());
+    assert!(failed.stdout.is_empty());
+    let error = String::from_utf8_lossy(&failed.stderr);
+    assert!(
+        error.contains("/commands/1/actions/1") && error.contains("overflow"),
+        "{error}"
+    );
+    assert_eq!(fs::read(slot).unwrap(), bytes);
+}
+#[test]
+fn yarn_command_arguments_are_checked_statically_and_after_interpolation() {
+    let temp = commands_fixture();
+    let path = temp.path().join("story/main.yarn");
+    let source = fs::read_to_string(&path).unwrap();
+    fs::write(&path, source.replace("<<award 2>>", "<<award true>>")).unwrap();
+    let failed = run(temp.path(), &[]);
+    assert!(!failed.status.success());
+    let error = String::from_utf8_lossy(&failed.stderr);
+    assert!(
+        error.contains("main.yarn") && error.contains("expected Int"),
+        "{error}"
+    );
+    fs::write(&path, source.replace("<<award 2>>", "<<award {1 + 1}>>")).unwrap();
+    let trace = success(run(temp.path(), &[]));
+    assert_eq!(trace.last().unwrap()["state"]["points"], 3);
+    fs::write(&path, source.replace("<<award 2>>", "<<award {1 / 2}>>")).unwrap();
+    let failed = run(temp.path(), &[]);
+    assert!(!failed.status.success());
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("expected Int"));
+}
+
+#[test]
+fn yarn_typed_commands_preserve_quoted_strings_and_parse_interpolated_scalars() {
+    let temp = commands_fixture();
+    let path = temp.path().join("story/events.jsonc");
+    let mut rules: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    rules["commands"].as_array_mut().unwrap().push(json!({"id":"typed","parameters":[{"name":"flag","type":"bool"},{"name":"ratio","type":"float"},{"name":"text","type":"string"}],"actions":[{"do":"state.set","key":"label","value":{"argument":"text"}}]}));
+    fs::write(path, rules.to_string()).unwrap();
+    let manifest_path = temp.path().join("story/manifest.jsonc");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    manifest["state"]["label"] = json!({"default":"initial"});
+    fs::write(manifest_path, manifest.to_string()).unwrap();
+    fs::write(
+        temp.path().join("story/main.yarn"),
+        r#"title: Start
+---
+<<declare $label = "initial">>
+<<checkpoint commands.start>>
+<<typed {true} {1.25} "hello world">>
+Label {$label}
+<<typed false 1.0 "">>
+Empty "{$label}"
+===
+"#,
+    )
+    .unwrap();
+    let trace = success(run(temp.path(), &[]));
+    let lines: Vec<_> = trace
+        .iter()
+        .filter(|v| v["event"] == "line")
+        .map(|v| v["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(lines, ["Label hello world", "Empty \"\""]);
+    assert_eq!(trace.last().unwrap()["state"]["label"], "");
+}
+
+#[test]
+fn yarn_command_string_interpolation_refuses_before_activation() {
+    let temp = commands_fixture();
+    let path = temp.path().join("story/events.jsonc");
+    let mut rules: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    rules["commands"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"id":"greet","parameters":[{"name":"name","type":"string"}],"actions":[]}));
+    fs::write(path, rules.to_string()).unwrap();
+    fs::write(
+        temp.path().join("story/main.yarn"),
+        "title: Start\n---\n<<checkpoint commands.start>>\n<<greet {\"Ann Lee\"}>>\nDone\n===\n",
+    )
+    .unwrap();
+    let failed = run(temp.path(), &[]);
+    assert!(!failed.status.success());
+    assert!(failed.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("string arguments must be literal"));
+}
+
+#[test]
+fn commands_run_before_vm_notification_feedback_and_later_yarn_reads() {
+    let temp = commands_fixture();
+    let path = temp.path().join("story/events.jsonc");
+    let mut rules: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    rules["events"][0]["condition"] =
+        json!({"op":"compare","operator":"==","left":{"state":"points"},"right":{"literal":2}});
+    fs::write(path, rules.to_string()).unwrap();
+    fs::write(temp.path().join("story/main.yarn"), "title: Start\n---\n<<declare $points = 0>>\n<<declare $input = false>>\n<<checkpoint commands.start>>\n<<set $input = true>>\n<<award 2>>\n<<if $points == 12>>\nObserved 12\n<<else>>\nWrong value {$points}\n<<endif>>\n===\n").unwrap();
+    let trace = success(run(temp.path(), &[]));
+    let lines: Vec<_> = trace
+        .iter()
+        .filter(|v| v["event"] == "line")
+        .map(|v| v["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(lines, ["Observed 12"]);
+    assert_eq!(trace.last().unwrap()["state"]["points"], 12);
+}

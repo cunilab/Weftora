@@ -1,0 +1,14 @@
+title: Start
+---
+<<declare $points = 0>>
+<<checkpoint commands.start>>
+<<award 2>>
+First points {$points}
+<<jump Next>>
+===
+title: Next
+---
+<<checkpoint commands.next>>
+<<award 1>>
+Next points {$points}
+===

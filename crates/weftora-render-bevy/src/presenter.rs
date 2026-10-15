@@ -72,6 +72,10 @@ impl<S: EventSource> Presenter<S> {
         &self.source
     }
 
+    pub(crate) fn source_mut(&mut self) -> &mut S {
+        &mut self.source
+    }
+
     pub fn revision(&self) -> u64 {
         self.revision
     }

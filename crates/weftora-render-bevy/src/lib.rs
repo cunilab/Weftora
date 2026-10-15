@@ -257,14 +257,11 @@ fn drive(
                 actions.extend(player.presenter.advance());
                 Ok(())
             }
-            UiAction::SetState { ref key, ref value } => (|| {
-                let mut state = player
-                    .state
-                    .write()
-                    .map_err(|_| "canonical state lock poisoned".to_string())?;
-                state.get(key).map_err(|e| e.to_string())?;
-                state.set(key, value.clone()).map_err(|e| e.to_string())
-            })(),
+            UiAction::SetState { .. } | UiAction::CallCommand { .. } => player
+                .presenter
+                .source_mut()
+                .ui_action(&action)
+                .map_err(|e| e.to_string()),
             UiAction::Open { .. } | UiAction::Close => ui.navigate(
                 &action,
                 &player.story,

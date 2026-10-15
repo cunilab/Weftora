@@ -631,3 +631,42 @@ fn addition_checks_types_without_rejecting_defaults_that_would_overflow() {
         }
     ));
 }
+
+#[test]
+fn direct_sequences_defer_signals_and_identify_root_failures() {
+    use weftora_flow::events::Budget;
+    let mut state = state();
+    let scheduler =
+        Scheduler::new(vec![event("observer", "done", 0, vec![add(10)])], &state).unwrap();
+    let trace = scheduler
+        .execute_actions(
+            "award",
+            &[add(1), Action::Emit(signal("done")), add(2)],
+            &mut state,
+            &mut Budget::new(20),
+        )
+        .unwrap();
+    assert_eq!(state.get("count"), Ok(&Value::Int(13)));
+    assert!(matches!(&trace[2], Trace::Action { event, index: 2 } if event == "award"));
+    let error = scheduler
+        .execute_actions(
+            "award",
+            &[add(1), add(i64::MAX)],
+            &mut state,
+            &mut Budget::new(20),
+        )
+        .unwrap_err();
+    assert!(
+        matches!(error.error, FlowError::Sequence(error) if matches!(*error, FlowError::Action { index: 1, .. }))
+    );
+    assert_eq!(state.get("count"), Ok(&Value::Int(14)));
+    let error = scheduler
+        .execute_actions(
+            "award",
+            &[Action::Emit(signal("done"))],
+            &mut state,
+            &mut Budget::new(3),
+        )
+        .unwrap_err();
+    assert!(matches!(error.error, FlowError::Budget { event: Some(id), .. } if id == "observer"));
+}

@@ -10,6 +10,7 @@ pub const CAPABILITIES: &[&str] = &[
     "presentation.media/1",
     "save/1",
     "rules.events/1",
+    "rules.commands/1",
 ];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

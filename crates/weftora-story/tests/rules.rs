@@ -258,3 +258,290 @@ fn explicit_signal_chains_and_reset_use_the_same_save_safe_rules() {
     story.rules().settle(&mut state, from).unwrap();
     assert_eq!(state.get("points"), Ok(&weftora_api::Value::Int(7)));
 }
+
+fn command_fixture(commands: Value) -> tempfile::TempDir {
+    let temp = fixture();
+    update(temp.path(), "manifest.jsonc", |v| {
+        v["requires"]["capabilities"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!("rules.commands/1"));
+    });
+    update(temp.path(), "events.jsonc", |v| v["commands"] = commands);
+    temp
+}
+fn award_commands() -> Value {
+    json!([
+        {"id":"award","parameters":[{"name":"amount","type":"int"}],"actions":[
+            {"do":"command.call","command":"increment","args":[{"argument":"amount"}]},
+            {"do":"state.set","key":"awarded","value":true}
+        ]},
+        {"id":"increment","parameters":[{"name":"n","type":"int"}],"actions":[
+            {"do":"state.add","key":"points","amount":{"argument":"n"}}
+        ]}
+    ])
+}
+#[test]
+fn typed_commands_share_forward_references_events_and_notification_feedback() {
+    use weftora_api::Value as V;
+    let temp = command_fixture(award_commands());
+    update(temp.path(), "events.jsonc", |v| {
+        v["events"][0]["actions"] = json!([{"do":"command.call","command":"award","args":[10]}]);
+    });
+    let story = Story::load(temp.path()).unwrap();
+    let rules = story.rules();
+    assert!(rules.has_command("award"));
+    assert_eq!(
+        rules.parse_command("award", &["3".into()], false).unwrap(),
+        [V::Int(3)]
+    );
+    for text in ["3.5", "1e3", "9223372036854775808", "true"] {
+        assert!(rules.parse_command("award", &[text.into()], false).is_err());
+    }
+    let mut state = story.initial_state().unwrap();
+    rules.call("award", &[V::Int(3)], &mut state, 0).unwrap();
+    assert_eq!(state.get("points"), Ok(&V::Int(3)));
+    state.set("awarded", V::Bool(false)).unwrap();
+    let cursor = state.pending_changes().len();
+    state.set("input", V::Bool(true)).unwrap();
+    rules.settle(&mut state, cursor).unwrap();
+    assert_eq!(state.get("points"), Ok(&V::Int(13)));
+    let before = state.clone();
+    assert!(
+        rules
+            .call("award", &[V::Bool(true)], &mut state, cursor)
+            .is_err()
+    );
+    assert_eq!(state, before);
+}
+#[test]
+fn command_errors_keep_nested_source_and_completed_writes() {
+    use weftora_api::Value as V;
+    let temp = command_fixture(award_commands());
+    let story = Story::load(temp.path()).unwrap();
+    let mut state = story.initial_state().unwrap();
+    state.set("points", V::Int(1)).unwrap();
+    let cursor = state.pending_changes().len();
+    let error = story
+        .rules()
+        .call("award", &[V::Int(i64::MAX)], &mut state, cursor)
+        .unwrap_err();
+    assert_eq!(error.file, "events.jsonc");
+    assert!(
+        error.message.contains("/commands/1/actions/0") && error.message.contains("overflow"),
+        "{error:?}"
+    );
+    assert_eq!(state.get("awarded"), Ok(&V::Bool(false)));
+    update(temp.path(), "events.jsonc", |v| {
+        v["commands"][0]["actions"]
+            .as_array_mut()
+            .unwrap()
+            .insert(0, json!({"do":"state.set","key":"points","value":5}));
+    });
+    let story = Story::load(temp.path()).unwrap();
+    assert!(
+        story
+            .rules()
+            .call("award", &[V::Int(i64::MAX)], &mut state, cursor)
+            .is_err()
+    );
+    assert_eq!(state.get("points"), Ok(&V::Int(5)));
+    assert_eq!(state.get("awarded"), Ok(&V::Bool(false)));
+}
+#[test]
+fn commands_reject_cycles_types_reserved_names_scopes_and_unknown_fields() {
+    for (commands, expected) in [
+        (
+            json!([{"id":"loop","actions":[{"do":"command.call","command":"loop"}]}]),
+            "recursive",
+        ),
+        (json!([{"id":"background","actions":[]}]), "reserved"),
+        (
+            json!([{"id":"bad","actions":[{"do":"command.call","command":"absent"}]}]),
+            "unknown command",
+        ),
+        (
+            json!([{"id":"bad","actions":[{"do":"state.set","key":"temporary","value":1}]}]),
+            "Persistent",
+        ),
+        (
+            json!([{"id":"bad","parameters":[{"name":"a","type":"bool"}],"actions":[{"do":"state.add","key":"points","amount":{"argument":"a"}}]}]),
+            "expected int",
+        ),
+        (
+            json!([{"id":"bad","actions":[{"do":"state.set","key":"points","value":{"argument":"missing"}}]}]),
+            "unknown argument",
+        ),
+        (
+            json!([{"id":"bad","parameters":[{"name":"a","type":"int"}],"actions":[{"do":"state.set","key":"points","value":{"argument":"a","ignored":true}}]}]),
+            "did not match",
+        ),
+    ] {
+        let temp = command_fixture(commands);
+        let errors = Story::load(temp.path()).unwrap_err();
+        assert!(errors[0].message.contains(expected), "{errors:?}");
+    }
+    let temp = command_fixture(award_commands());
+    update(temp.path(), "events.jsonc", |v| {
+        v["commands"][0]["actions"][0]["args"] = json!([true]);
+    });
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("expected Int")
+    );
+    update(temp.path(), "manifest.jsonc", |v| {
+        v["requires"]["capabilities"]
+            .as_array_mut()
+            .unwrap()
+            .retain(|c| c != "rules.commands/1");
+    });
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("rules.commands/1")
+    );
+}
+
+#[test]
+fn command_and_feedback_share_work_budget_even_for_no_op_cycles() {
+    let temp = command_fixture(
+        json!([{"id":"start","actions":[{"do":"signal.emit","id":"again","value":true}]}]),
+    );
+    update(temp.path(), "events.jsonc", |v| {
+        v["events"] = json!([{"id":"cycle","trigger":"again","actions":[{"do":"command.call","command":"start"}]}]);
+    });
+    let story = Story::load(temp.path()).unwrap();
+    let mut state = story.initial_state().unwrap();
+    let error = story.rules().call("start", &[], &mut state, 0).unwrap_err();
+    assert!(
+        error.message.contains("budget") && error.message.contains("/commands/0/actions/0"),
+        "{error:?}"
+    );
+}
+
+#[test]
+fn command_expansion_and_parameter_limits_are_bounded_before_execution() {
+    let primitives = vec![json!({"do":"state.add","key":"points","amount":1}); 256];
+    let commands = vec![
+        json!({"id":"leaf","actions":primitives}),
+        json!({"id":"root","actions":[{"do":"command.call","command":"leaf"},{"do":"command.call","command":"leaf"}]}),
+    ];
+    let temp = command_fixture(json!(commands));
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("expanded action count")
+    );
+    let commands: Vec<_> = (0..17).map(|index| json!({"id":format!("chain.n{index}"),"actions":if index == 16 {json!([])} else {json!([{"do":"command.call","command":format!("chain.n{}",index+1)}])}})).collect();
+    let temp = command_fixture(json!(commands));
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("depth")
+    );
+    let parameters: Vec<_> = (0..17)
+        .map(|i| json!({"name":format!("p.n{i}"),"type":"int"}))
+        .collect();
+    let temp = command_fixture(json!([{"id":"large","parameters":parameters,"actions":[]}]));
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("parameter count")
+    );
+    let calls = vec![json!({"do":"command.call","command":"empty"}); 256];
+    let temp = command_fixture(json!([
+        {"id":"root","actions":[{"do":"command.call","command":"wide"},{"do":"command.call","command":"wide"},{"do":"command.call","command":"wide"},{"do":"command.call","command":"wide"}]},
+        {"id":"wide","actions":calls},{"id":"empty","actions":[]}
+    ]));
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("expansion work")
+    );
+}
+#[test]
+fn typed_text_calls_handle_empty_quoted_strings_finite_floats_and_bool() {
+    use weftora_api::Value as V;
+    let temp = command_fixture(
+        json!([{"id":"typed","parameters":[{"name":"flag","type":"bool"},{"name":"ratio","type":"float"},{"name":"text","type":"string"}],"actions":[]}]),
+    );
+    let story = Story::load(temp.path()).unwrap();
+    assert_eq!(
+        story
+            .rules()
+            .parse_command("typed", &["true".into(), "1.25".into(), "".into()], false)
+            .unwrap(),
+        [V::Bool(true), V::Float(1.25), V::String("".into())]
+    );
+    for float in ["NaN", "inf", "1e400"] {
+        assert!(
+            story
+                .rules()
+                .parse_command(
+                    "typed",
+                    &["true".into(), float.into(), "text".into()],
+                    false
+                )
+                .is_err()
+        );
+    }
+    for args in [
+        vec![V::Bool(true)],
+        vec![V::Bool(true), V::Int(1), V::String("text".into())],
+        vec![V::Bool(true), V::Float(1.0), V::String("x".repeat(16385))],
+    ] {
+        assert!(story.rules().validate_command("typed", &args).is_err());
+    }
+}
+#[test]
+fn screen_command_references_report_widget_locations() {
+    let temp = command_fixture(award_commands());
+    update(temp.path(), "manifest.jsonc", |v| {
+        v["requires"]["capabilities"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!("ui.screens/1"));
+        v["screens"] = json!(["screen.jsonc"]);
+        v["initialScreen"] = json!("dialogue");
+    });
+    for (command, args, expected) in [
+        ("missing", json!([]), "unknown command"),
+        ("award", json!([true]), "expected Int"),
+        ("award", json!([]), "expects 1"),
+    ] {
+        fs::write(temp.path().join("screen.jsonc"), json!({"screenSchema":1,"root":{"type":"screen","id":"dialogue","children":[{"type":"button","id":"call","text":"Call","action":{"do":"command.call","command":command,"args":args}},{"type":"choiceList","id":"choices"}]}}).to_string()).unwrap();
+        let errors = Story::load(temp.path()).unwrap_err();
+        assert!(
+            errors.iter().any(|e| e.file == "screen.jsonc"
+                && e.message.contains("/root/children/0/action")
+                && e.message.contains(expected)),
+            "{errors:?}"
+        );
+    }
+}
+
+#[test]
+fn oversized_leaf_identifiers_are_rejected_before_repeated_expansion() {
+    for (action, expected) in [
+        (
+            json!({"do":"state.set","key":"x".repeat(1024 * 1024),"value":true}),
+            "512 bytes",
+        ),
+        (
+            json!({"do":"signal.emit","id":"x".repeat(1024 * 1024),"value":true}),
+            "1024 bytes",
+        ),
+    ] {
+        let temp = command_fixture(json!([
+            {"id":"a","actions":vec![json!({"do":"command.call","command":"leaf"});256]},
+            {"id":"leaf","actions":[action]}
+        ]));
+        let errors = Story::load(temp.path()).unwrap_err();
+        assert!(
+            errors[0].message.contains("/commands/1/actions/0")
+                && errors[0].message.contains(expected),
+            "{errors:?}"
+        );
+    }
+}

@@ -6,7 +6,7 @@ status: proposed
 
 # Phase 4 Rules Evidence
 
-[PR #19](https://github.com/cunilab/Weftora/pull/19) implements the scalar condition/event foundation and JSONC Story integration described in [ADR 0008](../adr/0008-declarative-events.md). These are development-host and automated results, not native Windows acceptance. Phase 4 remains incomplete; generic Story commands, UI/host-write bridging, collections and Rhai are not implemented by this slice.
+[PR #19](https://github.com/cunilab/Weftora/pull/19) implements the scalar condition/event foundation and JSONC Story integration described in [ADR 0008](../adr/0008-declarative-events.md). These are development-host and automated results, not native Windows acceptance. Phase 4 remains incomplete; typed declarative commands and UI state-write bridging are now implemented, while arbitrary host writes, collections and Rhai remain future work.
 
 ## Automated results
 
@@ -46,3 +46,17 @@ The retained baseline player validated both rule packages using their correspond
 ## Windows handoff
 
 Windows CI runs the workspace and exports/validates `rules-demo`, compares its player hash with Hello Story, and uploads `weftora-windows-rules-preview-<sha>` with a matching CLI. Native baseline/edit/save-relaunch/error scenarios are queued in [issue #5](https://github.com/cunilab/Weftora/issues/5). No Windows run for this integration or maintainer observation is claimed here. Pending native acceptance does not block subsequent implementation.
+
+## Typed commands and screen inputs
+
+The next PR #19 development slice adds `rules.commands/1`: named scalar-typed parameters, argument forwarding, bounded static nested-call expansion, and calls from Yarn, events and screen buttons. UI `state.set` now settles rules as well. Save-enabled command targets remain Persistent-only. Persistent UI writes invalidate the current checkpoint until the next checkpoint; replay records no UI input and the save format is unchanged. Yarn interpolated numeric/bool arguments work; string arguments require literal text because the current VM tokenizes after interpolation.
+
+On MacBookAir, the updated locked workspace run passed **312 reported tests**, zero failures (including bounded-child test executions). Workspace Clippy with warnings denied, formatting, dependency direction, documentation and `cargo deny check` passed; CLI/player builds passed. The later strengthened quoted-string value assertion passed in a focused CLI test. Flow now has ten event/sequence tests, Story rules have fifteen loader/bridge/command tests, and CLI rules have ten integration tests.
+
+New coverage includes forward references; event/command ID overlap; strict scalar arguments and interpolation; nested source locations; partial writes on overflow; recursion/depth/expansion limits; oversized repeated leaf rejection; command/notification budget sharing; VM-write → command → notification ordering; immediate later Yarn reads; isolated candidate failure preserving output/slot bytes; gated UI inputs; 5000 separate button calls without a cumulative VM-budget failure; and save refusal after UI changes followed by successful next-checkpoint reconstruction.
+
+Claude Opus 5.5 medium independently reviewed the source with tools disabled. Its early-copy identifier amplification and cumulative UI-budget findings were fixed and covered by regressions. Its interpolation concern led to the explicit Yarn string restriction. Follow-up reported no hard blockers; the conditional save-failure concern is covered by `fail_with_context` clearing capture and `save_point` rejecting unhealthy runners, and the loader checks UI action types/references before activation.
+
+The [command content-only proof](./phase-4-commands-edit-proof-macos.json) records Hello Story, the command demo, and a four-point edited command with `saveSchema: 2`, exported after one build. All players share SHA-256 `b740b97ca8cb82026e8e27ac08b693dc8e0570837b93081dbd455d780c73fba1`. The retained baseline player validated the edited package; headless lines changed from `First points 2` / `Next points 3` to `First points 4` / `Next points 8`. Dialogue source and compiled-artifact hashes stayed identical. No build occurred between exports or edits; this is package/headless evidence, not a visual run.
+
+Windows CI additionally exports/validates `commands-demo`, compares it with the same Hello Story player and uploads `weftora-windows-commands-preview-<sha>` with a matching authoring CLI. Concrete command/UI/save/edit/error checks are queued in issue #5. No native acceptance or Phase 4 gate is claimed.

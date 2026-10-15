@@ -7,7 +7,7 @@ use std::{
     sync::Arc,
 };
 use weftora_api::{Diagnostic, Value};
-use weftora_core::{Scope, State, catalog::Catalog, signal::Signal};
+use weftora_core::{Scope, State, catalog::Catalog, command::ValueType, signal::Signal};
 use weftora_flow::{
     CompareOp, Condition, MAX_DEPTH, MAX_NODES, Operand,
     events::{Action, Budget, Event, FlowError, MAX_ACTIONS, MAX_EVENTS, Scheduler},
@@ -21,11 +21,13 @@ const CHANGED_KEY: &str = "state.changed.";
 pub struct Rules {
     scheduler: Arc<Scheduler>,
     sources: Arc<BTreeMap<String, (String, String)>>,
+    action_sources: Arc<BTreeMap<String, Vec<Location>>>,
+    commands: Arc<BTreeMap<String, Command>>,
 }
 
 impl Rules {
     pub fn is_empty(&self) -> bool {
-        self.sources.is_empty()
+        self.sources.is_empty() && self.commands.is_empty()
     }
 
     fn diagnostic(&self, error: FlowError) -> Diagnostic {
@@ -46,6 +48,20 @@ impl Rules {
                 None
             }
         });
+        let action = match &error {
+            FlowError::Action { event, index, .. } => Some((event, *index)),
+            FlowError::Budget {
+                event: Some(event),
+                action: Some(index),
+                ..
+            } => Some((event, *index)),
+            _ => None,
+        };
+        if let Some(location) =
+            action.and_then(|(event, index)| self.action_sources.get(event)?.get(index))
+        {
+            return location.error(error);
+        }
         match source {
             Some((file, path)) => Diagnostic::new(file, None, format!("{path}{suffix}: {error}")),
             None => Diagnostic::new(MANIFEST_FILE, None, format!("/events: {error}")),
@@ -55,8 +71,16 @@ impl Rules {
     /// Settle new notifications under the caller's exclusive State borrow; preserve the full queue.
     /// The starting index is captured before one VM call, which never drains this queue.
     pub fn settle(&self, state: &mut State, from: usize) -> Result<(), Diagnostic> {
+        self.settle_budgeted(state, from, &mut Budget::new(DISPATCH_BUDGET))
+    }
+
+    fn settle_budgeted(
+        &self,
+        state: &mut State,
+        from: usize,
+        budget: &mut Budget,
+    ) -> Result<(), Diagnostic> {
         check_notifications(state, from)?;
-        let mut budget = Budget::new(DISPATCH_BUDGET);
         let mut cursor = from;
         while let Some(change) = state.pending_changes().get(cursor) {
             let key = change.key.clone();
@@ -70,7 +94,7 @@ impl Rules {
                                 value: Value::String(key.clone()),
                             },
                             state,
-                            &mut budget,
+                            budget,
                         )
                         .map_err(|error| self.diagnostic(error.error))?;
                     check_notifications(state, from)?;
@@ -141,7 +165,10 @@ fn condition_limits(condition: &Condition) -> Result<(), String> {
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Document {
     rules_schema: u32,
+    #[serde(default)]
     events: Vec<EventDocument>,
+    #[serde(default)]
+    commands: Vec<CommandDocument>,
 }
 
 #[derive(Deserialize)]
@@ -253,29 +280,439 @@ impl ConditionDocument {
     }
 }
 
-#[derive(Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
 #[serde(tag = "do", deny_unknown_fields)]
 enum ActionDocument {
     #[serde(rename = "state.set")]
-    Set { key: String, value: Value },
+    Set { key: String, value: SlotValue },
     #[serde(rename = "state.add")]
-    Add { key: String, amount: Value },
+    Add { key: String, amount: SlotValue },
     #[serde(rename = "state.remove")]
     Remove { key: String },
     #[serde(rename = "state.reset")]
     Reset { key: String },
     #[serde(rename = "signal.emit")]
-    Emit { id: String, value: Value },
+    Emit { id: String, value: SlotValue },
+    #[serde(rename = "command.call")]
+    Call {
+        command: String,
+        #[serde(default)]
+        args: Vec<SlotValue>,
+    },
 }
-impl From<ActionDocument> for Action {
-    fn from(action: ActionDocument) -> Self {
-        match action {
-            ActionDocument::Set { key, value } => Self::Set { key, value },
-            ActionDocument::Add { key, amount } => Self::Add { key, amount },
-            ActionDocument::Remove { key } => Self::Remove { key },
-            ActionDocument::Reset { key } => Self::Reset { key },
-            ActionDocument::Emit { id, value } => Self::Emit(Signal { id, value }),
+
+#[derive(Debug, Clone)]
+struct Location {
+    file: String,
+    path: String,
+}
+impl Location {
+    fn error(&self, error: impl std::fmt::Display) -> Diagnostic {
+        Diagnostic::new(&self.file, None, format!("{}: {error}", self.path))
+    }
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(untagged, deny_unknown_fields)]
+enum SlotValue {
+    Literal(Value),
+    Argument { argument: String },
+}
+impl SlotValue {
+    fn bind(&self, bindings: &BTreeMap<String, Self>) -> Result<Self, String> {
+        match self {
+            Self::Literal(value) => {
+                value_limit(value)?;
+                Ok(self.clone())
+            }
+            Self::Argument { argument } => bindings
+                .get(argument)
+                .cloned()
+                .ok_or_else(|| format!("unknown argument `{argument}`")),
         }
+    }
+    fn sample(&self, types: &BTreeMap<String, ValueType>) -> Value {
+        match self {
+            Self::Literal(value) => value.clone(),
+            Self::Argument { argument } => exemplar(types[argument]),
+        }
+    }
+}
+fn exemplar(kind: ValueType) -> Value {
+    match kind {
+        ValueType::Bool => Value::Bool(false),
+        ValueType::Int => Value::Int(0),
+        ValueType::Float => Value::Float(0.0),
+        ValueType::String => Value::String(String::new()),
+    }
+}
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+struct Parameter {
+    name: String,
+    #[serde(rename = "type")]
+    kind: ValueType,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct CommandDocument {
+    id: String,
+    #[serde(default)]
+    parameters: Vec<Parameter>,
+    actions: Vec<ActionDocument>,
+}
+#[derive(Debug, Clone)]
+struct LocatedAction {
+    action: ActionDocument,
+    location: Location,
+}
+#[derive(Debug)]
+struct Command {
+    parameters: Vec<Parameter>,
+    actions: Vec<LocatedAction>,
+    location: Location,
+}
+type CommandDocuments = BTreeMap<String, (CommandDocument, Location)>;
+
+fn validate_command_definition(command: &CommandDocument) -> Result<(), String> {
+    weftora_core::state::validate_key(&command.id).map_err(|e| e.to_string())?;
+    if command.id.len() > 512
+        || command
+            .id
+            .chars()
+            .any(|c| c.is_whitespace() || matches!(c, '"' | '\\' | '{' | '}'))
+    {
+        return Err("command ID must be an unquoted token of at most 512 bytes".into());
+    }
+    if command.id == "checkpoint"
+        || weftora_core::presentation::COMMANDS
+            .iter()
+            .any(|(id, _)| *id == command.id)
+    {
+        return Err(format!("command ID `{}` is reserved", command.id));
+    }
+    if command.parameters.len() > 16 {
+        return Err("parameter count exceeds 16".into());
+    }
+    let mut names = BTreeSet::new();
+    for parameter in &command.parameters {
+        weftora_core::state::validate_key(&parameter.name).map_err(|e| e.to_string())?;
+        if parameter.name.len() > 512 || !names.insert(&parameter.name) {
+            return Err("parameter names must be unique and at most 512 bytes".into());
+        }
+    }
+    Ok(())
+}
+
+fn expand(
+    actions: &[ActionDocument],
+    location: &Location,
+    bindings: &BTreeMap<String, SlotValue>,
+    types: &BTreeMap<String, ValueType>,
+    commands: &CommandDocuments,
+    stack: &mut Vec<String>,
+    remaining: &mut usize,
+) -> Result<Vec<LocatedAction>, Diagnostic> {
+    if actions.len() > MAX_ACTIONS {
+        return Err(location.error("action count exceeds 256"));
+    }
+    let mut result = Vec::new();
+    for (index, action) in actions.iter().enumerate() {
+        let location = Location {
+            file: location.file.clone(),
+            path: format!("{}/actions/{index}", location.path),
+        };
+        *remaining = remaining
+            .checked_sub(1)
+            .ok_or_else(|| location.error("command expansion work exceeds 1024"))?;
+        // Reject oversized identifiers before cloning repeated command leaves.
+        match action {
+            ActionDocument::Set { key, .. }
+            | ActionDocument::Add { key, .. }
+            | ActionDocument::Remove { key }
+            | ActionDocument::Reset { key }
+                if key.len() > 512 =>
+            {
+                return Err(location.error("rule state keys must not exceed 512 bytes"));
+            }
+            ActionDocument::Emit { id, .. } if id.len() > 1024 => {
+                return Err(location.error("signal ID exceeds 1024 bytes"));
+            }
+            _ => {}
+        }
+        let bind = |v: &SlotValue| v.bind(bindings).map_err(|e| location.error(e));
+        let action = match action {
+            ActionDocument::Set { key, value } => ActionDocument::Set {
+                key: key.clone(),
+                value: bind(value)?,
+            },
+            ActionDocument::Add { key, amount } => ActionDocument::Add {
+                key: key.clone(),
+                amount: bind(amount)?,
+            },
+            ActionDocument::Emit { id, value } => ActionDocument::Emit {
+                id: id.clone(),
+                value: bind(value)?,
+            },
+            ActionDocument::Call { command, args } => {
+                let (definition, target) = commands
+                    .get(command)
+                    .ok_or_else(|| location.error(format!("unknown command `{command}`")))?;
+                if stack.contains(command) || stack.len() >= 16 {
+                    return Err(
+                        location.error("recursive command call or command depth exceeds 16")
+                    );
+                }
+                if args.len() != definition.parameters.len() {
+                    return Err(location.error(format!(
+                        "command `{command}` expects {} arguments, got {}",
+                        definition.parameters.len(),
+                        args.len()
+                    )));
+                }
+                let mut next = BTreeMap::new();
+                for (value, parameter) in args.iter().zip(&definition.parameters) {
+                    let value = bind(value)?;
+                    if !parameter.kind.accepts(&value.sample(types)) {
+                        return Err(location.error(format!(
+                            "command `{command}` argument `{}` expected {:?}",
+                            parameter.name, parameter.kind
+                        )));
+                    }
+                    next.insert(parameter.name.clone(), value);
+                }
+                stack.push(command.clone());
+                let nested = expand(
+                    &definition.actions,
+                    target,
+                    &next,
+                    types,
+                    commands,
+                    stack,
+                    remaining,
+                )?;
+                stack.pop();
+                result.extend(nested);
+                if result.len() > MAX_ACTIONS {
+                    return Err(location.error("expanded action count exceeds 256"));
+                }
+                continue;
+            }
+            action => action.clone(),
+        };
+        result.push(LocatedAction {
+            action,
+            location: location.clone(),
+        });
+        if result.len() > MAX_ACTIONS {
+            return Err(location.error("expanded action count exceeds 256"));
+        }
+    }
+    Ok(result)
+}
+fn materialize(
+    actions: &[LocatedAction],
+    arguments: &BTreeMap<String, SlotValue>,
+) -> Result<Vec<Action>, Diagnostic> {
+    actions
+        .iter()
+        .map(|entry| {
+            let value = |slot: &SlotValue| match slot
+                .bind(arguments)
+                .map_err(|e| entry.location.error(e))?
+            {
+                SlotValue::Literal(value) => Ok(value),
+                SlotValue::Argument { .. } => Err(entry.location.error("unresolved argument")),
+            };
+            Ok(match &entry.action {
+                ActionDocument::Set { key, value: v } => Action::Set {
+                    key: key.clone(),
+                    value: value(v)?,
+                },
+                ActionDocument::Add { key, amount } => Action::Add {
+                    key: key.clone(),
+                    amount: value(amount)?,
+                },
+                ActionDocument::Emit { id, value: v } => Action::Emit(Signal {
+                    id: id.clone(),
+                    value: value(v)?,
+                }),
+                ActionDocument::Remove { key } => Action::Remove { key: key.clone() },
+                ActionDocument::Reset { key } => Action::Reset { key: key.clone() },
+                ActionDocument::Call { .. } => unreachable!("calls expanded at load"),
+            })
+        })
+        .collect()
+}
+// Reused command literals can multiply small source files into large expanded definitions.
+fn charge_expansion(actions: &[LocatedAction], bytes: &mut usize) -> Result<(), Diagnostic> {
+    for entry in actions {
+        let size = match &entry.action {
+            ActionDocument::Set { key, value } | ActionDocument::Add { key, amount: value } => {
+                key.len() + slot_bytes(value)
+            }
+            ActionDocument::Emit { id, value } => id.len() + slot_bytes(value),
+            ActionDocument::Remove { key } | ActionDocument::Reset { key } => key.len(),
+            ActionDocument::Call { .. } => unreachable!("calls expanded at load"),
+        };
+        *bytes = bytes.saturating_add(size + entry.location.file.len() + entry.location.path.len());
+        if *bytes > 32 * 1024 * 1024 {
+            return Err(entry.location.error("expanded rule data exceeds 32 MiB"));
+        }
+    }
+    Ok(())
+}
+fn slot_bytes(value: &SlotValue) -> usize {
+    match value {
+        SlotValue::Literal(Value::String(text)) => text.len(),
+        SlotValue::Argument { argument } => argument.len(),
+        _ => 8,
+    }
+}
+
+fn validate_expanded(
+    id: &str,
+    actions: &[LocatedAction],
+    types: &BTreeMap<String, ValueType>,
+    manifest: &Manifest,
+    state: &State,
+) -> Result<(), Diagnostic> {
+    let bindings = types
+        .iter()
+        .map(|(name, kind)| (name.clone(), SlotValue::Literal(exemplar(*kind))))
+        .collect();
+    let primitives = materialize(actions, &bindings)?;
+    for (entry, action) in actions.iter().zip(primitives) {
+        let event = Event {
+            id: id.into(),
+            trigger: "command.validation".into(),
+            priority: 0,
+            condition: None,
+            actions: vec![action],
+        };
+        validate_scopes(&event, manifest, state).map_err(|e| entry.location.error(e))?;
+        Scheduler::new(vec![event], state).map_err(|e| entry.location.error(e))?;
+    }
+    Ok(())
+}
+impl Rules {
+    pub fn has_command(&self, name: &str) -> bool {
+        self.commands.contains_key(name)
+    }
+
+    pub fn validate_command(&self, name: &str, args: &[Value]) -> Result<(), Diagnostic> {
+        let command = self.commands.get(name).ok_or_else(|| {
+            Diagnostic::new(MANIFEST_FILE, None, format!("unknown command `{name}`"))
+        })?;
+        if args.len() != command.parameters.len() {
+            return Err(command.location.error(format!(
+                "command `{name}` expects {} arguments, got {}",
+                command.parameters.len(),
+                args.len()
+            )));
+        }
+        for (index, (value, parameter)) in args.iter().zip(&command.parameters).enumerate() {
+            if !parameter.kind.accepts(value) {
+                return Err(command.location.error(format!(
+                    "argument {index} `{}` expected {:?}, got {}",
+                    parameter.name,
+                    parameter.kind,
+                    value.type_name()
+                )));
+            }
+            value_limit(value).map_err(|e| command.location.error(e))?;
+        }
+        Ok(())
+    }
+
+    /// Yarn supplies text arguments; interpolation placeholders are accepted only during validation.
+    pub fn parse_command(
+        &self,
+        name: &str,
+        args: &[String],
+        allow_placeholders: bool,
+    ) -> Result<Vec<Value>, Diagnostic> {
+        let command = self.commands.get(name).ok_or_else(|| {
+            Diagnostic::new(MANIFEST_FILE, None, format!("unknown command `{name}`"))
+        })?;
+        if args.len() != command.parameters.len() {
+            return Err(command.location.error(format!(
+                "command `{name}` expects {} arguments, got {}",
+                command.parameters.len(),
+                args.len()
+            )));
+        }
+        let values = args
+            .iter()
+            .zip(&command.parameters)
+            .enumerate()
+            .map(|(index, (text, parameter))| {
+                let interpolated = text.split('{').skip(1).any(|part| part.split_once('}').is_some_and(|(index, _)| !index.is_empty() && index.bytes().all(|b| b.is_ascii_digit())));
+                if allow_placeholders && interpolated {
+                    if parameter.kind == ValueType::String {
+                        return Err(command.location.error("Yarn string arguments must be literal text; interpolated command strings are unsupported"));
+                    }
+                    return Ok(exemplar(parameter.kind));
+                }
+                let value = match parameter.kind {
+                    ValueType::String => Some(Value::String(text.clone())),
+                    ValueType::Bool => text.parse::<bool>().ok().map(Value::Bool),
+                    ValueType::Int => text.parse::<i64>().ok().map(Value::Int),
+                    ValueType::Float => text
+                        .parse::<f64>()
+                        .ok()
+                        .filter(|v| v.is_finite())
+                        .map(Value::Float),
+                };
+                value.ok_or_else(|| {
+                    command.location.error(format!(
+                        "argument {index} `{}` expected {:?}, got `{text}`",
+                        parameter.name, parameter.kind
+                    ))
+                })
+            })
+            .collect::<Result<Vec<_>, _>>()?;
+        self.validate_command(name, &values)?;
+        Ok(values)
+    }
+
+    /// Validate all arguments before mutation; runtime failures preserve completed primitive writes.
+    pub fn call(
+        &self,
+        name: &str,
+        args: &[Value],
+        state: &mut State,
+        from: usize,
+    ) -> Result<(), Diagnostic> {
+        check_notifications(state, from)?;
+        self.validate_command(name, args)?;
+        let command = &self.commands[name];
+        let bindings = command
+            .parameters
+            .iter()
+            .zip(args)
+            .map(|(p, v)| (p.name.clone(), SlotValue::Literal(v.clone())))
+            .collect();
+        let actions = materialize(&command.actions, &bindings)?;
+        let mut budget = Budget::new(DISPATCH_BUDGET);
+        self.scheduler
+            .execute_actions(name, &actions, state, &mut budget)
+            .map_err(|error| match error.error {
+                FlowError::Sequence(error) => {
+                    let index = match &*error {
+                        FlowError::Action { index, .. } => Some(*index),
+                        FlowError::Budget { action, .. } => *action,
+                        _ => None,
+                    };
+                    index
+                        .and_then(|i| command.actions.get(i))
+                        .map(|a| &a.location)
+                        .unwrap_or(&command.location)
+                        .error(error)
+                }
+                error => self.diagnostic(error),
+            })?;
+        self.settle_budgeted(state, from, &mut budget)
     }
 }
 
@@ -375,6 +812,11 @@ pub(crate) fn load(
     let mut events = Vec::new();
     let mut sources = BTreeMap::new();
     let mut ids = Catalog::default();
+    let mut documents = Vec::new();
+    let mut raw_commands = BTreeMap::new();
+    let mut commands = BTreeMap::new();
+    let mut action_sources = BTreeMap::new();
+    let mut expanded_bytes = 0;
     let mut files = BTreeSet::new();
     for (file_index, file) in manifest.events.iter().enumerate() {
         let fail = |message: String| vec![Diagnostic::new(file, None, message)];
@@ -409,10 +851,77 @@ pub(crate) fn load(
         }
         let document: Document = jsonc::from_str(&text).map_err(parse_error)?;
         debug_assert_eq!(document.rules_schema, 1);
-        if events.len() + document.events.len() > MAX_EVENTS {
+        for (index, command) in document.commands.into_iter().enumerate() {
+            let location = Location {
+                file: file.clone(),
+                path: format!("/commands/{index}"),
+            };
+            if !manifest
+                .requires
+                .as_ref()
+                .is_some_and(|r| r.capabilities.iter().any(|c| c == "rules.commands/1"))
+            {
+                return Err(vec![location.error("commands require rules.commands/1")]);
+            }
+            validate_command_definition(&command).map_err(|e| vec![location.error(e)])?;
+            let id = command.id.clone();
+            if raw_commands
+                .insert(id.clone(), (command, location.clone()))
+                .is_some()
+            {
+                return Err(vec![location.error(format!("duplicate command ID `{id}`"))]);
+            }
+            if raw_commands.len() > 256 {
+                return Err(vec![location.error("command count exceeds 256")]);
+            }
+        }
+        documents.push((file.clone(), document.events));
+    }
+    for (id, (command, location)) in &raw_commands {
+        let bindings = command
+            .parameters
+            .iter()
+            .map(|p| {
+                (
+                    p.name.clone(),
+                    SlotValue::Argument {
+                        argument: p.name.clone(),
+                    },
+                )
+            })
+            .collect();
+        let types = command
+            .parameters
+            .iter()
+            .map(|p| (p.name.clone(), p.kind))
+            .collect();
+        let actions = expand(
+            &command.actions,
+            location,
+            &bindings,
+            &types,
+            &raw_commands,
+            &mut vec![id.clone()],
+            &mut 1024,
+        )
+        .map_err(|e| vec![e])?;
+        charge_expansion(&actions, &mut expanded_bytes).map_err(|e| vec![e])?;
+        validate_expanded(id, &actions, &types, manifest, state).map_err(|e| vec![e])?;
+        commands.insert(
+            id.clone(),
+            Command {
+                parameters: command.parameters.clone(),
+                actions,
+                location: location.clone(),
+            },
+        );
+    }
+    for (file, entries) in documents {
+        let fail = |message: String| vec![Diagnostic::new(&file, None, message)];
+        if events.len() + entries.len() > MAX_EVENTS {
             return Err(fail(format!("/events: event count exceeds {MAX_EVENTS}")));
         }
-        for (index, entry) in document.events.into_iter().enumerate() {
+        for (index, entry) in entries.into_iter().enumerate() {
             let path = format!("/events/{index}");
             if entry.actions.len() > MAX_ACTIONS {
                 return Err(fail(format!(
@@ -427,23 +936,47 @@ pub(crate) fn load(
                 })
                 .transpose()
                 .map_err(|e| fail(format!("{path}/condition: {e}")))?;
+            let location = Location {
+                file: file.clone(),
+                path: path.clone(),
+            };
+            let expanded = expand(
+                &entry.actions,
+                &location,
+                &BTreeMap::new(),
+                &BTreeMap::new(),
+                &raw_commands,
+                &mut Vec::new(),
+                &mut 1024,
+            )
+            .map_err(|e| vec![e])?;
+            charge_expansion(&expanded, &mut expanded_bytes).map_err(|e| vec![e])?;
             let event = Event {
                 id: entry.id,
                 trigger: entry.trigger,
                 priority: entry.priority,
                 condition,
-                actions: entry.actions.into_iter().map(Into::into).collect(),
+                actions: materialize(&expanded, &BTreeMap::new()).map_err(|e| vec![e])?,
             };
-            ids.insert(&event.id, (), file, &format!("{path}/id"))
+            ids.insert(&event.id, (), &file, &format!("{path}/id"))
                 .map_err(|d| vec![d])?;
             let mut single_sources = BTreeMap::new();
             single_sources.insert(event.id.clone(), (file.clone(), path.clone()));
             let location = Rules {
                 scheduler: Arc::default(),
                 sources: Arc::new(single_sources),
+                action_sources: Arc::new(BTreeMap::from([(
+                    event.id.clone(),
+                    expanded.iter().map(|a| a.location.clone()).collect(),
+                )])),
+                ..Rules::default()
             };
             validate_scopes(&event, manifest, state).map_err(|e| fail(format!("{path}: {e}")))?;
             Scheduler::new(vec![event.clone()], state).map_err(|e| vec![location.diagnostic(e)])?;
+            action_sources.insert(
+                event.id.clone(),
+                expanded.iter().map(|a| a.location.clone()).collect(),
+            );
             sources.insert(event.id.clone(), (file.clone(), path));
             events.push(event);
         }
@@ -453,5 +986,7 @@ pub(crate) fn load(
     Ok(Rules {
         scheduler: Arc::new(scheduler),
         sources: Arc::new(sources),
+        action_sources: Arc::new(action_sources),
+        commands: Arc::new(commands),
     })
 }

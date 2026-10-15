@@ -97,6 +97,20 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
             }
             continue;
         }
+        if story.rules().has_command(&site.command.name) {
+            if let Err(error) =
+                story
+                    .rules()
+                    .parse_command(&site.command.name, &site.command.args, true)
+            {
+                errors.push(Diagnostic::new(
+                    &site.file,
+                    site.line,
+                    format!("{} (node `{}`)", error, site.node),
+                ));
+            }
+            continue;
+        }
         if let Some(message) = command_problem(story, &site.command) {
             errors.push(Diagnostic::new(
                 &site.file,

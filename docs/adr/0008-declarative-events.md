@@ -33,3 +33,9 @@ Failures stop the runner permanently before returning the affected display. Earl
 ## Validation
 
 Story-loader negative tests cover capability/schema, confined sources, duplicates, invalid types/actions, source locations and scope/string limits. Real headless replay tests cover ten identical runs, the interpolation boundary, before-checkpoint writes, save/load/resave identity, cycles and failed candidate output/file preservation. A player model test verifies rule-aware restoration and live-state isolation. Native Windows checks remain queued in issue #5 and do not block implementation.
+
+## Addendum: declarative commands and screen input
+
+The additive `rules.commands/1` capability enables optional typed command definitions in the same rule sources. [The command contract](../rules.md#typed-declarative-commands) specifies scalar arguments, static flattening and resource bounds. Yarn, events and screen buttons share the existing Flow primitives; no async Core registry callbacks or script runtime are introduced. Source pointers follow each flattened primitive. Direct command actions complete before queued signals and notification feedback.
+
+Screen state writes use this bridge as well. A Persistent mutation from a screen invalidates the current checkpoint until the next checkpoint, since save replay does not record UI input. This keeps the existing save format and isolated candidate contract. Save-enabled command targets remain Persistent-only; unsupported Session/Settings mechanics fail before activation. Authors bump `saveSchema` when changing replay mechanics.

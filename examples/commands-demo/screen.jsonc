@@ -1,0 +1,81 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen",
+    "id": "dialogue",
+    "children": [
+      {
+        "type": "text",
+        "text": "Commands Demo"
+      },
+      {
+        "type": "text",
+        "bind": {
+          "dialogue": "text"
+        }
+      },
+      {
+        "type": "text",
+        "bind": {
+          "state": "points"
+        }
+      },
+      {
+        "type": "choiceList",
+        "id": "choices"
+      },
+      {
+        "type": "button",
+        "id": "award",
+        "text": "Award 3",
+        "action": {
+          "do": "command.call",
+          "command": "award",
+          "args": [
+            3
+          ]
+        }
+      },
+      {
+        "type": "button",
+        "id": "input",
+        "text": "Set input (event awards 10 once)",
+        "action": {
+          "do": "state.set",
+          "key": "input",
+          "value": true
+        }
+      },
+      {
+        "type": "button",
+        "id": "save",
+        "text": "Save",
+        "action": {
+          "do": "save"
+        }
+      },
+      {
+        "type": "button",
+        "id": "load",
+        "text": "Load",
+        "action": {
+          "do": "load"
+        }
+      },
+      {
+        "type": "button",
+        "id": "next",
+        "text": "Next checkpoint",
+        "action": {
+          "do": "dialogue.advance"
+        }
+      }
+    ],
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 24,
+      "gap": 10
+    }
+  }
+}

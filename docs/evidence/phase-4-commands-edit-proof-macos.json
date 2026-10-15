@@ -1,0 +1,36 @@
+{
+  "device": "MacBookAir",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "baseCommit": "7af5ea9dcfa1e4440e11dc8855383c3e6fe93231",
+  "scope": "Automated export validation and headless execution; no native Windows or visual acceptance. Working-tree command implementation built once before exports; no Rust build between exports/edits.",
+  "playerSha256": "b740b97ca8cb82026e8e27ac08b693dc8e0570837b93081dbd455d780c73fba1",
+  "packages": [
+    {
+      "name": "hello",
+      "playerSha256": "b740b97ca8cb82026e8e27ac08b693dc8e0570837b93081dbd455d780c73fba1",
+      "compiledDialogueSha256": "dc1dbacd621f2fcd144324ec7e3f512540b955379963871ee8719de4d1e91c14"
+    },
+    {
+      "name": "commands",
+      "playerSha256": "b740b97ca8cb82026e8e27ac08b693dc8e0570837b93081dbd455d780c73fba1",
+      "lines": [
+        "First points 2",
+        "Next points 3"
+      ],
+      "finalPoints": 3,
+      "dialogueSha256": "4e9dda45cc26bec201aad5c12c64332f62ad869b2537c4d7967d0d31711c752f",
+      "compiledDialogueSha256": "3f0fa4887528ba315fb476b2b4b9b487fe75094a1d9740aa3324020a78749813"
+    },
+    {
+      "name": "edited",
+      "playerSha256": "b740b97ca8cb82026e8e27ac08b693dc8e0570837b93081dbd455d780c73fba1",
+      "lines": [
+        "First points 4",
+        "Next points 8"
+      ],
+      "finalPoints": 8,
+      "dialogueSha256": "4e9dda45cc26bec201aad5c12c64332f62ad869b2537c4d7967d0d31711c752f",
+      "compiledDialogueSha256": "3f0fa4887528ba315fb476b2b4b9b487fe75094a1d9740aa3324020a78749813"
+    }
+  ]
+}

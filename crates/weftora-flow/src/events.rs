@@ -107,6 +107,9 @@ impl Event {
 
 #[derive(Debug, PartialEq, thiserror::Error)]
 pub enum FlowError {
+    /// A root action sequence failed; emitted-event errors retain their event identity.
+    #[error(transparent)]
+    Sequence(Box<FlowError>),
     #[error(transparent)]
     State(#[from] StateError),
     #[error(transparent)]
@@ -219,6 +222,47 @@ impl Scheduler {
         }
     }
 
+    /// Execute one ordered sequence, then deliver its emitted signals in FIFO order.
+    /// Shares the caller's budget with subsequent notification feedback.
+    pub fn execute_actions(
+        &self,
+        name: &str,
+        actions: &[Action],
+        state: &mut State,
+        budget: &mut Budget,
+    ) -> Result<Vec<Trace>, DispatchError> {
+        let mut trace = Vec::new();
+        let result = (|| {
+            self.validate(state)?;
+            let root = Event {
+                id: name.into(),
+                trigger: name.into(),
+                priority: 0,
+                condition: None,
+                actions: actions.to_vec(),
+            };
+            let mut queue = VecDeque::new();
+            (|| {
+                root.validate(state)?;
+                budget.spend(Some(name), None)?;
+                run_actions(&root, state, budget, &mut queue, &mut trace)
+            })()
+            .map_err(|error| FlowError::Sequence(Box::new(error)))?;
+            self.deliver(&mut queue, state, budget, &mut trace)
+        })();
+        match result {
+            Ok(()) => Ok(trace),
+            Err(error) => Err(DispatchError { error, trace }),
+        }
+    }
+
+    fn validate(&self, state: &State) -> Result<(), FlowError> {
+        for event in self.events.values().flatten() {
+            event.validate(state)?;
+        }
+        Ok(())
+    }
+
     fn run(
         &self,
         signal: Signal,
@@ -228,11 +272,18 @@ impl Scheduler {
     ) -> Result<(), FlowError> {
         signal::validate(&signal)?;
         // Callers may supply a different State; reject schema drift before performing any write.
-        for event in self.events.values().flatten() {
-            event.validate(state)?;
-        }
+        self.validate(state)?;
         budget.spend(None, None)?;
-        let mut queue = VecDeque::from([signal]);
+        self.deliver(&mut VecDeque::from([signal]), state, budget, trace)
+    }
+
+    fn deliver(
+        &self,
+        queue: &mut VecDeque<Signal>,
+        state: &mut State,
+        budget: &mut Budget,
+        trace: &mut Vec<Trace>,
+    ) -> Result<(), FlowError> {
         while let Some(signal) = queue.pop_front() {
             let events = self.events.get(&signal.id);
             trace.push(Trace::Signal(signal));
@@ -256,28 +307,39 @@ impl Scheduler {
                 if !matched {
                     continue;
                 }
-                for (index, action) in event.actions.iter().enumerate() {
-                    budget.spend(Some(&event.id), Some(index))?;
-                    if matches!(action, Action::Emit(_)) {
-                        budget.spend(Some(&event.id), Some(index))?;
-                    }
-                    let next = action.apply(state).map_err(|source| FlowError::Action {
-                        event: event.id.clone(),
-                        index,
-                        source,
-                    })?;
-                    if let Some(next) = next {
-                        queue.push_back(next);
-                    }
-                    trace.push(Trace::Action {
-                        event: event.id.clone(),
-                        index,
-                    });
-                }
+                run_actions(event, state, budget, queue, trace)?;
             }
         }
         Ok(())
     }
+}
+
+fn run_actions(
+    event: &Event,
+    state: &mut State,
+    budget: &mut Budget,
+    queue: &mut VecDeque<Signal>,
+    trace: &mut Vec<Trace>,
+) -> Result<(), FlowError> {
+    for (index, action) in event.actions.iter().enumerate() {
+        budget.spend(Some(&event.id), Some(index))?;
+        if matches!(action, Action::Emit(_)) {
+            budget.spend(Some(&event.id), Some(index))?;
+        }
+        let next = action.apply(state).map_err(|source| FlowError::Action {
+            event: event.id.clone(),
+            index,
+            source,
+        })?;
+        if let Some(next) = next {
+            queue.push_back(next);
+        }
+        trace.push(Trace::Action {
+            event: event.id.clone(),
+            index,
+        });
+    }
+    Ok(())
 }
 
 pub struct Budget {

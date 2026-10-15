@@ -6,7 +6,7 @@ status: proposed
 
 # Story Rules
 
-Phase 4 uses typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). [ADR 0008](./adr/0008-declarative-events.md) defines their JSONC Story format and shared dialogue notification boundary. Story-defined commands, external UI/host-write bridging, collections and Rhai remain to implement. Existing Stories without rules retain their behavior.
+Phase 4 uses typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). [ADR 0008](./adr/0008-declarative-events.md) defines their JSONC Story format and shared dialogue notification boundary. Typed declarative commands and screen state writes use the same rule boundary. Arbitrary host writes, collections and Rhai remain to implement. Existing Stories without rules retain their behavior.
 
 ## Story files
 
@@ -31,6 +31,41 @@ Declare referenced state keys in the manifest. Conditions use `compare` (the six
 
 `weftora check` loads and validates rule files. Ordinary play and headless replay share the Story-aware runner; see [rules-demo](../examples/rules-demo/README.md) for a runnable save-enabled example. Rules react to notifications produced while dialogue runs, after the current VM event and before checkpoint capture/display arming. Already interpolated text retains its prior value; later dialogue reads the settled state. The source/scope/resource restrictions and candidate publication contract are defined in ADR 0008.
 
+## Typed declarative commands
+
+Require `rules.commands/1` in addition to `rules.events/1`. The same manifest `events` files can contain an optional `commands` array; `events` can be omitted in a command-only file:
+
+```json
+{
+  "rulesSchema": 1,
+  "commands": [{
+    "id": "award",
+    "parameters": [{"name": "amount", "type": "int"}],
+    "actions": [{"do": "state.add", "key": "points", "amount": {"argument": "amount"}}]
+  }]
+}
+```
+
+Parameter types are `bool`, `int`, `float` and `string`; calls have exact arity and canonical types (a JSON int is not a float). `parameters` defaults to an empty array. Argument references are allowed in action `value`, `amount`, and nested call arguments; state keys and signal IDs remain static. All arguments and primitive action types validate before writes. There are no return values, async handlers or dynamic command names.
+
+Call the same command in three places:
+
+| Caller | Syntax |
+| --- | --- |
+| Yarn | `<<award 3>>` or `<<award {$points}>>` |
+| Event/command action | `{"do":"command.call","command":"award","args":[3]}` |
+| Screen button action | `{"do":"command.call","command":"award","args":[3]}` |
+
+Yarn arguments use the existing quoted-command splitter: double quotes preserve whitespace and empty strings; `\"` and `\\` escape quotes/backslashes inside quotes. Bools accept `true`/`false`, ints accept signed decimal i64 text (no fraction/exponent), floats accept finite f64 text, and strings retain text. Validation checks static text and arity; interpolated numeric/bool values are checked when invoked. Yarn string arguments must be literal quoted/unquoted text: string interpolation is rejected during validation because the current VM interpolates raw command text before tokenization. Event/UI scalar strings and nested argument forwarding are supported. Built-in presentation commands and `checkpoint` are reserved. Commands and events have separate ID namespaces.
+
+Calls can reference later definitions and other files. Loading flattens nested action lists while retaining each primitive's original source pointer. Recursive calls are rejected. Limits are 256 commands, 16 parameters per command, 16 call levels, 256 expanded primitive actions per command/event, 1024 expansion steps per root (including calls to empty commands), and 32 MiB of expanded rule data across the package. String limits remain 16 KiB. No runtime call stack is kept.
+
+An event call is inlined into that event's ordered actions. A direct Yarn/UI call runs the whole expanded list, then delivers emitted signals FIFO, then settles new state notifications. Emitted signals cannot interrupt a nested command's actions. A direct call costs one budget unit plus primitive action/emission work; flattened nested calls cost no extra runtime unit. Commands and their notification feedback share the existing 1024-unit dispatch budget. Runtime failures retain completed writes and report the original action location; an isolated failed load candidate is discarded.
+
+Screen `state.set` also settles its newly generated notifications before bindings refresh. UI input must pass the existing screen/modal origin gate. Persistent UI mutations, including ones later reversed by rules, invalidate the current checkpoint save point because UI input is absent from replay. Reach the next checkpoint to save again, or load the previous slot to discard those mutations. Rejected/no-op UI writes do not create persistent notifications. Save-enabled commands follow the same Persistent-only reference restriction as events. Changes to command mechanics/defaults require the author's existing `saveSchema` bump contract; save/container formats are unchanged.
+
+The [commands demo](../examples/commands-demo/README.md) exercises all three callers and checkpoint replay. Native checks are queued in issue #5.
+
 ## Scalar conditions
 
 `Operand` is a literal canonical `Value` or a canonical state key. `Condition` is a comparison, `And`, `Or` or `Not`. Conditions never write state or consume notifications.
@@ -46,9 +81,9 @@ Mixed types are errors, including int versus float. Int comparisons retain full 
 
 `Condition::validate` checks all branches against declared state defaults for key existence and type. Removed keys retain their declarations, so they can validate; a runtime read of a removed key fails rather than substituting its default. Undeclared keys and invalid operands fail validation even in a branch that would be skipped.
 
-`Condition::evaluate` first validates the entire tree, then evaluates live state with short-circuiting. A declared but removed key in a skipped branch is not read. The caller receives `ConditionError`; file/location mapping belongs to the future Story rule loader. The evaluator returns the first error. Validation and evaluation share an immutable state borrow, so types cannot change between them.
+`Condition::evaluate` first validates the entire tree, then evaluates live state with short-circuiting. A declared but removed key in a skipped branch is not read. The caller receives `ConditionError`; the Story loader adds file and condition pointers. The evaluator returns the first error. Validation and evaluation share an immutable state borrow, so types cannot change between them.
 
-Validation permits at most 32 condition levels (root is level one) and 256 condition nodes (root included; operands excluded). All branches count, including skipped ones. These are execution limits; this slice does not parse untrusted trees. A future Story loader must bound input size and parsing as well.
+Validation permits at most 32 condition levels (root is level one) and 256 condition nodes (root included; operands excluded). All branches count, including skipped ones. The Story loader also bounds source size, JSON nesting and condition conversion before evaluation.
 
 ## Events and ordered actions
 
@@ -80,4 +115,4 @@ Low-level dispatch only mutates its supplied `&mut State`; definitions contain n
 
 Run `cargo test -p weftora-flow --locked` for operator/type tables, nested boolean logic, invalid skipped branches, nonfinite values, live state and removal, i64 precision, no condition mutation, and depth/node boundaries. Event tests replay the priority/condition/action/FIFO golden fixture in ten fresh runs and pin a cycle's trace prefix; they also cover Core bus ordering parity, action/condition errors, notification preservation, schema drift, dispatch on a cloned state, repeated dispatches and definition/budget boundaries. `cargo test -p xtask --locked` includes a negative dependency fixture for Flow; `cargo xtask deps` checks the actual graph. Flow must never depend on Bevy, Yarn, Rhai, apps or Stories.
 
-Story/CLI rules tests cover authoring diagnostics, repeated real execution and save replay; the renderer candidate test covers live-state/file preservation on rule failure. [Phase 4 evidence](./evidence/phase-4.md) records results for the automated portions of P4-01/P4-02 and initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). Generic Story commands, UI/host-write bridging and Rhai remain separate work; no Phase 4 acceptance is claimed. Windows CI runs workspace tests; native checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking development.
+Story/CLI rules tests cover authoring diagnostics, repeated real execution and save replay; the renderer candidate test covers live-state/file preservation on rule failure. [Phase 4 evidence](./evidence/phase-4.md) records results for the automated portions of P4-01/P4-02 and initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). Arbitrary host-write bridging, collections and Rhai remain separate work; no Phase 4 acceptance is claimed. Windows CI runs workspace tests; native checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking development.

@@ -199,6 +199,121 @@ mod tests {
     }
 
     #[test]
+    fn ui_commands_and_state_writes_settle_rules_and_require_a_new_checkpoint_for_save() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/commands-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        app.world_mut().non_send_mut::<Player>().save_store =
+            Some(Ok(Store::new(temp.path().join("data"))));
+        app.world_mut()
+            .resource_mut::<Ui>()
+            .navigate(
+                &weftora_story::ui::UiAction::Open {
+                    screen: "dialogue".into(),
+                },
+                &weftora_story::Story::load(&root).unwrap(),
+                None,
+            )
+            .unwrap();
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        let path = temp.path().join("data/save.json");
+        let good = std::fs::read(&path).unwrap();
+        let points = |app: &App| {
+            app.world()
+                .non_send::<Player>()
+                .state
+                .read()
+                .unwrap()
+                .get("points")
+                .unwrap()
+                .clone()
+        };
+        assert_eq!(points(&app), Value::Int(2));
+        // Rejected origin cannot run a command or invalidate the display's save point.
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: Some("missing".into()),
+                action: weftora_story::ui::UiAction::CallCommand {
+                    command: "award".into(),
+                    args: vec![Value::Int(99)],
+                },
+            });
+        app.update();
+        assert_eq!(points(&app), Value::Int(2));
+        assert!(
+            app.world()
+                .non_send::<Player>()
+                .presenter
+                .source()
+                .save_point()
+                .is_ok()
+        );
+        request(
+            &mut app,
+            weftora_story::ui::UiAction::CallCommand {
+                command: "award".into(),
+                args: vec![Value::Int(3)],
+            },
+        );
+        assert_eq!(points(&app), Value::Int(5));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        assert_ne!(app.world().non_send::<Player>().save_status, "Saved.");
+        assert_eq!(std::fs::read(&path).unwrap(), good);
+        request(&mut app, weftora_story::ui::UiAction::Load);
+        assert_eq!(points(&app), Value::Int(2));
+        request(
+            &mut app,
+            weftora_story::ui::UiAction::SetState {
+                key: "input".into(),
+                value: Value::Bool(true),
+            },
+        );
+        assert_eq!(points(&app), Value::Int(12));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        assert_eq!(std::fs::read(&path).unwrap(), good);
+        request(&mut app, weftora_story::ui::UiAction::Advance);
+        assert_eq!(points(&app), Value::Int(13));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
+        request(&mut app, weftora_story::ui::UiAction::Load);
+        assert_eq!(points(&app), Value::Int(13));
+        assert!(
+            matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Line { text, .. } if text == "Next points 13")
+        );
+        // User-paced inputs each receive a fresh budget; they must not exhaust the VM loop cap.
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        for _ in 0..5000 {
+            player
+                .presenter
+                .source_mut()
+                .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                    command: "award".into(),
+                    args: vec![Value::Int(1)],
+                })
+                .unwrap();
+        }
+        assert_eq!(
+            player.state.read().unwrap().get("points"),
+            Ok(&Value::Int(5013))
+        );
+    }
+
+    #[test]
     fn rule_restore_uses_a_candidate_and_failure_preserves_live_state_and_slot() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("story");
