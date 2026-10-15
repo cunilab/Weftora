@@ -84,10 +84,10 @@ Goal: a short, complete visual novel played through the prebuilt player.
 
 Goal: games define their own mechanics without Engine changes.
 
-**Status:** development in progress while earlier native acceptance remains queued in issue #5. Headless scalar conditions, deterministic events and ordered state actions are implemented in `weftora-flow`; [rule semantics and scope](./docs/rules.md) describe the API and remaining Story integration. No Phase 4 gate is claimed.
+**Status:** development in progress while earlier native acceptance remains queued in issue #5. Scalar conditions, deterministic events and ordered state actions are implemented in `weftora-flow`; JSONC Story files now connect them to the shared dialogue runner and checkpoint candidates. [Rule semantics and scope](./docs/rules.md) describe the authoring format and remaining command/UI/script integration. No Phase 4 gate is claimed.
 
-- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling. Headless scheduler and golden traces implemented; Story integration follows.
-- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not. Headless evaluator implemented; Story integration and Windows CI evidence follow.
+- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling. Scheduler, JSONC files and dialogue-state notification bridge implemented; native evidence follows.
+- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not. Evaluator and Story file integration implemented; Windows CI evidence follows.
 - [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)).
 - [ ] Rhai script host: allowlisted Engine API, operation/depth/size limits, errors mapped to Story diagnostics, no file/network/OS access.
 - [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn.

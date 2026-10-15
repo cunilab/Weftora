@@ -1,0 +1,14 @@
+title: Start
+---
+<<declare $input = false>>
+<<declare $awarded = false>>
+<<declare $points = 0>>
+<<declare $temporary = 0>>
+<<checkpoint rules.start>>
+<<set $temporary = 1>>
+<<set $input = true>>
+First points {$points} #line:rules-first
+<<if $awarded>>
+After rules {$points} #line:rules-after
+<<endif>>
+===

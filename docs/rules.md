@@ -6,7 +6,30 @@ status: proposed
 
 # Story Rules
 
-Phase 4 starts with typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). This is an in-memory Rust API, not a Story file format or an exposed CLI/player feature. Story-defined commands, collections and Rhai remain to implement. Existing Stories and saves are unchanged.
+Phase 4 uses typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). [ADR 0008](./adr/0008-declarative-events.md) defines their JSONC Story format and shared dialogue notification boundary. Story-defined commands, external UI/host-write bridging, collections and Rhai remain to implement. Existing Stories without rules retain their behavior.
+
+## Story files
+
+Manifest v1 declares `"events": ["events.jsonc"]` and requires `rules.events/1`. Each source has `rulesSchema: 1` and an event array:
+
+```json
+{
+  "rulesSchema": 1,
+  "events": [{
+    "id": "award",
+    "trigger": "state.changed.input",
+    "condition": {
+      "op": "compare", "operator": "==",
+      "left": {"state": "input"}, "right": {"literal": true}
+    },
+    "actions": [{"do": "state.add", "key": "points", "amount": 10}]
+  }]
+}
+```
+
+Declare referenced state keys in the manifest. Conditions use `compare` (the six operators below), `and`/`or` with a `conditions` array, or `not` with a `condition`. Operands are either `{"state":"key"}` or `{"literal":value}`. Actions are `state.set` (`key`, `value`), `state.add` (`key`, `amount`), `state.remove`/`state.reset` (`key`), or `signal.emit` (`id`, `value`). Event `priority` defaults to zero and `condition` may be omitted. Unknown fields and duplicate keys are rejected.
+
+`weftora check` loads and validates rule files. Ordinary play and headless replay share the Story-aware runner; see [rules-demo](../examples/rules-demo/README.md) for a runnable save-enabled example. Rules react to notifications produced while dialogue runs, after the current VM event and before checkpoint capture/display arming. Already interpolated text retains its prior value; later dialogue reads the settled state. The source/scope/resource restrictions and candidate publication contract are defined in ADR 0008.
 
 ## Scalar conditions
 
@@ -51,10 +74,10 @@ The caller supplies one dispatch budget. One unit is charged before each signal 
 
 On the first error, remaining actions/events and queued signals are discarded. `DispatchError` contains the error and the completed trace prefix; action failures identify the event and zero-based action index. Budget errors also identify the next event/action when available. A completed `Emit` trace means the signal was queued; only a `Trace::Signal` entry records its delivery. Earlier writes **and their queued state-change notifications remain**. This is not a transaction. A new dispatch starts with a fresh queue and budget.
 
-Dispatch only mutates its supplied `&mut State`; definitions contain no external handlers or persistent script state. Candidate checkpoint reconstruction must call it with candidate state and retain its trace until successful activation. The host integration is not implemented here. Dispatch never drains existing state-change notifications, and does not automatically turn writes into `state.changed` triggers. Automatic notification bridging, generic/async command actions, Story parsing and CLI/player execution follow in later slices.
+Low-level dispatch only mutates its supplied `&mut State`; definitions contain no external handlers or persistent script state. It never drains notifications or automatically generates `state.changed`. The Story `Rules::settle` bridge handles new notifications and their feedback under one shared budget. The dialogue runner applies it equally to initial execution and isolated checkpoint candidates; failed candidates publish no state or notifications.
 
 ## Verification and remaining work
 
 Run `cargo test -p weftora-flow --locked` for operator/type tables, nested boolean logic, invalid skipped branches, nonfinite values, live state and removal, i64 precision, no condition mutation, and depth/node boundaries. Event tests replay the priority/condition/action/FIFO golden fixture in ten fresh runs and pin a cycle's trace prefix; they also cover Core bus ordering parity, action/condition errors, notification preservation, schema drift, dispatch on a cloned state, repeated dispatches and definition/budget boundaries. `cargo test -p xtask --locked` includes a negative dependency fixture for Flow; `cargo xtask deps` checks the actual graph. Flow must never depend on Bevy, Yarn, Rhai, apps or Stories.
 
-These cover the headless portions of P4-01/P4-02 and the initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). They do not claim completed Story authoring, static file diagnostics, command/Rhai integration, or Phase 4 acceptance. Windows CI runs workspace tests; the macOS headless job also includes Flow. Native Windows checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) as relevant features land, without blocking headless development.
+Story/CLI rules tests cover authoring diagnostics, repeated real execution and save replay; the renderer candidate test covers live-state/file preservation on rule failure. [Phase 4 evidence](./evidence/phase-4.md) records results for the automated portions of P4-01/P4-02 and initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). Generic Story commands, UI/host-write bridging and Rhai remain separate work; no Phase 4 acceptance is claimed. Windows CI runs workspace tests; native checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking development.

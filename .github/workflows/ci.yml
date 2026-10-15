@@ -48,6 +48,27 @@ jobs:
           $mediaHash = (Get-FileHash (Join-Path $presentationPreview "weftora-player.exe") -Algorithm SHA256).Hash
           if ($helloHash -ne $mediaHash) { throw "Stories must export the same player binary" }
           Write-Output "Same player SHA256 for both Story exports: $mediaHash"
+      - name: Package and validate Windows rules demo
+        shell: pwsh
+        run: |
+          $rulesPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-rules-preview"
+          .\target\debug\weftora.exe export examples/rules-demo --out $rulesPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $rulesPreview "weftora-player.exe") (Join-Path $rulesPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $rulesHash = (Get-FileHash (Join-Path $rulesPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $rulesHash) { throw "Rules demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $rulesPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and rules demo: $rulesHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-rules-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-rules-preview/
+          retention-days: 14
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'

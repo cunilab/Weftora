@@ -9,6 +9,7 @@ pub const CAPABILITIES: &[&str] = &[
     "ui.screens/1",
     "presentation.media/1",
     "save/1",
+    "rules.events/1",
 ];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

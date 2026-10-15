@@ -37,7 +37,7 @@ const ERROR_COLOR: Color = Color::srgb(1.0, 0.45, 0.45);
 /// Opens the game window and runs `story` until the window closes.
 pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Result<(), String> {
     let title = story.manifest().title.clone();
-    let runner = DialogueRunner::new(&dialogue, Arc::clone(&state));
+    let runner = DialogueRunner::for_story(&dialogue, Arc::clone(&state), &story);
     if let Ok(mut state) = state.write() {
         state.drain_changes();
     }
@@ -577,7 +577,7 @@ mod tests {
     }
     pub(super) fn app_for(story: Story, compiled: CompiledDialogue) -> App {
         let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
-        let runner = DialogueRunner::new(&compiled, state.clone());
+        let runner = DialogueRunner::for_story(&compiled, state.clone(), &story);
         let (presenter, pending) = Presenter::new(runner, "Start");
         let mut app = App::new();
         app.insert_non_send(Player {

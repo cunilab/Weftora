@@ -155,6 +155,11 @@ impl State {
         self.set(key, default)
     }
 
+    /// Read notifications without consuming them; mutation appends and never reorders them.
+    pub fn pending_changes(&self) -> &[StateChange] {
+        &self.changes
+    }
+
     /// Notifications in mutation order; no-op writes and rejected writes emit nothing.
     pub fn drain_changes(&mut self) -> Vec<StateChange> {
         std::mem::take(&mut self.changes)

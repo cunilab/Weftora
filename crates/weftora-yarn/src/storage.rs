@@ -188,6 +188,32 @@ pub(crate) struct StateStorage {
 }
 
 impl StateStorage {
+    /// Rule actions share the VM's retained-notification budget between blocking events.
+    pub(crate) fn charge_rule_changes(&self, changes: &[weftora_core::StateChange]) -> Result<()> {
+        let count = changes.len();
+        let previous = self.writes.fetch_add(count, Ordering::Relaxed);
+        if count > MAX_WRITES || previous > MAX_WRITES.saturating_sub(count) {
+            return Err(var_error("rules", "state write budget (4096) exceeded"));
+        }
+        let bytes: usize = changes
+            .iter()
+            .flat_map(|c| [&c.before, &c.after])
+            .flatten()
+            .map(|v| match v {
+                Value::String(text) => text.len(),
+                _ => 0,
+            })
+            .sum();
+        let previous = self.write_bytes.fetch_add(bytes, Ordering::Relaxed);
+        if bytes > MAX_WRITE_BYTES || previous > MAX_WRITE_BYTES.saturating_sub(bytes) {
+            return Err(var_error(
+                "rules",
+                "state string write budget (33554432 bytes) exceeded",
+            ));
+        }
+        Ok(())
+    }
+
     pub(crate) fn write_counters(&self) -> (Arc<AtomicUsize>, Arc<AtomicUsize>) {
         (self.writes.clone(), self.write_bytes.clone())
     }
@@ -400,6 +426,28 @@ impl VariableStorage for StateStorage {
 mod tests {
     use super::*;
     use weftora_core::State;
+
+    #[test]
+    fn rule_changes_share_the_vm_write_and_string_budgets() {
+        let state = Arc::new(RwLock::new(State::new()));
+        let storage = StateStorage::new(state.clone());
+        state
+            .write()
+            .unwrap()
+            .set("value", Value::String("xx".into()))
+            .unwrap();
+        let changes = state.write().unwrap().drain_changes();
+        storage.writes.store(MAX_WRITES - 1, Ordering::Relaxed);
+        storage.charge_rule_changes(&changes).unwrap();
+        assert!(storage.charge_rule_changes(&changes).is_err());
+        storage.writes.store(0, Ordering::Relaxed);
+        storage
+            .write_bytes
+            .store(MAX_WRITE_BYTES - 2, Ordering::Relaxed);
+        storage.charge_rule_changes(&changes).unwrap();
+        assert_eq!(storage.write_bytes.load(Ordering::Relaxed), MAX_WRITE_BYTES);
+        assert!(storage.charge_rule_changes(&changes).is_err());
+    }
 
     #[test]
     fn integer_conversion_checks_extremes_and_exact_boundaries() {

@@ -63,7 +63,7 @@ impl Player {
             self.story.initial_state().map_err(|e| e.to_string())?,
         ));
         // Initialize Yarn defaults before restoring removals; never fill them again afterward.
-        let mut runner = DialogueRunner::new(&self.compiled, state.clone());
+        let mut runner = DialogueRunner::for_story(&self.compiled, state.clone(), &self.story);
         let prepared = game
             .prepare_state(
                 &context,
@@ -196,6 +196,72 @@ mod tests {
             .unwrap()
             .set(key, value)
             .unwrap();
+    }
+
+    #[test]
+    fn rule_restore_uses_a_candidate_and_failure_preserves_live_state_and_slot() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/rules-demo");
+        for file in ["manifest.jsonc", "main.yarn", "events.jsonc"] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        assert_eq!(
+            player.state.read().unwrap().get("points"),
+            Ok(&Value::Int(10))
+        );
+        player.write_save().unwrap();
+        player.write_save().unwrap();
+        let bytes = std::fs::read(temp.path().join("data/save.json")).unwrap();
+        player
+            .state
+            .write()
+            .unwrap()
+            .set("points", Value::Int(99))
+            .unwrap();
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("points"),
+            Ok(&Value::Int(10))
+        );
+        assert_eq!(
+            player.state.read().unwrap().get("points"),
+            Ok(&Value::Int(99))
+        );
+        let mut rules: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.join("events.jsonc")).unwrap()).unwrap();
+        rules["events"][0]["actions"] = serde_json::json!([
+            {"do":"state.set","key":"points","value":20},
+            {"do":"state.add","key":"points","amount":i64::MAX}
+        ]);
+        std::fs::write(root.join("events.jsonc"), rules.to_string()).unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let before = player.state.read().unwrap().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("invalid candidate activated"),
+            Err(error) => error,
+        };
+        assert!(
+            error.contains("events.jsonc") && error.contains("overflow"),
+            "{error}"
+        );
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(
+            std::fs::read(temp.path().join("data/save.json")).unwrap(),
+            bytes
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("data/save.bak")).unwrap(),
+            bytes
+        );
     }
 
     #[test]

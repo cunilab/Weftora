@@ -161,7 +161,7 @@ pub struct DispatchError {
 }
 
 /// Immutable definitions; queues and traces belong to each dispatch, never to the scheduler.
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Scheduler {
     events: BTreeMap<String, Vec<Event>>,
 }
@@ -198,6 +198,20 @@ impl Scheduler {
         state: &mut State,
         budget: usize,
     ) -> Result<Vec<Trace>, DispatchError> {
+        self.dispatch_budgeted(signal, state, &mut Budget::new(budget))
+    }
+
+    pub fn has_trigger(&self, trigger: &str) -> bool {
+        self.events.contains_key(trigger)
+    }
+
+    /// Shares one budget across related dispatches, including state-change feedback.
+    pub fn dispatch_budgeted(
+        &self,
+        signal: Signal,
+        state: &mut State,
+        budget: &mut Budget,
+    ) -> Result<Vec<Trace>, DispatchError> {
         let mut trace = Vec::new();
         match self.run(signal, state, budget, &mut trace) {
             Ok(()) => Ok(trace),
@@ -209,7 +223,7 @@ impl Scheduler {
         &self,
         signal: Signal,
         state: &mut State,
-        budget: usize,
+        budget: &mut Budget,
         trace: &mut Vec<Trace>,
     ) -> Result<(), FlowError> {
         signal::validate(&signal)?;
@@ -217,10 +231,6 @@ impl Scheduler {
         for event in self.events.values().flatten() {
             event.validate(state)?;
         }
-        let mut budget = Budget {
-            limit: budget,
-            remaining: budget,
-        };
         budget.spend(None, None)?;
         let mut queue = VecDeque::from([signal]);
         while let Some(signal) = queue.pop_front() {
@@ -270,12 +280,19 @@ impl Scheduler {
     }
 }
 
-struct Budget {
+pub struct Budget {
     limit: usize,
     remaining: usize,
 }
 
 impl Budget {
+    pub fn new(limit: usize) -> Self {
+        Self {
+            limit,
+            remaining: limit,
+        }
+    }
+
     fn spend(&mut self, event: Option<&str>, action: Option<usize>) -> Result<(), FlowError> {
         self.remaining = self
             .remaining

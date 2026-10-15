@@ -88,7 +88,8 @@ impl Service for StoryService {
         resources.signals = Some(signals);
         let checked = resources.checked.as_ref().expect("Story loaded");
         let entrypoint = checked.story.manifest().entrypoint.clone();
-        let mut runner = DialogueRunner::new(&checked.dialogue, state.clone());
+        let mut runner =
+            DialogueRunner::for_story(&checked.dialogue, state.clone(), &checked.story);
         let mut preload = VecDeque::new();
         let save = if self.options.load || self.options.save_at.is_some() {
             let context = weftora_yarn::save_context(&checked.story, &checked.dialogue)

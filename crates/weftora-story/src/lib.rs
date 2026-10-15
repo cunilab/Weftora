@@ -5,6 +5,7 @@
 pub mod compatibility;
 pub mod jsonc;
 pub mod paths;
+pub mod rules;
 pub mod ui;
 
 use std::collections::BTreeMap;
@@ -37,6 +38,8 @@ pub struct Manifest {
     pub catalogs: BTreeMap<String, Vec<String>>,
     #[serde(default)]
     pub screens: Vec<String>,
+    #[serde(default)]
+    pub events: Vec<String>,
     pub initial_screen: Option<String>,
     /// Reverse-domain Story ID, e.g. `com.example.hello-story`.
     pub id: String,
@@ -98,6 +101,7 @@ pub struct Story {
     catalogs: BTreeMap<String, Catalog<serde_json::Value>>,
     assets: Catalog<Asset>,
     screens: Catalog<ui::ScreenDefinition>,
+    rules: rules::Rules,
 }
 
 /// One Yarn source file read from the Story.
@@ -192,12 +196,13 @@ impl Story {
             || !manifest.state.is_empty()
             || !manifest.catalogs.is_empty()
             || !manifest.screens.is_empty()
+            || !manifest.events.is_empty()
             || manifest.initial_screen.is_some()
             || manifest.save_schema.is_some()
         {
             diags.push(manifest_diag(
                 None,
-                "requires, state, catalogs and screens need manifestSchema 1".into(),
+                "requires, state, catalogs, screens and events need manifestSchema 1".into(),
             ));
         }
         if manifest
@@ -421,6 +426,13 @@ impl Story {
                 Catalog::default()
             }
         };
+        let rules = match rules::load(root, &manifest, &scratch) {
+            Ok(rules) => rules,
+            Err(errors) => {
+                diags.extend(errors);
+                rules::Rules::default()
+            }
+        };
         if !diags.is_empty() {
             return Err(diags);
         }
@@ -430,6 +442,7 @@ impl Story {
             catalogs,
             assets,
             screens,
+            rules,
         };
         let errors = ui::reference_errors(&story);
         if errors.is_empty() {
@@ -457,6 +470,10 @@ impl Story {
 
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
+    }
+
+    pub fn rules(&self) -> &rules::Rules {
+        &self.rules
     }
 
     /// Defaults and initial overrides are validated before the Story is returned.

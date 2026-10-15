@@ -294,6 +294,7 @@ pub struct DialogueRunner {
     storage: StateStorage,
     capture: Option<checkpoint::Capture>,
     state: SharedState,
+    rules: weftora_story::rules::Rules,
     program: Program,
     failure: Option<String>,
     node_files: BTreeMap<String, String>,
@@ -345,6 +346,7 @@ impl DialogueRunner {
             storage,
             capture: None,
             state,
+            rules: weftora_story::rules::Rules::default(),
             program: dialogue.program.clone(),
             failure: default_error.or_else(|| {
                 initialization
@@ -363,6 +365,17 @@ impl DialogueRunner {
             started: false,
             ended: false,
         }
+    }
+
+    /// Creates a Story-aware runner, including its validated rules. Hosts use this for play and restore.
+    pub fn for_story(
+        dialogue: &CompiledDialogue,
+        state: SharedState,
+        story: &weftora_story::Story,
+    ) -> Self {
+        let mut runner = Self::new(dialogue, state);
+        runner.rules = story.rules().clone();
+        runner
     }
 
     /// Starts (or restarts) the dialogue at `node`.
@@ -405,7 +418,34 @@ impl DialogueRunner {
             self.disarm_after_progress();
         }
         loop {
+            let from = if self.rules.is_empty() {
+                0
+            } else {
+                self.state
+                    .read()
+                    .map_err(|_| DialogueError::Runtime("state lock is poisoned".into()))?
+                    .pending_changes()
+                    .len()
+            };
             let event = self.next_event_one()?;
+            if !self.rules.is_empty() {
+                let settled = self
+                    .state
+                    .write()
+                    .map_err(|_| "state lock is poisoned".to_string())
+                    .and_then(|mut state| {
+                        let after_vm = state.pending_changes().len();
+                        self.rules
+                            .settle(&mut state, from)
+                            .map_err(|e| e.to_string())?;
+                        self.storage
+                            .charge_rule_changes(&state.pending_changes()[after_vm..])
+                            .map_err(|e| e.to_string())
+                    });
+                if let Err(error) = settled {
+                    return self.fail_with_context(DialogueError::Runtime(error));
+                }
+            }
             if let DialogueEvent::Command(command) = &event
                 && command.name == "checkpoint"
             {
