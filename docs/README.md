@@ -23,6 +23,8 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [ADR 0005 — Declarative UI renderer](./adr/0005-declarative-ui-renderer.md) | WFT-ADR-005 | Bevy UI choice and adapter boundary |
 | [Presentation primitives v1](./presentation.md) | WFT-MEDIA-001 | View/audio commands, transitions, canonical volume and bounds |
 | [Declarative UI v1](./ui.md) | WFT-UI-001 | Screen schema, bindings, actions and input |
+| [Story A author tutorial](./story-a-tutorial.md) | WFT-TUT-001 | Content-only dialogue/screen/theme/image edits and export |
+| [Phase 3 Windows manual verification](./evidence/phase-3-windows.md) | WFT-EVID-008 | Native Story A/save/load steps and blank maintainer records |
 | [Phase 3 implementation evidence](./evidence/phase-3.md) | WFT-EVID-007 | Save storage and runtime checkpoints; remaining player/Story A work |
 | [Phase 0 evidence](./evidence/phase-0.md) | WFT-EVID-001 | Phase 0 check results and P0-10 deferral |
 | [Phase 2 Windows manual verification](./evidence/phase-2-windows.md) | WFT-EVID-005 | Blank maintainer-owned native test records and steps |

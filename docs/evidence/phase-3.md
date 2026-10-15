@@ -46,3 +46,19 @@ The full workspace passed 248 tests across 26 suites before the final save-time 
 Claude Opus 5.5 medium Read/Grep advice and review returned SHIP with a recommendation to validate hidden bindings before saving. Codex added that check and its preservation test. Native Windows graphical/relaunch checks remain pending in issue #5. Story A, same-player edit proof and tutorial are the next slice; no Phase 3 gate is claimed.
 
 Windows x64 player-integration CI [run 38674201038](https://github.com/cunilab/Weftora/actions/runs/38674201038) passed all three jobs at source revision f372373: 237 tests across 26 suites, zero failures. [Raw output](phase-3-player-windows.txt) includes the player round-trip/negative/sink handoff tests. The focused post-hardening Claude review also returned SHIP. Native graphical/relaunch results remain pending.
+
+## Story A, authoring and content-only edits
+
+Last Signal is a complete small Story A with an immediate Begin/About menu, repair and rooftop routes, distinct dawn replies, character and CG slots, music/ambience/effects, transitions, themed choices, state bindings and six checkpoint IDs. It lives separately in examples/story-a so the earlier Hello Story golden fixtures remain unchanged. CC0 rectangles and quiet tones are prototype assets.
+
+Each checkpoint opening explicitly clears unwanted slots/audio and defines the required characters/poses. A renderer regression drives live play to every ID (including both dawn routes), settles the models, saves, progresses, loads and compares Views.samples, audio channel/asset/envelope, Persistent state and the displayed dialogue. This caught and fixed actors inherited from prior scenes.
+
+On MacBookAir, the final full workspace passed 252 tests across 27 suites, zero failures. Clippy with warnings denied, formatting, dependency and docs checks passed. Real Story branch saves re-save byte-identically and execute the opening's attempt increment once.
+
+The [committed content-edit proof](phase-3-story-a-edit-proof-macos.json) records three exports made with existing binaries, without any Rust build between edits: baseline, dialogue/screen edit, then theme/image edit. All exported players validate and share SHA-256 c4dfc981ce908d4ad7a7e21fc174ba5878f0db5601f781925848ce3138b43208. A baseline Arrival save loads into both edited variants with the new line, and its on-disk hash stays unchanged. This Mac binary is separate from Windows CI binaries. The [proof script](../../scripts/verify-story-a-edits.py) keeps one baseline executable and matching CLI, two edited content packages, a compatibility test save, report and support docs.
+
+Windows CI now pins Python 3.13 and packages that proof as a Story A preview artifact. [The author tutorial](../story-a-tutorial.md) uses prebuilt tools for dialogue, screen/theme and image edits and export. [Windows steps and empty records](phase-3-windows.md) cover P3-01 through P3-07; issue #5 remains the single native reminder. An independent author still needs to perform the tutorial.
+
+A Mac development launch initialized the Metal renderer, window and initial scene commands. Computer Use could not inspect it because the server/client versions differ; no actual visual/input/audio check is claimed from that launch. All native Windows and independent-author results remain blank. Phase 3 implementation is in review; its human acceptance gate remains open.
+
+Claude Opus 5.5 medium Read/Grep acceptance review returned SHIP after the explicit scene-opening and all-checkpoint model-comparison fixes. Codex performed the implementation and verification. The final Clippy run completed successfully.

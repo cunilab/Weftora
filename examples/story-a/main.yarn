@@ -1,0 +1,142 @@
+title: Start
+---
+<<declare $story__route = "undecided">>
+<<declare $story__signal = false>>
+<<declare $story__attempts = 0>>
+<<checkpoint scene.menu>>
+<<hide left 0>>
+<<hide right 0>>
+<<hide cg 0>>
+<<hide overlay 0>>
+<<ambience none 0>>
+<<voice none 0>>
+<<effect none 0>>
+<<background bg.night>>
+<<music audio.music 0>>
+-> Begin
+    <<jump Arrival>>
+-> About
+    <<jump About>>
+===
+title: About
+---
+Last Signal is Story A: a complete, small visual novel made from Yarn, JSONC screens and CC0 prototype assets.
+The colored rectangles stand in for Mara, Ivo and the lighthouse. The quiet tones demonstrate music and ambience.
+Use Continue or Space for dialogue, 1–2 for choices, Tab/Enter for buttons. Save at the first display of a scene after its fades settle.
+-> Return to the menu
+    <<jump Start>>
+===
+title: Arrival
+---
+<<checkpoint scene.arrival>>
+<<hide cg 0>>
+<<hide overlay 0>>
+<<move left 0.25 0.5 1 1 0>>
+<<move right 0.75 0.5 1 1 0>>
+<<voice none 0>>
+<<effect none 0>>
+<<background bg.day>>
+<<show left actor.alice 500>>
+<<show right actor.bob 500>>
+<<music audio.music 500>>
+<<ambience audio.ambience 500>>
+Mara: The ferry leaves at dawn. If the beacon stays dark, they will pass us.
+Ivo: The old receiver still has power. The antenna on the roof does not.
+Mara: My sister promised to listen tonight. I promised there would be something to hear.
+Ivo: Then we have one battery and two bad ideas.
+<<show background bg.night 800>>
+Mara: We could repair the receiver down here, or carry the battery up to the antenna.
+<<jump Decision>>
+===
+title: Decision
+---
+<<checkpoint scene.decision>>
+<<hide cg 0>>
+<<hide overlay 0>>
+<<move left 0.25 0.5 1 1 0>>
+<<move right 0.75 0.5 1 1 0>>
+<<voice none 0>>
+<<effect none 0>>
+<<background bg.night>>
+<<show left actor.alice 0>>
+<<show right actor.bob 0>>
+<<music audio.music 0>>
+<<ambience audio.ambience 0>>
+-> Repair the old receiver with Ivo
+    <<set $story__route = "repair">>
+    <<jump Repair>>
+-> Carry the battery to the roof with Mara
+    <<set $story__route = "roof">>
+    <<jump Roof>>
+===
+title: Repair
+---
+<<checkpoint scene.repair>>
+<<move left 0.25 0.5 1 1 0>>
+<<hide cg 0>>
+<<hide overlay 0>>
+<<move right 0.75 0.5 1 1 0>>
+<<voice none 0>>
+<<effect none 0>>
+<<background bg.night>>
+<<show left actor.alice 500>>
+<<show right actor.bob 500>>
+<<music audio.music 500>>
+<<ambience audio.ambience 500>>
+<<set $story__attempts = $story__attempts + 1>>
+Ivo: Hold these two wires together. I will tell you when to let go.
+The receiver answers with a thin, uncertain tone.
+<<effect audio.effect 250>>
+Mara: It sounds like someone trying very hard to whistle.
+Ivo: That is the clearest thing this room has said in years.
+Mara: Tell them we are here. Tell them we kept the light.
+<<set $story__signal = true>>
+Ivo: Signal sent. Now we listen.
+<<jump Dawn>>
+===
+title: Roof
+---
+<<checkpoint scene.roof>>
+<<hide right 0>>
+<<hide cg 0>>
+<<hide overlay 0>>
+<<move left 0.25 0.5 1 1 0>>
+<<voice none 0>>
+<<effect none 0>>
+<<background bg.night>>
+<<show left actor.alice 500>>
+<<music audio.music 500>>
+<<ambience audio.ambience 500>>
+<<set $story__attempts = $story__attempts + 1>>
+Mara: The stairs always seemed shorter when someone else carried the battery.
+Ivo: I can still hear you complaining from downstairs. The antenna must be working.
+<<move left 0.4 0.45 1.2 1 1000>>
+Mara: There. The cable reaches if I stand right here.
+<<effect audio.effect 250>>
+For a moment, the rooftop is brighter than the sea.
+<<set $story__signal = true>>
+Mara: Signal sent. Come up before I decide to keep the view.
+<<jump Dawn>>
+===
+title: Dawn
+---
+<<checkpoint scene.dawn>>
+<<hide left 0>>
+<<hide right 0>>
+<<hide overlay 0>>
+<<voice none 0>>
+<<effect none 0>>
+<<background bg.day>>
+<<show cg cg.sun 1000>>
+<<music audio.music 500>>
+<<ambience none 500>>
+<<if $story__route == "repair">>
+Ivo: She says she heard the whistle. She is bringing a better radio.
+<<else>>
+Ivo: She saw the rooftop flash. She says you can stop waving now.
+<<endif>>
+Mara: I was not waving. I was keeping warm.
+Beyond the window, the ferry turns toward the little harbor.
+Mara: We should leave the light on.
+The End — Last Signal
+===
