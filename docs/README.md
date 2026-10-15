@@ -24,6 +24,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [ADR 0006 — Performance baseline and R15 budgets](./adr/0006-performance-baseline.md) | WFT-ADR-006 | Windows perf baseline; confirms measured R15 budgets, leaves p95 open |
 | [Presentation primitives v1](./presentation.md) | WFT-MEDIA-001 | View/audio commands, transitions, canonical volume and bounds |
 | [Declarative UI v1](./ui.md) | WFT-UI-001 | Screen schema, bindings, actions and input |
+| [Story rules](./rules.md) | WFT-RULES-001 | Headless typed condition semantics, limits and Phase 4 integration scope |
 | [Story A author tutorial](./story-a-tutorial.md) | WFT-TUT-001 | Content-only dialogue/screen/theme/image edits and export |
 | [Phase 3 Windows manual verification](./evidence/phase-3-windows.md) | WFT-EVID-008 | Native Story A/save/load steps and blank maintainer records |
 | [Phase 3 implementation evidence](./evidence/phase-3.md) | WFT-EVID-007 | Save storage, checkpoints, player restoration and Story A automated checks |

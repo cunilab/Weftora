@@ -5944,6 +5944,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "weftora-flow"
+version = "0.0.1"
+dependencies = [
+ "thiserror 2.0.21",
+ "weftora-api",
+ "weftora-core",
+]
+
+[[package]]
 name = "weftora-player"
 version = "0.0.1"
 dependencies = [

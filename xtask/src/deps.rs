@@ -163,14 +163,15 @@ mod tests {
     fn fixture() -> Value {
         serde_json::from_str(r#"{
             "workspace_root":"/repo",
-            "workspace_members":["api","core","story","player","save"],
+            "workspace_members":["api","core","story","player","save","flow"],
             "packages":[
                 {"id":"api","name":"weftora-api","manifest_path":"/repo/crates/api/Cargo.toml"},
                 {"id":"core","name":"weftora-core","manifest_path":"/repo/crates/core/Cargo.toml"},
                 {"id":"story","name":"weftora-story","manifest_path":"/repo/crates/story/Cargo.toml"},
                 {"id":"helper","name":"helper","manifest_path":"/registry/helper/Cargo.toml"},
                 {"id":"player","name":"weftora-player","manifest_path":"/repo/apps/player/Cargo.toml"},
-                {"id":"save","name":"weftora-save","manifest_path":"/repo/crates/save/Cargo.toml"}
+                {"id":"save","name":"weftora-save","manifest_path":"/repo/crates/save/Cargo.toml"},
+                {"id":"flow","name":"weftora-flow","manifest_path":"/repo/crates/flow/Cargo.toml"}
             ],
             "resolve":{"nodes":[
                 {"id":"api","deps":[]},
@@ -178,7 +179,8 @@ mod tests {
                 {"id":"story","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]},
                 {"id":"helper","deps":[]},
                 {"id":"player","deps":[]},
-                {"id":"save","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]}
+                {"id":"save","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]},
+                {"id":"flow","deps":[{"pkg":"core","dep_kinds":[{"kind":null}]}]}
             ]}
         }"#).unwrap()
     }
@@ -203,7 +205,7 @@ mod tests {
             .unwrap()
             .push(serde_json::json!({"id":"bevy","deps":[]}));
         let problems = check_graph(&graph).unwrap();
-        assert_eq!(problems.len(), 1);
+        assert_eq!(problems.len(), 2);
         assert!(problems[0].contains("weftora-core (core) -> helper (helper) -> bevy_ecs (bevy)"));
     }
     #[test]
@@ -220,7 +222,7 @@ mod tests {
         assert!(check_graph(&graph).unwrap().is_empty());
         graph["resolve"]["nodes"][1]["deps"][0]["dep_kinds"] =
             serde_json::json!([{"kind":"dev"},{"kind":"build"}]);
-        assert_eq!(check_graph(&graph).unwrap().len(), 1);
+        assert_eq!(check_graph(&graph).unwrap().len(), 2);
     }
     #[test]
     fn save_storage_cannot_depend_on_yarn() {
@@ -235,6 +237,16 @@ mod tests {
                 .iter()
                 .any(|p| p.contains("weftora-save") && p.contains("yarnspinner_runtime"))
         );
+    }
+    #[test]
+    fn flow_cannot_depend_on_adapters_or_scripts() {
+        for forbidden in ["weftora-render-bevy", "yarnspinner_runtime", "rhai"] {
+            let mut graph = fixture();
+            graph["packages"][3]["name"] = forbidden.into();
+            assert!(check_graph(&graph).unwrap().iter().any(|problem| {
+                problem.contains("weftora-flow") && problem.contains(forbidden)
+            }));
+        }
     }
     #[test]
     fn compiler_is_forbidden_in_player_even_transitively() {

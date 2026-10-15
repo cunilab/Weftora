@@ -11,6 +11,7 @@ status: proposed
 **Rules for every phase**
 
 - A phase is done only when its required checks in [success criteria](./docs/success-criteria.md) pass with evidence. Any explicit deferral must be recorded there and tracked by an issue; it is not a test pass. A ticked box alone means nothing.
+- Pending maintainer Windows verification is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) and does not block later implementation, automated CI or development-host checks. Implementation may advance while acceptance remains open; this does not waive any gate.
 - Hardening work lands in the phase that introduces the thing it protects. For example, archive security fixtures arrive when an archive format exists.
 - Windows x64 is the only release target and the only place gates are signed off. Maintainers may develop on macOS or Linux; see [platforms](./docs/platforms.md).
 - Example Stories live in `examples/`; they are content, never Cargo workspace members, and the Engine never depends on them.
@@ -83,8 +84,10 @@ Goal: a short, complete visual novel played through the prebuilt player.
 
 Goal: games define their own mechanics without Engine changes.
 
+**Status:** development in progress while earlier native acceptance remains queued in issue #5. The first slice adds headless scalar conditions in `weftora-flow`; [condition semantics and scope](./docs/rules.md) describe the API and remaining Story integration. No Phase 4 gate is claimed.
+
 - [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling.
-- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not.
+- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not. Headless evaluator implemented; Story integration and Windows CI evidence follow.
 - [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)).
 - [ ] Rhai script host: allowlisted Engine API, operation/depth/size limits, errors mapped to Story diagnostics, no file/network/OS access.
 - [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn.
