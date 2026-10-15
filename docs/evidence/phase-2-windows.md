@@ -66,7 +66,7 @@ Run these only after the applicable implementation and demo are available. No re
 | P2-01 | Choice → canonical state → UI/view → later Yarn condition | | | |
 | P2-02 | Invalid syntax, missing node, unknown command; file/node diagnostics | | | |
 | P2-04 | Background, two characters, CG, overlay; position/scale/opacity/fade/move/crossfade | | | |
-| P2-05 | Music/effects/ambience/voice; fades and user volume | | | |
+| P2-05 | Music/effects/ambience/voice; fades and user volume | All four channels (220 Hz music loop, 330 Hz ambience loop, 440 Hz voice, 660 Hz effect) audible on Realtek HD Audio; loops wrap cleanly, fades smooth; per-channel mute/50%/100% and master change the currently playing cue without restart | PASS | [record](#p2-05--musiceffectsvoice-fades-and-user-volume), [demo frames](./artifacts/phase-2-windows-agent/) |
 | P2-06 | All widgets, live bindings, keyboard/mouse focus, resize and invalid-screen rejection | | | |
 | P2-09 | Actual image/audio/font catalog use, including font decoding/rendering | | | |
 | P2-08 | Release startup, UI latency and idle memory; compare PRD R15 | | | |
@@ -96,6 +96,384 @@ idle_memory_mib:
 logs_or_artifacts:
 tested_by:
 tested_at:
+```
+
+## Completed maintainer records
+
+Only checks the maintainer actually ran appear here, filled from their own observation. Everything else stays blank above.
+
+### P2-05 — musiceffectsvoice fades and user volume
+
+```yaml
+check: P2-05
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+cli_sha256: 912dc804a4de43006ad690a4bc44b3f78f75d06708d5f034c8e015e69c0268c6
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (+ Intel UHD)
+gpu_driver: 610.62 (Vulkan)
+audio_device: Realtek High Definition Audio
+audio_driver: Windows stock (WASAPI)
+fixture: examples/presentation-demo (release export)
+steps: >-
+  Launch exported presentation-demo; listen through the story while advancing
+  (music + ambience loop from the opening, voice/effect one-shots); observe the
+  1500 ms music/ambience fade-out and voice/effect fade-in near the end; open the
+  Volume overlay and exercise per-channel Mute/50%/100% and master
+  Mute/50%/100% against the already-playing cues.
+expected: >-
+  All four channels audible; loops wrap without click/gap; fades smooth;
+  volume/mute changes apply to the playing cue immediately, no restart.
+actual: >-
+  Maintainer listening test: all four channels heard; fades and loop boundaries
+  clean; volume and mute changes affected currently playing cues immediately
+  without restarting them. Verbatim answers: "yes all do great" (audibility,
+  fades, loops) and "yes do great" (live volume/mute without restart).
+result: PASS
+startup_ms:
+ui_latency_ms:
+idle_memory_mib:
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/
+tested_by: Andres-Holivin
+tested_at: 2026-10-15
+```
+
+### Recheck 1 — no-argument launch, background, dialogue, both branches, chime
+
+Covers "Runnable catalog/artifact recheck" step 1 and the first Phase 2 bullet in issue #5.
+
+```yaml
+check: recheck-1 (no-arg launch, branches, chime)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+cli_sha256: 912dc804a4de43006ad690a4bc44b3f78f75d06708d5f034c8e015e69c0268c6
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (+ Intel UHD)
+gpu_driver: 610.62 (Vulkan)
+audio_device: Realtek High Definition Audio
+audio_driver: Windows stock (WASAPI)
+fixture: examples/hello-story (release export, weftora-player.exe launched with zero arguments)
+steps: >-
+  Double-click-style launch (no CLI arguments, story/ next to the exe); verify
+  room background and Guide dialogue; play branch "Yes, show me." to the end
+  message; close; relaunch from a fresh process and take "Not right now." to the
+  end; press Escape there.
+expected: >-
+  Background and dialogue visible at start; chime audible (Story plays
+  sfx.chime once at start, intro.yarn line 5); both branches reachable from
+  fresh launches; end message shown; Escape closes cleanly.
+actual: >-
+  Maintainer: launch visuals correct (background + dialogue, choice "A"); chime
+  heard once at first open and not again — matches the Story source, which
+  triggers it exactly once at Start; run 1 took "Yes, show me." and reached the
+  Esc-to-quit end message; run 2 (fresh process) took "Not right now.", reached
+  the end, Escape closed with no problem. Agent-side close/Escape exit code 0
+  was separately measured in the automated evidence (see phase-2-windows-agent).
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/ (frames hello-0-opening/hello-1-choices/hello-2-curious-true)
+tested_by: Andres-Holivin
+tested_at: 2026-10-15
+```
+
+### Recheck 2+3 — same-player edit and stale-artifact rejection
+
+Covers "Runnable catalog/artifact recheck" steps 2–3 and the corresponding issue #5 bullet.
+Agent-run on the maintainer's machine under explicit maintainer delegation ("i think you can do
+this without me"); every claim below is machine-verified from a captured frame, a hash or an exit
+code, with artifacts attached. No human perception is involved in this check.
+
+```yaml
+check: recheck-2+3 (same-player edit, stale artifact)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+cli_sha256: 912dc804a4de43006ad690a4bc44b3f78f75d06708d5f034c8e015e69c0268c6
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (+ Intel UHD)
+gpu_driver: 610.62 (Vulkan)
+fixture: hello-story working copy (edited line) + release export (edited in place for stale test)
+steps: >-
+  Edit one Guide line in a working copy; record the player SHA-256; run CLI
+  `run` (compiles a fresh dialogue preview and launches the player); capture
+  the window; re-hash the player. Then edit the exported Story's yarn in place
+  WITHOUT re-exporting and launch the export; finally re-export into a fresh
+  directory and launch again.
+expected: >-
+  Edited line visible with unchanged player hash; stale export refused with a
+  controlled message and nonzero exit; fresh re-export launches.
+actual: >-
+  Edited line rendered in the player (frame attached); player SHA-256 identical
+  before/after (612f9560…, matches the release evidence hash). Stale export
+  refused before any window opened: stderr "stale dialogue artifact: inputHash
+  does not match the Story sources; use `weftora run` or export again", exit
+  code 1 (verified twice: cmd-wrapper LASTEXITCODE and Start-Process ExitCode).
+  Fresh re-export launched and rendered the edited line (frame attached).
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/same-player-stale.txt, hello-edited-line.png, hello-reexport-ok.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### UI interaction battery — overlay blocking, focus return, Shift+Tab, resize
+
+Covers the issue #5 bullets "Tab/Shift+Tab, Enter/Space, mouse activation and choice digits;
+one activation advances one line" (fully) and the Details part of the overlay-blocking bullet.
+Agent-driven keyboard/mouse except real-mouse activation, which the maintainer performed and
+answered directly (their Q6/Q7): branch choice and Volume overlay were selected by real mouse
+click, and a real click on Details opened the overlay. Scripted *injected* clicks fell through
+widgets in this harness (reproduced 3x on Details, 1x on a choice row) — a harness limitation,
+not a product defect, since real input activates correctly.
+
+```yaml
+check: ui-interaction battery (overlay blocking, focus, shift-tab, resize)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+windows_build: 11 Pro 10.0.26300
+fixture: examples/hello-story (release export)
+steps: >-
+  Advance to choices; open the Details overlay by keyboard; press choice digit 1
+  and click the base while it is open; close it; press Enter on the returned
+  focus. Separately: Tab/Shift+Tab focus cycling at line 1; a real-mouse click
+  on Details (maintainer); resize to 684x461 and verify rewrap.
+expected: >-
+  Overlay blocks base digit/click; base unchanged after close; focus returns to
+  Details and Enter reopens it; Shift+Tab walks focus backwards; wrapping stays
+  readable after resize; real mouse activates buttons and choices.
+actual: >-
+  Digit 1 + base click while overlay open: base stayed on choices, overlay
+  stayed open (blocked). Close: overlay gone, choices + Curious unchanged,
+  focus outline on Details. Enter on that focus reopened the overlay.
+  (An earlier accidental run additionally showed overlay Set updating both the
+  overlay binding and base `Curious` to true in the same frame.) Shift+Tab from
+  Details moved focus back to Next. Resize rewrapped text to 3 lines without
+  overflow. Maintainer real mouse: branch choice clicked (Q6-A), Volume opened
+  by click (Q6-A), Details opened by click (Q7-A). Injected-click fall-through
+  noted above as harness-only.
+result: PASS (Volume overlay blocking sub-part pending maintainer test)
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/hello-overlay-blocks-input.png, hello-overlay-closed-focus-returned.png, hello-overlay-refocus-reopens.png, hello-shift-tab-back.png, hello-resize-advance.png
+tested_by: agent + maintainer real-mouse checks (Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### Volume overlay blocking + decorative click-through — maintainer real input
+
+Covers the issue #5 bullets "Details/Volume overlays block base actions, clicks and choice digits, and
+return focus after closing" (Volume part; Details part recorded above) and "Verify decorative media does
+not block background clicks, buttons or choices". Performed by the maintainer with their real mouse and
+keyboard on the presentation-demo; the agent's injected clicks were not used for these two bullets after
+injected input was shown unreliable.
+
+```yaml
+check: volume-blocking + decorative click-through (maintainer real input)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+windows_build: 11 Pro 10.0.26300
+fixture: examples/presentation-demo (release export)
+steps: >-
+  Open the Volume overlay with the mouse; press Space and click the background
+  while it is open; click Close; press Enter. Then advance three lines to the
+  CG/tint step and click the tinted background.
+expected: >-
+  Story input blocked while Volume is open; focus returns to Volume on close
+  (Enter reopens it); decorative tint does not block the background click —
+  the dialogue advances.
+actual: >-
+  Maintainer answers (issue #5): Q8-A — while the panel was open, Space and the
+  background click did not advance the story; after Close + Enter, the Volume
+  panel reopened (focus returned). Q9-A — at the tint step the real background
+  click passed through the decorative overlay and advanced the dialogue. Q6/Q7
+  earlier confirmed real-mouse activation of choice rows, the Volume button and
+  the Details button. This also resolves the agent's earlier synthetic-click
+  "discrepancy" as a harness artifact (see phase-2-windows-agent).
+result: PASS
+logs_or_artifacts: issue #5 answers Q6/Q7/Q8/Q9; docs/evidence/artifacts/phase-2-windows-agent/demo-click-*.png
+tested_by: Andres-Holivin
+tested_at: 2026-10-15
+```
+
+### Validation fixture battery — agent on maintainer's machine (delegated)
+
+Covers the issue #5 bullets "P2-02: invalid syntax, missing node and unknown command show source
+file/node and controlled failure behavior; CLI exits nonzero", the "invalid widgets/assets/screens/
+state types" part of the branches bullet, and "P2-09: … wrong/duplicate IDs and categories have
+file/location diagnostics". One defect per fixture; each run is a plain `weftora check`.
+
+```yaml
+check: validation fixture battery (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: hello-story copies under the agent scratch dir, one defect each
+steps: run `weftora check` per fixture; record exit code and diagnostic text
+expected: exit 1, no panic, diagnostic names the source file with line or JSON pointer
+actual: >-
+  All exit 1 with controlled diagnostics:
+  invalid syntax -> `main.yarn:5: Unexpected "Guide" while reading an if clause (node 'Start')`;
+  missing node -> `manifest.jsonc: entrypoint 'NoSuchNode' is not a node in the dialogue files`;
+  unknown command -> `dialogue/intro.yarn:6: unknown command 'dance' (node 'Start')`;
+  wrong category -> `dialogue/intro.yarn:6: 'sound': asset 'bg.room' belongs to images, expected audio (node 'Start')`;
+  invalid widget type -> `ui/dialogue.jsonc:12: unknown variant 'spinner', expected one of 'screen', 'overlay', 'panel', 'list', 'text', 'image', 'button', 'choiceList'`;
+  unknown screen -> `ui/dialogue.jsonc: /root/children/1/children/3/children/1/action/screen: missing screen ID 'ghost'`;
+  state.set type -> `ui/details.jsonc: /root/children/0/children/3/action/value: state 'curious' expects bool, got int`;
+  duplicate ID -> `assets/images.jsonc: /1/id: … first declared at …/0/id`;
+  missing ID -> `dialogue/main.yarn:3: 'background': images reference: missing catalog ID 'bg.missing' (node 'Start')`.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/error-paths.txt, asset-id-media.txt
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### Legacy panel fallback — agent on maintainer's machine (delegated)
+
+Covers the "legacy panel fallback" part of the branches bullet.
+
+```yaml
+check: legacy panel fallback (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: hello-story with `screens`, `initialScreen` and the `ui.screens/1` capability removed
+steps: check, export, launch the exported player
+expected: valid story; classic dialogue panel (speaker, text, advance hint) with no declarative widgets
+actual: >-
+  check OK (2 nodes, 2 assets); export produced 9 story files; the window shows the classic
+  panel only — no Next/Details buttons, no Curious label, no choiceList styling.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/hello-legacy-fallback.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### Custom font glyphs + corrupt font/image error panels — agent on maintainer's machine (delegated)
+
+Covers "Verify glyphs using a valid licensed custom font; corrupt font/media bytes produce the
+controlled error panel" and the font-catalog part of P2-09.
+
+```yaml
+check: font catalog + corrupt font/image (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: >-
+  hello-story + fonts.jsonc catalog; valid case binds `font.mono` (Georgia, georgia.ttf from
+  C:\Windows\Fonts) to the speaker and body text; corrupt cases use 4 KiB random bytes as
+  mono.ttf, and random bytes as the bg.room PNG
+steps: check + export + launch each; capture frames; close and record exit behaviour
+expected: valid font renders its glyphs; corrupt font/image show the controlled error panel with file + pointer; no panic
+actual: >-
+  Valid: Georgia serif renders on speaker and body (one proportional line vs the default
+  two-line mono wrap; unbound `Curious: false` stays mono in the same frame — in-frame control).
+  Corrupt font: check passes (decode is at render); player shows the Story error panel
+  `ui/dialogue.jsonc:/root/children/1/children/0/font: asset 'font.mono' is not a readable font`,
+  same line on stderr after close, player exit 1.
+  Corrupt image: Story error panel `ui/dialogue.jsonc:/root/children/0/image: asset 'bg.room' is
+  not a readable image: Format error decoding Png: Invalid PNG signature.`; no panic.
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-2-windows-agent/hello-font-ok.png,
+  hello-font-corrupt-error-panel.png, hello-corrupt-image-error-panel.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### String budget + exit codes — agent on maintainer's machine (delegated)
+
+Covers "Verify a valid Story that doubles a declared string fifteen times before its first line
+shows a source file/node budget error; closing afterward returns nonzero" and "Verify normal close
+and Escape on a valid Story both return zero".
+
+```yaml
+check: string budget error + close/Escape exit codes (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: valid Story that doubles a declared string fifteen times before its first line; valid hello-story for the zero-exit control
+steps: check + `weftora run` the budget fixture; close the error window; then close and Escape on the valid story
+expected: budget error names source file/node; close after the error returns nonzero; valid close and Escape return zero
+actual: >-
+  Budget fixture passes `weftora check` (valid story) and fails at runtime with the Story error
+  panel `dialogue error: main.yarn (node 'Start'): dialogue error: string budget (16384)
+  exceeded in node 'Start'`; after closing the window `weftora run` exits 1. Valid story:
+  normal window close → exit 0; Escape → exit 0.
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-2-windows-agent/hello-string-budget-error-panel.png,
+  runtime-behavior.txt
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### P2-01, P2-04, P2-06 scenario coverage — agent on maintainer's machine (delegated)
+
+Covers the P2-01 (choice → state → live view → later condition), P2-04 (background, two
+characters, CG, overlay, transitions and cleanup) and P2-06 (widgets, bindings, resize, click
+bounds) bullets; click-bounds evidence is the maintainer's real-mouse Q6/Q7 above.
+
+```yaml
+check: P2-01/P2-04/P2-06 scenarios (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: examples/hello-story and examples/presentation-demo (release exports)
+steps: headless branch A/B traces; real windows at several story steps; resize to 684x461
+expected: choice changes state seen by view and later condition; media features render and clean up; widgets/resize hold up
+actual: >-
+  P2-01: choice 0 sets `curious` false→true (scope persistent) with a `state.changed` signal,
+  the live `Curious` label flips, and the later `if $curious` line differs per branch (traces A/B).
+  P2-04: day→night crossfade, two characters at different positions/scales/opacity, CG + tint
+  overlay stacked and cleaned up; all 25 presentation commands replayed headless.
+  P2-06: all widgets and bindings render; text re-wraps readable at 684x461; real-mouse clicks
+  land on visible button/choice/Volume positions (maintainer Q6/Q7).
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-2-windows-agent/headless-branch-a.jsonl, headless-branch-b.jsonl,
+  headless-presentation.jsonl, hello-2-curious-true.png, demo-0-day-characters.png,
+  demo-1-night-characters.png, demo-2-cg-overlay.png, hello-resize-narrow.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### P2-08 performance baseline + R15 ADR — agent run, maintainer decision (delegated)
+
+Covers the "P2-08: measure release cold-start-to-menu, input-to-feedback p95, idle memory and
+starter Story check time" bullet and the "Confirm or revise PRD R15 budgets by ADR" bullet. The
+ADR was explicitly accepted by the maintainer with the p95 gap left open rather than fabricated.
+
+```yaml
+check: P2-08 measure + R15 ADR confirmation (delegated, decision by Andres-Holivin)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+windows_build: 11 Pro 10.0.26300
+cpu: Intel Core i7-13620H
+gpu: NVIDIA GeForce RTX 4050 Laptop GPU (driver 610.62, Vulkan)
+fixture: exported hello-story (release), PowerShell launch/sampling harness
+steps: >-
+  Launch the exported player and sample the process; median/max across runs; run
+  `weftora check` on the starter Story repeatedly; then review measurements in
+  ADR 0006 and decide.
+expected: R15: cold start <= 5 s, input p95 <= 100 ms, idle <= 750 MiB, check <= 2 s; ADR confirms or revises
+actual: >-
+  Cold start: window-ready median 0.51 s, max 0.59 s warm, 1.86 s first-ever cold
+  launch (<= 5 s, confirmed). Idle: 371 MiB working set, ~625 MiB private bytes
+  (<= 750 MiB, confirmed). check: median 11 ms, max 17 ms (<= 2 s, confirmed).
+  Input-to-feedback p95: NOT measured — PrintWindow capture cost exceeds the
+  latency under test; recorded as an open gap in ADR 0006 instead of a number.
+  Maintainer decision: ADR 0006 accepted as proposed, p95-left-open framing
+  included (issue #5 interview, 2026-10-15).
+result: PASS (three budgets confirmed by measurement; p95 gap documented in accepted ADR 0006)
+logs_or_artifacts: >-
+  docs/adr/0006-performance-baseline.md,
+  docs/evidence/artifacts/phase-2-windows-agent/perf-release.txt, perf-debug.txt
+tested_by: agent on maintainer's machine (delegated); ADR decision by Andres-Holivin
+tested_at: 2026-10-15
 ```
 
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.

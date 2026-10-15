@@ -1,0 +1,25 @@
+# Release build perf measurement, commit c9f2aa0, Windows 11 Pro 26300, i7-13620H, RTX 4050
+# startup_ms = process launch -> primary window titled 'Hello Story' appears (window-ready).
+# idle_* = process WorkingSet64 / PrivateMemorySize64 after 5 s settle. 7 runs, single machine, agent harness.
+# Note: a preceding first-ever cold launch (empty file cache / AV scan) measured ~1861 ms window-ready; the 7 runs below are warm-cache launches of the same binary.
+
+
+
+Run WindowReady StartupMs IdleWorkingSetMiB IdlePrivateMiB Responding
+--- ----------- --------- ----------------- -------------- ----------
+  1        True       589             371.6          624.9       True
+  2        True       512             371.6          629.1       True
+  3        True       496             371.8          623.7       True
+  4        True       513               371          627.4       True
+  5        True       486             371.5          626.1       True
+  6        True       517             371.6          625.6       True
+  7        True       484             371.3          624.5       True
+
+
+startup_ms: min=484 median=512 max=589 (n=7, all window-ready=True)
+idle_workingset_mib: avg=371.5 min=371 max=371.8
+
+
+=== weftora check (starter hello-story), release, 7 runs ===
+check_ms: 17, 10, 11, 11, 10, 11, 11
+min=10 median=11 max=17 (budget <=2000 ms)
