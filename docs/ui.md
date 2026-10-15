@@ -8,7 +8,7 @@ status: proposed
 
 Manifest schema 1 may list `screens` (relative JSONC paths) and an `initialScreen` ID, with the required `ui.screens/1` capability. Each file contains `{"screenSchema":1,"root":{...}}`. The root's ID identifies the screen. Unknown versions and fields fail validation. Without screens, the player uses its original dialogue panel.
 
-Screens frame dialogue that starts at launch; they are not title menus. A screen contains exactly one `choiceList`; an overlay contains none. `screen` and `overlay` are root-only. `screen`, `panel`, `list` and `overlay` hold `children`. `text` displays a label, `image` displays a typed image catalog ID, `button` activates one action, and `choiceList` draws the currently offered Yarn choices. See the complete [dialogue screen](../examples/hello-story/ui/dialogue.jsonc) and [overlay](../examples/hello-story/ui/details.jsonc).
+Screens frame dialogue that starts at launch. A title menu can be a Yarn choice node on the initial screen, as Story A demonstrates. A screen contains exactly one `choiceList`; an overlay contains none. `screen` and `overlay` are root-only. `screen`, `panel`, `list` and `overlay` hold `children`. `text` displays a label, `image` displays a typed image catalog ID, `button` activates one action, and `choiceList` draws the currently offered Yarn choices. See the complete [dialogue screen](../examples/hello-story/ui/dialogue.jsonc) and [overlay](../examples/hello-story/ui/details.jsonc).
 
 Roots, buttons and choice lists require IDs, unique within each file. IDs use lowercase letters, digits, `_`, `.` and `-`, start with a letter or digit, and have at most 64 bytes.
 
@@ -40,6 +40,14 @@ Buttons require one `action`:
 | `screen.close` | Only valid inside an overlay; closes the top overlay and restores prior focus |
 
 Yarn numbers map to floats: an action updating a Yarn numeric default supplies `2.0`, not `2`. Actions apply in input order, with at most one dialogue progression per frame. No state lock is held while calling Yarn. Setting state while choices are visible does not re-evaluate that already offered choice set. Opening an already open overlay has no effect; at most four overlays may be open.
+
+## Checkpoint save actions
+
+A save-enabled Story may use button actions {"do":"save"} and {"do":"load"}. They require positive manifest saveSchema and save/1. F5 saves and F9 loads through the same operations. Saving is allowed at the first display after a checkpoint, on the initial base screen with all overlays closed, after view/audio fades finish. Playing music or a one-shot does not itself block saving.
+
+Save/load requests run after the frame's other inputs and presentation commands. Progression or presentation commands in that frame refuse the request; combined F5/F9 and keyboard progression does not advance the restored display. Load restores the initial base and resets choice focus. Current Settings remain; Session resets. Save validates all screens' bindings and current volumes before replacing the slot, including unopened overlays, so it can refuse data that would not load. File/compatibility errors are nonfatal and appear in an adapter-owned status line above Story UI.
+
+The status may include an absolute user-data path when reporting an IO error. Save/load performs bounded synchronous file operations; flush and replacement can briefly pause a frame. Load may be requested with an overlay open and returns to the initial base. A Save button inside a pause overlay will refuse until the overlay closes. Loading after a terminal Story error is unavailable. Checkpoint openings must reconstruct the full scene and intended audio; playback positions and UI overlays are not stored. See [ADR 0006](./adr/0006-safe-checkpoint-saves.md).
 
 ## Input and failures
 

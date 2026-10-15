@@ -5963,10 +5963,14 @@ dependencies = [
  "bevy",
  "image",
  "rodio",
+ "serde_json",
+ "tempfile",
  "weftora-api",
  "weftora-core",
+ "weftora-save",
  "weftora-story",
  "weftora-yarn",
+ "weftora-yarn-compiler",
 ]
 
 [[package]]

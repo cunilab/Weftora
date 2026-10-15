@@ -1,0 +1,511 @@
+##[group]Run cargo test --workspace --locked
+^[[36;1mcargo test --workspace --locked^[[0m
+shell: C:\Program Files\PowerShell\7\pwsh.EXE -command ". '{0}'"
+env:
+  CARGO_TERM_COLOR: always
+  CACHE_ON_FAILURE: false
+  CARGO_INCREMENTAL: 0
+##[endgroup]
+^[[1m^[[92m   Compiling^[[0m serde_json v1.0.154
+^[[1m^[[92m   Compiling^[[0m weftora-api v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-api)
+^[[1m^[[92m   Compiling^[[0m yarnspinner_runtime v0.9.0 (D:\a\Weftora\Weftora\vendor\yarnspinner_runtime)
+^[[1m^[[92m   Compiling^[[0m weftora-core v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-core)
+^[[1m^[[92m   Compiling^[[0m weftora-story v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-story)
+^[[1m^[[92m   Compiling^[[0m weftora-save v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-save)
+^[[1m^[[92m   Compiling^[[0m weftora-yarn v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-yarn)
+^[[1m^[[92m   Compiling^[[0m weftora-yarn-compiler v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-yarn-compiler)
+^[[1m^[[92m   Compiling^[[0m weftora-render-bevy v0.0.1 (D:\a\Weftora\Weftora\crates\weftora-render-bevy)
+^[[1m^[[92m   Compiling^[[0m xtask v0.0.1 (D:\a\Weftora\Weftora\xtask)
+^[[1m^[[92m   Compiling^[[0m weftora-cli v0.0.1 (D:\a\Weftora\Weftora\apps\weftora-cli)
+^[[1m^[[92m   Compiling^[[0m weftora-player v0.0.1 (D:\a\Weftora\Weftora\apps\weftora-player)
+^[[1m^[[92m    Finished^[[0m `test` profile [unoptimized + debuginfo] target(s) in 43.42s
+^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_api-7aabbe3a1ab65d00.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\weftora-8d053e53d506c7fa.exe)
+
+running 4 tests
+test check_tests::check_reports_initial_state_integer_precision ... ok
+test check_tests::check_reports_initial_state_type_mismatch ... ok
+test headless::tests::actual_story_service_rolls_back_partial_startup_and_releases_state ... ok
+test tests::incomplete_export_fails_reference_verification ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+^[[1m^[[92m     Running^[[0m tests\cli.rs (target\debug\deps\cli-422f74d129a1ff83.exe)
+
+running 31 tests
+test check_fails_on_missing_story ... ok
+test check_fails_on_broken_story ... ok
+test check_and_headless_run_reject_the_same_invalid_package ... ok
+test check_rejects_case_mismatched_dialogue_on_case_insensitive_filesystems ... ok
+test check_and_run_reject_invalid_yarn_defaults_before_startup ... ok
+test check_ok_on_hello_story ... ok
+test checkpoint_nodes_refuse_session_reads_but_allow_deterministic_session_writes ... ok
+test export_rejects_overlapping_directories_without_writes ... ok
+test export_skips_unreferenced_hidden_content_and_keeps_references ... ok
+test export_copies_player_and_story ... ok
+test checkpoint_save_load_replays_prefix_once_and_continues_both_branches ... ok
+test headless_choices_are_required_valid_and_exhausted ... ok
+test headless_save_options_reject_duplicates_and_story_internal_directories ... ok
+test hidden_dialogue_is_rejected_by_check_and_export ... ok
+test headless_change_history_is_bounded_across_blocking_lines ... ok
+test invalid_user_volume_scope_type_range_and_ui_literals_fail_before_activation ... ok
+test missing_manifest_diagnostic_names_story_root ... ok
+test oversized_initial_string_is_rejected_before_activation ... ok
+test real_startup_failure_emits_no_gameplay_trace ... ok
+test media_parser_check_and_headless_share_author_diagnostics ... ok
+test run_without_player_reports_clear_error ... ok
+test media_demo_replays_identically_and_exported_artifact_validates ... ok
+test rejected_load_preserves_slot_and_publishes_no_gameplay_trace ... ok
+test startup_preserves_multiline_diagnostics_byte_for_byte ... ok
+test headless_golden_traces_match_in_ten_fresh_runs_per_branch ... ok
+test typed_command_mismatch_preserves_yarn_context_and_never_activates ... ok
+test version_prints_hash ... ok
+test screen_state_validation_uses_yarn_defaults_and_blocks_activation ... ok
+test scoped_replay_defaults_notifications_and_signals_match_ten_fresh_runs ... ok
+test yarn_created_volume_settings_are_rejected_without_screens_and_live_values_fail_headless ... ok
+test yarn_syntax_missing_node_and_unknown_command_have_matching_file_node_errors ... ok
+
+test result: ok. 31 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.70s
+
+^[[1m^[[92m     Running^[[0m tests\story_a.rs (target\debug\deps\story_a-61399d06d7ddcf02.exe)
+
+running 2 tests
+test both_story_a_branches_finish_with_distinct_routes_and_one_attempt ... ok
+test real_story_branch_checkpoints_replay_the_opening_once_and_resave_identically ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.23s
+
+^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_core-748fe305f502d52c.exe)
+
+running 13 tests
+test presentation::tests::audio_replaces_loops_fades_stop_and_caps_effects ... ok
+test presentation::tests::parser_checks_every_command_and_boundary ... ok
+test presentation::tests::settled_save_gate_tracks_fades_moves_and_stops_but_not_playback ... ok
+test presentation::tests::canonical_volume_is_scoped_bounded_and_multiplied ... ok
+test presentation::tests::tween_samples_and_retargets_from_current_value ... ok
+test presentation::tests::views_crossfade_retarget_move_hide_and_bound_outgoing ... ok
+test state::tests::add_numbers ... ok
+test state::tests::double_underscore_is_reserved ... ok
+test state::tests::key_validation ... ok
+test state::tests::save_snapshot_preserves_removal_and_additive_defaults ... ok
+test state::tests::rejected_snapshot_leaves_values_declarations_and_notifications_unchanged ... ok
+test state::tests::set_get_remove_exists ... ok
+test state::tests::with_values_validates ... ok
+
+test result: ok. 13 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m     Running^[[0m tests\kernel.rs (target\debug\deps\kernel-7d566d142490dd5d.exe)
+
+running 7 tests
+test lifecycle_order_failure_cleanup_and_no_restart ... ok
+test catalogs_report_duplicate_and_missing_ids_without_overwrite ... ok
+test async_command_completes_after_yielding_and_cancellation_does_not_poll ... ok
+test commands_validate_arguments_results_failure_and_cancellation ... ok
+test signals_are_fifo_unsubscribable_and_bounded ... ok
+test state_types_defaults_scopes_and_notifications ... ok
+test state_numeric_properties_and_atomic_rejections ... ok
+
+test result: ok. 7 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\weftora_player-e0a31da2adeb85b6.exe)
+
+running 3 tests
+test tests::player_rejects_unknown_format_stale_sources_and_missing_node_before_window ... ok
+test tests::packaged_and_explicit_preview_artifacts_load_without_a_compiler ... ok
+test tests::oversized_artifact_file_is_rejected_by_the_player ... ok
+
+test result: ok. 3 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.02s
+
+^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_render_bevy-682c32afb2563bdb.exe)
+
+running 42 tests
+test declarative::tests::engine_default_font_passes_validation ... ok
+test declarative::tests::invalid_font_fails_before_bevy_registration ... ok
+test declarative::tests::modal_rejects_global_and_lower_layer_input ... ok
+test declarative::tests::binding_patch_keeps_focused_entity_and_change_notifications ... ok
+test declarative::tests::queue_is_bounded_and_preserves_order ... ok
+test declarative::tests::closing_overlay_restores_saved_focus_key ... ok
+test declarative::tests::new_choices_reset_keyboard_focus_to_first_choice ... ok
+test declarative::tests::space_after_choices_appear_does_not_select_without_keyboard_navigation ... ok
+test declarative::tests::tab_from_empty_focus_enters_overlay_and_stays_there ... ok
+test declarative::tests::widget_systems_build_demo_and_patch_text_without_rebuilding ... ok
+test declarative::tests::choice_updates_canonical_state_bound_label_and_later_yarn_condition ... ok
+test media::tests::effect_burst_has_at_most_eight_entities_and_one_shared_source ... ok
+test media::tests::adapter_samples_fades_and_applies_canonical_volume_before_a_sink_exists ... ok
+test media::tests::crossfade_completion_despawns_outgoing_entity_and_releases_cache ... ok
+test media::tests::native_size_center_position_scale_and_alpha_are_drawn ... ok
+test presenter::tests::advance_moves_to_next_line_then_end ... ok
+test presenter::tests::bad_commands_become_error_screens ... ok
+test presenter::tests::choices_hide_unavailable_and_select_maps_to_runner_index ... ok
+test presenter::tests::choose_failure_and_renderer_failure_show_errors ... ok
+test presenter::tests::commands_run_before_first_line_and_line_waits ... ok
+test presenter::tests::identical_consecutive_choice_offers_have_distinct_revisions ... ok
+test presenter::tests::no_available_choices_is_an_error ... ok
+test presenter::tests::runner_errors_become_error_screens ... ok
+test media::tests::invalid_live_volume_fails_once_and_keeps_the_original_error ... ok
+test media::tests::music_uses_streamed_loop_source_and_rewinds_without_pcm_buffering ... ok
+test media::tests::many_decodes_in_one_frame_fail_with_controlled_budget_error ... ok
+test saves::tests::f5_f9_with_space_do_not_advance_and_load_forces_panel_refresh ... ok
+test saves::tests::failed_load_is_nonfatal_and_preserves_live_state_view_audio_and_slot ... ok
+test saves::tests::player_load_keeps_settings_resets_session_and_rebuilds_audio_with_new_tokens ... ok
+test saves::tests::save_refuses_transition_overlay_changed_state_and_same_frame_progress ... ok
+test saves::tests::save_refuses_unloadable_hidden_binding_without_replacing_good_slot ... ok
+test tests::duplicate_progress_intents_advance_only_one_line ... ok
+test tests::focused_enter_and_button_action_do_not_advance_dialogue ... ok
+test saves::tests::ui_save_actions_require_manifest_save_support ... ok
+test tests::invalid_images_return_asset_specific_error ... ok
+test tests::oversized_image_is_rejected_from_header_before_decode ... ok
+test tests::invalid_audio_returns_asset_specific_error ... ok
+test tests::valid_png_decodes ... ok
+test tests::runtime_failure_survives_escape_and_keeps_the_first_error ... ok
+test tests::valid_wav_passes_audio_validation ... ok
+test tests::initial_presentation_error_discards_pending_media ... ok
+test saves::tests::story_a_every_checkpoint_reconstructs_the_same_settled_view_audio_and_state ... ok
+
+test result: ok. 42 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.55s
+
+^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_save-42d201179953facf.exe)
+
+running 2 tests
+test storage::tests::writer_guard_unlocks_while_a_duplicate_handle_is_still_open ... ok
+test directory::tests::selected_directory_never_writes_inside_the_story_or_accepts_unsafe_ids ... ok
+
+test result: ok. 2 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m     Running^[[0m tests\save.rs (target\debug\deps\save-f9d02d994d860a93.exe)
+
+running 11 tests
+test duplicate_and_unknown_fields_are_rejected_even_with_a_valid_checksum ... ok
+test diagnostic_versions_do_not_reject_compatible_story_patches ... ok
+test deterministic_roundtrip_preserves_removal_resets_session_and_keeps_settings ... ok
+test invalid_saved_keys_types_scopes_and_removed_declarations_refuse_candidate_activation ... ok
+test malformed_truncated_unknown_format_and_checksum_corruption_are_rejected ... ok
+test missing_slot_has_a_distinct_error_and_does_not_create_files ... ok
+test identity_schema_and_checkpoint_failures_leave_the_existing_file_and_live_state_untouched ... ok
+test backup_failure_and_concurrent_writer_refusal_preserve_the_current_slot ... ok
+test finite_float_bits_and_serialized_bytes_round_trip_exactly ... ok
+test replacing_the_slot_retains_exact_previous_bytes_and_loading_never_falls_back ... ok
+test oversized_reads_and_writes_and_invalid_values_fail_before_replacing_the_slot ... ok
+
+test result: ok. 11 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.49s
+
+^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_story-c3a0330529fb614e.exe)
+
+running 17 tests
+test jsonc::tests::plain_json_is_unchanged ... ok
+test jsonc::tests::errors_keep_original_line_numbers ... ok
+test jsonc::tests::keeps_comment_markers_and_commas_inside_strings ... ok
+test compatibility::tests::adr_phase_one_version_matrix ... ok
+test jsonc::tests::strips_line_and_block_comments ... ok
+test jsonc::tests::unterminated_block_comment_is_an_error ... ok
+test jsonc::tests::strips_trailing_commas ... ok
+test paths::tests::case_collision_policy_covers_ascii_and_unicode_on_every_host ... ok
+test paths::tests::windows_names_are_rejected_on_every_host ... ok
+test paths::tests::inventory_limits_fail_before_loading ... ok
+test tests::json_error_has_line ... ok
+test tests::collects_all_diagnostics ... ok
+test tests::loads_good_story ... ok
+test tests::rejects_bad_paths ... ok
+test tests::rejects_dot_segments_with_traversal_diagnostic ... ok
+test tests::rejects_case_mismatched_references_on_case_insensitive_filesystems ... ok
+test tests::rejects_hidden_references ... ok
+
+test result: ok. 17 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+^[[1m^[[92m     Running^[[0m tests\assets.rs (target\debug\deps\assets-50e525b99411598d.exe)
+
+running 6 tests
+test legacy_schema_zero_still_works_and_typed_catalogs_need_schema_one ... ok
+test typed_assets_require_the_capability_and_unknown_categories_are_rejected ... ok
+test media_read_is_bounded_even_after_inventory ... ok
+test typed_assets_resolve_and_legacy_stays_untyped ... ok
+test duplicates_across_kinds_and_legacy_report_both_sources ... ok
+test typed_paths_and_entry_schema_reject_bad_rows_without_partial_load ... ok
+
+test result: ok. 6 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.06s
+
+^[[1m^[[92m     Running^[[0m tests\phase_one.rs (target\debug\deps\phase_one-464cb90a47067a4d.exe)
+
+running 10 tests
+test declaration_errors_do_not_hide_override_type_mismatches ... ok
+test unsupported_schema_wins_over_future_fields_and_missing_legacy_fields ... ok
+test oversized_file_is_rejected_without_reading_it ... ok
+test catalog_duplicate_missing_ids_and_duplicate_json_keys_report_source ... ok
+test duplicate_sources_and_noncanonical_separators_are_rejected ... ok
+test v1_defaults_scopes_and_rejected_compatibility ... ok
+test windows_symlink_escape_is_rejected_before_activation ... ok
+test whole_loader_enforces_the_real_total_size_boundary ... ok
+test windows_junction_escape_and_case_alias_are_rejected_before_activation ... ok
+test whole_loader_enforces_the_real_file_count_boundary ... ok
+
+test result: ok. 10 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 1.45s
+
+^[[1m^[[92m     Running^[[0m tests\ui.rs (target\debug\deps\ui-76025fb8d80eb2bd.exe)
+
+running 8 tests
+test finite_lengths_include_direct_api_values ... ok
+test action_type_and_missing_key_report_author_pointer ... ok
+test stories_without_screens_keep_legacy_compatibility ... ok
+test typed_image_required_even_if_legacy_id_exists ... ok
+test capability_initial_screen_and_path_are_checked ... ok
+test bounds_and_root_contracts_are_enforced ... ok
+test valid_screen_loads_and_state_validation_is_separate ... ok
+test malformed_widgets_and_cross_references_are_rejected ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.09s
+
+^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_yarn-9cd9de0bd58488f3.exe)
+
+running 15 tests
+test artifact::tests::future_format_takes_priority_over_missing_current_fields ... ok
+test artifact::tests::checkpoint_random_policy_requires_review_when_standard_functions_change ... ok
+test artifact::tests::supported_artifact_round_trips_without_byte_changes ... ok
+test artifact::tests::raw_body_checksum_is_independent_of_wrapper_key_order ... ok
+test artifact::tests::unknown_wrapper_fields_compiler_and_body_corruption_are_rejected ... ok
+test resource_tests::adversarial_child ... ok
+test artifact::tests::malformed_bytecode_is_rejected_even_with_a_recomputed_checksum ... ok
+test artifact::tests::file_limit_and_source_identity_are_enforced ... ok
+test storage::tests::integer_conversion_checks_extremes_and_exact_boundaries ... ok
+test storage::tests::string_write_bytes_are_checked_before_mutating_state ... ok
+test storage::tests::invalid_defaults_do_not_skip_valid_defaults ... ok
+test tests::zero_budget_executes_no_instruction ... ok
+test tests::configurable_budget_resets_between_continue_calls ... ok
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.33s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.04s
+
+test resource_tests::supported_resource_boundaries_remain_playable ... ok
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.02s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.03s
+
+
+running 1 test
+
+thread 'resource_tests::adversarial_child' (5328) panicked at C:\Users\runneradmin\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\yarnspinner_core-0.9.0\src\library.rs:81:65:
+Failed to convert a Yarn value to a number: ParseFloatError(ParseFloatError { kind: Invalid })
+note: run with `RUST_BACKTRACE=1` environment variable to display a backtrace
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.05s
+
+
+running 1 test
+test resource_tests::adversarial_child ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 14 filtered out; finished in 0.00s
+
+test resource_tests::adversarial_cases_fail_in_bounded_child_processes ... ok
+
+test result: ok. 15 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.74s
+
+^[[1m^[[92m     Running^[[0m unittests src\lib.rs (target\debug\deps\weftora_yarn_compiler-2a4f257a7d72c1ef.exe)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m     Running^[[0m tests\artifact.rs (target\debug\deps\artifact-5128f1957974cc20.exe)
+
+running 4 tests
+test compiler_identity_matches_the_locked_dependency ... ok
+test compiler_panic_does_not_blame_the_first_healthy_file ... ok
+
+running 1 test
+test runtime_failure_keeps_the_jumped_node_file_after_artifact_reload ... ok
+
+test result: ok. 1 passed; 0 failed; 0 ignored; 0 measured; 3 filtered out; finished in 0.01s
+
+test runtime_failure_keeps_the_jumped_node_file_after_artifact_reload ... ok
+test fresh_compilations_and_loaded_artifacts_produce_identical_bytes_and_events ... ok
+
+test result: ok. 4 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.03s
+
+^[[1m^[[92m     Running^[[0m tests\checkpoints.rs (target\debug\deps\checkpoints-012c670df17bd608.exe)
+
+running 8 tests
+test first_blocking_event_in_another_node_cannot_arm_the_point ... ok
+test choices_arm_and_selection_disarms_a_checkpoint ... ok
+test capture_is_before_the_prefix_and_progress_or_persistent_change_disarms_it ... ok
+test frozen_snapshot_restore_replays_prefix_once_and_resaves_identically ... ok
+test prefix_command_cannot_be_saved_before_its_blocking_display ... ok
+test invalid_continue_while_choices_wait_preserves_save_point ... ok
+test visit_counters_are_frozen_and_restored_before_checkpoint_prefix ... ok
+test malformed_duplicate_nonentry_and_random_checkpoints_are_rejected ... ok
+
+test result: ok. 8 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.01s
+
+^[[1m^[[92m     Running^[[0m tests\hello_story.rs (target\debug\deps\hello_story-cd125b6a1b7c8d81.exe)
+
+running 25 tests
+test canonical_state_rejects_runtime_type_change_without_breaking_dialogue ... ok
+test compiler_panic_becomes_diagnostic ... ok
+test command_jump_loop_fails_after_one_thousand_commands ... ok
+test compiles_hello_story ... ok
+test declared_default_does_not_overwrite_existing_state ... ok
+test initial_state_types_are_checked_before_start ... ok
+test integer_precision_boundaries_never_panic ... ok
+test invalid_choice_is_rejected ... ok
+test invalid_default_is_rejected_before_any_canonical_defaults_are_written ... ok
+test large_initial_int_is_rejected_before_start ... ok
+test namespaced_and_typed_variables ... ok
+test no_branch_leaves_curious_false ... ok
+test non_integral_number_to_int_key_errors ... ok
+test removed_declaration_mismatch_rejects_all_defaults_before_initialization ... ok
+test removed_integer_declaration_keeps_its_type_during_yarn_default_fill ... ok
+test runtime_panic_is_caught_and_runner_cannot_be_restarted ... ok
+test rust_written_state_is_seen_by_yarn ... ok
+test self_jump_exhausts_event_budget_and_fails_runner ... ok
+test start_missing_node ... ok
+test state_precision_check_only_checks_declared_numbers ... ok
+test syntax_error_has_file_and_line ... ok
+test yes_branch_sets_curious_true ... ok
+test a_blocking_event_is_allowed_after_exactly_one_thousand_commands ... ok
+test blocking_lines_and_choices_reset_progress_budgets ... ok
+test instruction_budget_is_cumulative_across_commands ... ok
+
+test result: ok. 25 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 15.17s
+
+^[[1m^[[92m     Running^[[0m unittests src\main.rs (target\debug\deps\xtask-5de87a260c619463.exe)
+
+running 32 tests
+test deps::tests::clean_graph ... ok
+test deps::tests::compiler_is_forbidden_in_player_even_transitively ... ok
+test deps::tests::example_dependency ... ok
+test deps::tests::dev_dependencies_ignored_but_mixed_edges_checked ... ok
+test deps::tests::optional_dependencies_are_resolved ... ok
+test deps::tests::save_storage_cannot_depend_on_yarn ... ok
+test deps::tests::transitive_bevy ... ok
+test docs::tests::all_reference_forms_resolve_case_insensitively ... ok
+test docs::tests::broken_anchor ... ok
+test docs::tests::broken_link ... ok
+test docs::tests::bad_header ... ok
+test docs::tests::deeply_indented_list_fences_ignored ... ok
+test docs::tests::duplicate_id ... ok
+test docs::tests::fences_ignored ... ok
+test docs::tests::footnotes_are_not_links_or_definitions ... ok
+test docs::tests::front_matter_is_not_a_heading ... ok
+test docs::tests::images_inside_links_are_checked_once ... ok
+test docs::tests::heading_link_labels_define_slugs ... ok
+test docs::tests::inline_code_links_ignored ... ok
+test docs::tests::labels_cannot_span_blank_lines ... ok
+test docs::tests::links_inside_link_text_are_checked_once ... ok
+test docs::tests::literal_brackets_do_not_hide_inner_links ... ok
+test docs::tests::multiline_inline_links_keep_line_numbers ... ok
+test docs::tests::query_strings_and_repo_root_links_resolve ... ok
+test docs::tests::link_paths_require_exact_case_for_every_component ... ok
+test docs::tests::references_in_code_and_escaped_brackets_are_ignored ... ok
+test docs::tests::reference_targets_are_checked ... ok
+test docs::tests::title_mismatch ... ok
+test docs::tests::unresolved_references_report_use_lines ... ok
+test docs::tests::undefined_shortcuts_are_literal_text ... ok
+test docs::tests::valid_header ... ok
+test docs::tests::valid_anchors_and_external_links ... ok
+
+test result: ok. 32 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m   Doc-tests^[[0m weftora_api
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m   Doc-tests^[[0m weftora_core
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m   Doc-tests^[[0m weftora_render_bevy
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m   Doc-tests^[[0m weftora_save
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m   Doc-tests^[[0m weftora_story
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m   Doc-tests^[[0m weftora_yarn
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
+^[[1m^[[92m   Doc-tests^[[0m weftora_yarn_compiler
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 0 filtered out; finished in 0.00s
+
