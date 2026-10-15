@@ -18,11 +18,13 @@ use yarnspinner_core::prelude::{Program, YarnValue};
 use yarnspinner_runtime::prelude::{Dialogue, OptionId, StringTableTextProvider};
 
 mod artifact;
+mod checkpoint;
 mod storage;
 mod validation;
 pub use artifact::{
     ARTIFACT_FILE, ARTIFACT_FORMAT, COMPILER_ID, COMPILER_VERSION, MAX_ARTIFACT_BYTES, input_hash,
 };
+pub use checkpoint::{SaveRefusal, context as save_context};
 pub use validation::{check_story, media_enabled, presentation_commands};
 
 use storage::StateStorage;
@@ -74,6 +76,15 @@ impl CompiledDialogue {
             .get(node)
             .map(String::as_str)
             .unwrap_or("<file unknown>")
+    }
+
+    /// Stable checkpoint IDs mapped to their validated node-entry commands.
+    pub fn checkpoints(&self) -> BTreeMap<String, String> {
+        self.sites
+            .iter()
+            .filter(|site| site.command.name == "checkpoint")
+            .map(|site| (site.command.args[0].clone(), site.node.clone()))
+            .collect()
     }
 
     /// Names of all nodes, sorted.
@@ -280,6 +291,8 @@ pub enum DialogueError {
 /// Runs compiled dialogue against canonical state, one presentation event at a time.
 pub struct DialogueRunner {
     dialogue: Dialogue,
+    storage: StateStorage,
+    capture: Option<checkpoint::Capture>,
     state: SharedState,
     program: Program,
     failure: Option<String>,
@@ -314,7 +327,7 @@ impl DialogueRunner {
         }));
         let storage = StateStorage::new(state.clone());
         let (writes, write_bytes) = storage.write_counters();
-        let mut yarn = Dialogue::new(Box::new(storage), Box::new(text));
+        let mut yarn = Dialogue::new(Box::new(storage.clone()), Box::new(text));
         let default_error = match state.read() {
             Ok(state) => check_defaults(&dialogue.program, &state)
                 .into_iter()
@@ -329,6 +342,8 @@ impl DialogueRunner {
         }));
         Self {
             dialogue: yarn,
+            storage,
+            capture: None,
             state,
             program: dialogue.program.clone(),
             failure: default_error.or_else(|| {
@@ -376,6 +391,7 @@ impl DialogueRunner {
         })?;
         self.queue.clear();
         self.pending_choices = None;
+        self.capture = None;
         self.current_node = node.to_string();
         self.reset_progress_budget();
         self.started = true;
@@ -385,6 +401,23 @@ impl DialogueRunner {
 
     /// Returns the next event. After [`DialogueEvent::End`] it keeps returning `End` until `start` is called.
     pub fn next_event(&mut self) -> Result<DialogueEvent, DialogueError> {
+        if self.pending_choices.is_none() {
+            self.disarm_after_progress();
+        }
+        loop {
+            let event = self.next_event_one()?;
+            if let DialogueEvent::Command(command) = &event
+                && command.name == "checkpoint"
+            {
+                self.capture_checkpoint(&command.args[0]);
+                continue;
+            }
+            self.arm_checkpoint(&event);
+            return Ok(event);
+        }
+    }
+
+    fn next_event_one(&mut self) -> Result<DialogueEvent, DialogueError> {
         self.ensure_healthy()?;
         if let Some(event) = self.queue.pop_front() {
             return self.return_event(event);
@@ -484,6 +517,7 @@ impl DialogueRunner {
         if !valid {
             return Err(DialogueError::InvalidChoice(index));
         }
+        self.capture = None;
         self.runtime_call(|dialogue| dialogue.set_selected_option(OptionId(index)).map(|_| ()))?;
         self.pending_choices = None;
         Ok(())
@@ -528,6 +562,7 @@ impl DialogueRunner {
     }
 
     fn fail<T>(&mut self, error: DialogueError) -> Result<T, DialogueError> {
+        self.capture = None;
         self.failure = Some(error.to_string());
         self.queue.clear();
         self.pending_choices = None;

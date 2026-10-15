@@ -13,11 +13,13 @@ use weftora_story::{AssetKind, Story};
 
 const VIEW_BUDGET: u64 = 128 * 1024 * 1024;
 const AUDIO_BUDGET: u64 = 64 * 1024 * 1024;
+#[derive(Clone)]
 struct CachedImage {
     handle: Handle<Image>,
     cost: u64,
     size: UVec2,
 }
+#[derive(Clone)]
 struct CachedAudio {
     handle: Handle<AudioSource>,
     looping: Option<Handle<LoopAudio>>,
@@ -36,7 +38,7 @@ impl Decodable for LoopAudio {
             .expect("immutable audio passed the same decoder constructor before caching")
     }
 }
-#[derive(Resource, Default)]
+#[derive(Resource, Default, Clone)]
 pub(crate) struct Presentation {
     pub now: Duration,
     pub views: Views,
@@ -51,7 +53,7 @@ pub(crate) struct Presentation {
 #[derive(Component)]
 pub(crate) struct ViewImage;
 #[derive(Component)]
-pub(crate) struct CueToken(u64);
+pub(crate) struct CueToken(pub(crate) u64);
 #[derive(SystemParam)]
 pub(crate) struct Media<'w> {
     images: ResMut<'w, Assets<Image>>,
@@ -70,81 +72,150 @@ impl Media<'_> {
         self.presentation.audio.tick(now);
     }
     pub fn apply(&mut self, request: &Request, story: &Story) -> Result<(), String> {
-        let now = self.presentation.now;
+        self.presentation
+            .apply(request, story, &mut self.images, &mut self.sounds)
+    }
+    pub fn settled(&self) -> bool {
+        self.presentation.views.settled(self.presentation.now)
+            && self.presentation.audio.settled(self.presentation.now)
+    }
+    pub fn restore(&mut self, actions: &[Request], story: &Story) -> Result<(), String> {
+        let mut candidate = self.presentation.clone();
+        candidate.views = Views::default();
+        candidate.audio.cues.clear();
+        candidate.image_decoded = 0;
+        candidate.audio_read = 0;
+        for action in actions {
+            if let Some(id) = action.image()
+                && let Some(cached) = self.presentation.images.get(id)
+            {
+                candidate
+                    .images
+                    .entry(id.into())
+                    .or_insert_with(|| cached.clone());
+            }
+            if let Some(id) = action.audio()
+                && let Some(cached) = self.presentation.sounds.get(id)
+            {
+                candidate
+                    .sounds
+                    .entry(id.into())
+                    .or_insert_with(|| cached.clone());
+            }
+            candidate.apply(action, story, &mut self.images, &mut self.sounds)?;
+        }
+        // Empty openings must also drop the prior model's cached scene.
+        let views: BTreeSet<_> = candidate
+            .views
+            .samples(candidate.now)
+            .into_iter()
+            .map(|cue| cue.asset)
+            .collect();
+        let sounds: BTreeSet<_> = candidate
+            .audio
+            .cues
+            .iter()
+            .map(|cue| cue.asset.clone())
+            .collect();
+        candidate.images.retain(|id, _| views.contains(id));
+        candidate.sounds.retain(|id, _| sounds.contains(id));
+        *self.presentation = candidate;
+        Ok(())
+    }
+}
+impl Presentation {
+    fn apply(
+        &mut self,
+        request: &Request,
+        story: &Story,
+        images: &mut Assets<Image>,
+        sounds: &mut Assets<AudioSource>,
+    ) -> Result<(), String> {
+        let now = self.now;
         info!(?request, "presentation request");
-        let mut views = self.presentation.views.clone();
+        let mut views = self.views.clone();
         views.apply(request, now);
         views.tick(now);
-        let mut audio = self.presentation.audio.clone();
+        let mut audio = self.audio.clone();
         audio.apply(request, now);
         audio.tick(now);
         let view_ids: BTreeSet<_> = views.samples(now).into_iter().map(|s| s.asset).collect();
         let audio_ids: BTreeSet<_> = audio.cues.iter().map(|s| s.asset.clone()).collect();
         if let Some(id) = request.image()
-            && !self.presentation.images.contains_key(id)
+            && !self.images.contains_key(id)
         {
             let (ext, bytes) = read_asset(story, id, AssetKind::Image)?;
             let cost = image_cost(id, &ext, &bytes)?;
             let resident: u64 = view_ids
                 .iter()
-                .filter_map(|id| self.presentation.images.get(id).map(|c| c.cost))
+                .filter_map(|id| self.images.get(id).map(|c| c.cost))
                 .sum();
-            if resident + cost > VIEW_BUDGET || self.presentation.image_decoded + cost > VIEW_BUDGET
-            {
+            if resident + cost > VIEW_BUDGET || self.image_decoded + cost > VIEW_BUDGET {
                 return Err(format!(
                     "asset `{id}` exceeds the 128 MiB resident/per-frame view budget"
                 ));
             }
             let image = decode_image(id, &ext, &bytes)?;
             let size = image.size();
-            self.presentation.image_decoded += cost;
-            self.presentation.images.insert(
+            self.image_decoded += cost;
+            self.images.insert(
                 id.into(),
                 CachedImage {
-                    handle: self.images.add(image),
+                    handle: images.add(image),
                     cost,
                     size,
                 },
             );
         }
         if let Some(id) = request.audio()
-            && !self.presentation.sounds.contains_key(id)
+            && !self.sounds.contains_key(id)
         {
             let (_, bytes) = read_asset(story, id, AssetKind::Audio)?;
             let cost = bytes.len() as u64;
             let resident: u64 = audio_ids
                 .iter()
-                .filter_map(|id| self.presentation.sounds.get(id).map(|c| c.cost))
+                .filter_map(|id| self.sounds.get(id).map(|c| c.cost))
                 .sum();
-            if resident + cost > AUDIO_BUDGET || self.presentation.audio_read + cost > AUDIO_BUDGET
-            {
+            if resident + cost > AUDIO_BUDGET || self.audio_read + cost > AUDIO_BUDGET {
                 return Err(format!(
                     "asset `{id}` exceeds the 64 MiB resident/per-frame audio budget"
                 ));
             }
             let bytes = Arc::from(bytes);
             validate_audio(id, &bytes)?;
-            self.presentation.audio_read += cost;
-            self.presentation.sounds.insert(
+            self.audio_read += cost;
+            self.sounds.insert(
                 id.into(),
                 CachedAudio {
-                    handle: self.sounds.add(AudioSource { bytes }),
+                    handle: sounds.add(AudioSource { bytes }),
                     looping: None,
                     cost,
                 },
             );
         }
-        self.presentation.views = views;
-        self.presentation.audio = audio;
-        self.presentation
-            .images
-            .retain(|id, _| view_ids.contains(id));
-        self.presentation
-            .sounds
-            .retain(|id, _| audio_ids.contains(id));
+        if view_ids
+            .iter()
+            .filter_map(|id| self.images.get(id))
+            .map(|cached| cached.cost)
+            .sum::<u64>()
+            > VIEW_BUDGET
+            || audio_ids
+                .iter()
+                .filter_map(|id| self.sounds.get(id))
+                .map(|cached| cached.cost)
+                .sum::<u64>()
+                > AUDIO_BUDGET
+        {
+            return Err("presentation resident view/audio budget exceeded".into());
+        }
+        self.views = views;
+        self.audio = audio;
+        self.images.retain(|id, _| view_ids.contains(id));
+        self.sounds.retain(|id, _| audio_ids.contains(id));
         Ok(())
     }
 }
+
 fn view_node(sample: &weftora_core::presentation::ViewSample, size: UVec2, viewport: Vec2) -> Node {
     let reference = (viewport.x / 1280.0).min(viewport.y / 720.0);
     let image_size = if sample.slot.fill() {

@@ -163,20 +163,22 @@ mod tests {
     fn fixture() -> Value {
         serde_json::from_str(r#"{
             "workspace_root":"/repo",
-            "workspace_members":["api","core","story","player"],
+            "workspace_members":["api","core","story","player","save"],
             "packages":[
                 {"id":"api","name":"weftora-api","manifest_path":"/repo/crates/api/Cargo.toml"},
                 {"id":"core","name":"weftora-core","manifest_path":"/repo/crates/core/Cargo.toml"},
                 {"id":"story","name":"weftora-story","manifest_path":"/repo/crates/story/Cargo.toml"},
                 {"id":"helper","name":"helper","manifest_path":"/registry/helper/Cargo.toml"},
-                {"id":"player","name":"weftora-player","manifest_path":"/repo/apps/player/Cargo.toml"}
+                {"id":"player","name":"weftora-player","manifest_path":"/repo/apps/player/Cargo.toml"},
+                {"id":"save","name":"weftora-save","manifest_path":"/repo/crates/save/Cargo.toml"}
             ],
             "resolve":{"nodes":[
                 {"id":"api","deps":[]},
                 {"id":"core","deps":[{"pkg":"helper","dep_kinds":[{"kind":null}]}]},
                 {"id":"story","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]},
                 {"id":"helper","deps":[]},
-                {"id":"player","deps":[]}
+                {"id":"player","deps":[]},
+                {"id":"save","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]}
             ]}
         }"#).unwrap()
     }
@@ -219,6 +221,20 @@ mod tests {
         graph["resolve"]["nodes"][1]["deps"][0]["dep_kinds"] =
             serde_json::json!([{"kind":"dev"},{"kind":"build"}]);
         assert_eq!(check_graph(&graph).unwrap().len(), 1);
+    }
+    #[test]
+    fn save_storage_cannot_depend_on_yarn() {
+        let mut graph = fixture();
+        graph["packages"][3]["name"] = "yarnspinner_runtime".into();
+        graph["resolve"]["nodes"][5]["deps"] = serde_json::json!([
+            {"pkg":"helper","dep_kinds":[{"kind":null}]}
+        ]);
+        assert!(
+            check_graph(&graph)
+                .unwrap()
+                .iter()
+                .any(|p| p.contains("weftora-save") && p.contains("yarnspinner_runtime"))
+        );
     }
     #[test]
     fn compiler_is_forbidden_in_player_even_transitively() {

@@ -41,6 +41,12 @@ impl Value {
 /// Errors from reading or writing game state.
 #[derive(Debug, Clone, PartialEq, thiserror::Error)]
 pub enum StateError {
+    #[error("state key `{key}` has scope {actual}, expected {expected}")]
+    ScopeMismatch {
+        key: String,
+        expected: &'static str,
+        actual: &'static str,
+    },
     #[error("state key `{0}` does not exist")]
     MissingKey(String),
     #[error("state key `{key}`: expected {expected}, got {actual}")]

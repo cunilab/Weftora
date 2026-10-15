@@ -10,6 +10,7 @@ publish.workspace = true
 [dependencies]
 weftora-api.workspace = true
 weftora-core.workspace = true
+weftora-save.workspace = true
 weftora-story.workspace = true
 yarnspinner_core.workspace = true
 yarnspinner_runtime.workspace = true

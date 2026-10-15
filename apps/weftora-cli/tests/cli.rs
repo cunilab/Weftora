@@ -1014,3 +1014,159 @@ fn headless_change_history_is_bounded_across_blocking_lines() {
     assert!(!stderr(&result).contains("panicked at"));
     assert!(String::from_utf8(result.stdout).unwrap().lines().count() < 600);
 }
+
+fn checkpoint_story(root: &Path) {
+    fs::create_dir_all(root).unwrap();
+    fs::write(
+        root.join("manifest.jsonc"),
+        r#"{
+        "manifestSchema":1,"id":"test.checkpoint","storyVersion":"0.1.0",
+        "saveSchema":1,"title":"Checkpoint","entrypoint":"Start","dialogue":["main.yarn"],
+        "requires":{"engineApi":">=0.1.0 <0.2.0","capabilities":["dialogue.yarn/1","save/1"]}
+    }"#,
+    )
+    .unwrap();
+    fs::write(root.join("main.yarn"), "title: Start\n---\n<<declare $n = 0>>\n<<checkpoint scene.start>>\n<<set $n = $n + 1>>\nFirst {$n}\n-> Left\n    <<set $n = $n + 10>>\n-> Right\n    <<set $n = $n + 20>>\nFinal {$n}\n===\n").unwrap();
+}
+
+fn checkpoint_run(story: &Path, saves: &Path, flags: &[&str]) -> Output {
+    weftora()
+        .arg("run")
+        .arg(story)
+        .arg("--headless")
+        .args(flags)
+        .arg("--save-dir")
+        .arg(saves)
+        .output()
+        .unwrap()
+}
+
+#[test]
+fn checkpoint_save_load_replays_prefix_once_and_continues_both_branches() {
+    let temp = tempfile::tempdir().unwrap();
+    let story = temp.path().join("story");
+    let saves = temp.path().join("data");
+    checkpoint_story(&story);
+    let saved = checkpoint_run(&story, &saves, &["--save-at", "scene.start"]);
+    assert!(saved.status.success(), "{}", stderr(&saved));
+    let saved_events: Vec<serde_json::Value> = String::from_utf8(saved.stdout)
+        .unwrap()
+        .lines()
+        .map(|line| serde_json::from_str(line).unwrap())
+        .collect();
+    assert_eq!(saved_events[0]["text"], "First 1");
+    assert_eq!(saved_events.last().unwrap()["event"], "saved");
+    let bytes = fs::read(saves.join("save.json")).unwrap();
+    let resaved = checkpoint_run(&story, &saves, &["--load", "--save-at", "scene.start"]);
+    assert!(resaved.status.success(), "{}", stderr(&resaved));
+    assert_eq!(fs::read(saves.join("save.json")).unwrap(), bytes);
+    assert_eq!(fs::read(saves.join("save.bak")).unwrap(), bytes);
+    for choice in ["0", "1"] {
+        let normal = weftora()
+            .arg("run")
+            .arg(&story)
+            .args(["--headless", "--choices", choice])
+            .output()
+            .unwrap();
+        let loaded = checkpoint_run(&story, &saves, &["--load", "--choices", choice]);
+        assert!(
+            normal.status.success() && loaded.status.success(),
+            "{}",
+            stderr(&loaded)
+        );
+        assert_eq!(loaded.stdout, normal.stdout);
+    }
+}
+
+#[test]
+fn rejected_load_preserves_slot_and_publishes_no_gameplay_trace() {
+    let temp = tempfile::tempdir().unwrap();
+    let story = temp.path().join("story");
+    let saves = temp.path().join("data");
+    checkpoint_story(&story);
+    let missing = checkpoint_run(&story, &saves, &["--load"]);
+    assert!(!missing.status.success());
+    assert!(missing.stdout.is_empty());
+    assert!(!saves.exists());
+    let saved = checkpoint_run(&story, &saves, &["--save-at", "scene.start"]);
+    assert!(saved.status.success(), "{}", stderr(&saved));
+    let bytes = fs::read(saves.join("save.json")).unwrap();
+    let path = story.join("main.yarn");
+    let original = fs::read_to_string(&path).unwrap();
+    // Current content with the same schema/checkpoint is accepted and uses current text.
+    fs::write(&path, original.replace("First {$n}", "Edited {$n}")).unwrap();
+    let patched = checkpoint_run(&story, &saves, &["--load", "--choices", "0"]);
+    assert!(patched.status.success(), "{}", stderr(&patched));
+    assert!(String::from_utf8_lossy(&patched.stdout).contains("Edited 1"));
+    for broken in [
+        original.replace("scene.start", "scene.missing"),
+        original.replace("First {$n}", "<<jump Other>>").to_string()
+            + "\ntitle: Other\n---\nElsewhere\n===\n",
+        original.replace("<<set $n = $n + 1>>", "<<set $n = 1 / 0>>"),
+    ] {
+        fs::write(&path, broken).unwrap();
+        let loaded = checkpoint_run(&story, &saves, &["--load", "--choices", "0"]);
+        assert!(
+            !loaded.status.success(),
+            "{}",
+            String::from_utf8_lossy(&loaded.stdout)
+        );
+        assert!(loaded.stdout.is_empty());
+        assert_eq!(fs::read(saves.join("save.json")).unwrap(), bytes);
+    }
+    fs::write(&path, original).unwrap();
+    let manifest = story.join("manifest.jsonc");
+    fs::write(
+        &manifest,
+        fs::read_to_string(&manifest)
+            .unwrap()
+            .replace("\"saveSchema\":1", "\"saveSchema\":2"),
+    )
+    .unwrap();
+    let loaded = checkpoint_run(&story, &saves, &["--load"]);
+    assert!(!loaded.status.success());
+    assert!(stderr(&loaded).contains("no save migration"));
+    assert!(loaded.stdout.is_empty());
+    assert_eq!(fs::read(saves.join("save.json")).unwrap(), bytes);
+}
+
+#[test]
+fn headless_save_options_reject_duplicates_and_story_internal_directories() {
+    let temp = tempfile::tempdir().unwrap();
+    let story = temp.path().join("story");
+    checkpoint_story(&story);
+    let internal = story.join("saves");
+    let out = checkpoint_run(&story, &internal, &["--save-at", "scene.start"]);
+    assert!(!out.status.success());
+    assert!(stderr(&out).contains("outside the Story"));
+    assert!(!internal.exists());
+    let out = weftora()
+        .arg("run")
+        .arg(&story)
+        .args(["--headless", "--load", "--load"])
+        .output()
+        .unwrap();
+    assert_eq!(out.status.code(), Some(2));
+    let out = checkpoint_run(&story, &temp.path().join("data"), &["--save-at", "missing"]);
+    assert!(!out.status.success());
+    assert!(out.stdout.is_empty());
+}
+
+#[test]
+fn checkpoint_nodes_refuse_session_reads_but_allow_deterministic_session_writes() {
+    let temp = tempfile::tempdir().unwrap();
+    checkpoint_story(temp.path());
+    let manifest = temp.path().join("manifest.jsonc");
+    let mut document: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string(&manifest).unwrap()).unwrap();
+    document["state"] = serde_json::json!({"ui.flag":{"scope":"session","default":false}});
+    fs::write(manifest, document.to_string()).unwrap();
+    let yarn = temp.path().join("main.yarn");
+    fs::write(&yarn, "title: Start\n---\n<<declare $ui__flag = false>>\n<<checkpoint scene.start>>\n{$ui__flag}\n===\n").unwrap();
+    let out = weftora().arg("check").arg(temp.path()).output().unwrap();
+    assert!(!out.status.success());
+    assert!(stderr(&out).contains("cannot read Session variable $ui__flag"));
+    fs::write(&yarn, "title: Start\n---\n<<declare $ui__flag = false>>\n<<checkpoint scene.start>>\n<<set $ui__flag = true>>\nReady\n===\n").unwrap();
+    let out = weftora().arg("check").arg(temp.path()).output().unwrap();
+    assert!(out.status.success(), "{}", stderr(&out));
+}

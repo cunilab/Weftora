@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/weftora-api",
     "crates/weftora-core",
+    "crates/weftora-save",
     "crates/weftora-story",
     "crates/weftora-yarn",
     "crates/weftora-yarn-compiler",
@@ -23,6 +24,7 @@ publish = false
 [workspace.dependencies]
 weftora-api = { path = "crates/weftora-api" }
 weftora-core = { path = "crates/weftora-core" }
+weftora-save = { path = "crates/weftora-save" }
 weftora-story = { path = "crates/weftora-story" }
 weftora-yarn = { path = "crates/weftora-yarn" }
 weftora-render-bevy = { path = "crates/weftora-render-bevy" }

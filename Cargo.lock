@@ -5927,6 +5927,7 @@ dependencies = [
  "tempfile",
  "weftora-api",
  "weftora-core",
+ "weftora-save",
  "weftora-story",
  "weftora-yarn",
  "weftora-yarn-compiler",
@@ -5962,10 +5963,28 @@ dependencies = [
  "bevy",
  "image",
  "rodio",
+ "serde_json",
+ "tempfile",
  "weftora-api",
  "weftora-core",
+ "weftora-save",
  "weftora-story",
  "weftora-yarn",
+ "weftora-yarn-compiler",
+]
+
+[[package]]
+name = "weftora-save"
+version = "0.0.1"
+dependencies = [
+ "semver",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tempfile",
+ "thiserror 2.0.21",
+ "weftora-api",
+ "weftora-core",
 ]
 
 [[package]]
@@ -5992,6 +6011,7 @@ dependencies = [
  "thiserror 2.0.21",
  "weftora-api",
  "weftora-core",
+ "weftora-save",
  "weftora-story",
  "yarnspinner_core",
  "yarnspinner_runtime",
@@ -6004,6 +6024,7 @@ dependencies = [
  "serde_json",
  "weftora-api",
  "weftora-core",
+ "weftora-save",
  "weftora-story",
  "weftora-yarn",
  "yarnspinner_compiler",

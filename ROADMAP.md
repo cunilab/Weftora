@@ -53,7 +53,7 @@ Goal: replace spike code with the real, tested core.
 
 Goal: full Yarn integration and the presentation primitives a visual novel needs.
 
-**Status:** in progress. Compiled dialogue, typed catalogs, declarative UI and presentation media primitives are implemented with automated checks; see [Phase 2 implementation evidence](./docs/evidence/phase-2.md). Native rendering/audio/input/font/performance results remain maintainer-owned under issue #5. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 remains open until integration. No Phase 2 gate is claimed.
+**Status:** in progress. Compiled dialogue, typed catalogs, declarative UI and presentation media primitives are implemented with automated checks; see [Phase 2 implementation evidence](./docs/evidence/phase-2.md). Native rendering/audio/input/font/performance results remain maintainer-owned under issue #5. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 is resolved by the merged runtime fixes. No Phase 2 gate is claimed.
 
 - [x] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
 - [x] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats. [Automated P2-03 evidence](./docs/evidence/phase-2.md#verified-revision).
@@ -69,12 +69,14 @@ Goal: full Yarn integration and the presentation primitives a visual novel needs
 
 Goal: a short, complete visual novel played through the prebuilt player.
 
-- [ ] Grow `examples/hello-story/` into Story A: menu, two branches, characters, CG, music, transitions, themed choice UI.
-- [ ] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.
-- [ ] Load pipeline: bounded read → compatibility check → migrate a temporary copy → validate → atomically activate.
+**Status:** implementation complete. [ADR 0007](./docs/adr/0007-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, runtime checkpoints, headless save/load, candidate player restoration, Story A, its automated content-only edit proof, author tutorial and Windows test package are implemented. Native Windows testing and the independent tutorial walkthrough remain maintainer-owned in issue #5; no Phase 3 gate is claimed.
+
+- [x] Add `examples/story-a/`, preserving Hello Story golden fixtures: menu, two branches, characters, CG, music, transitions, themed choice UI.
+- [x] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.
+- [x] Load pipeline: bounded read → compatibility check → isolated candidate → validate → atomically activate; unsupported migrations refuse safely.
 - [ ] Keyboard and mouse navigation, window resizing and readable scaled UI.
 - [ ] Prove that editing Story A's dialogue, screens and assets does not change the player binary.
-- [ ] Author tutorial: how to change Story A without touching Rust.
+- [x] Author tutorial: how to change Story A without touching Rust; independent Windows walkthrough remains in issue #5.
 - [ ] Optional: tag a Windows **developer alpha**. This is not the foundation release.
 
 ## Phase 4 — Story-defined rules
