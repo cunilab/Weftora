@@ -298,4 +298,146 @@ tested_by: Andres-Holivin
 tested_at: 2026-10-15
 ```
 
+### Validation fixture battery — agent on maintainer's machine (delegated)
+
+Covers the issue #5 bullets "P2-02: invalid syntax, missing node and unknown command show source
+file/node and controlled failure behavior; CLI exits nonzero", the "invalid widgets/assets/screens/
+state types" part of the branches bullet, and "P2-09: … wrong/duplicate IDs and categories have
+file/location diagnostics". One defect per fixture; each run is a plain `weftora check`.
+
+```yaml
+check: validation fixture battery (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: hello-story copies under the agent scratch dir, one defect each
+steps: run `weftora check` per fixture; record exit code and diagnostic text
+expected: exit 1, no panic, diagnostic names the source file with line or JSON pointer
+actual: >-
+  All exit 1 with controlled diagnostics:
+  invalid syntax -> `main.yarn:5: Unexpected "Guide" while reading an if clause (node 'Start')`;
+  missing node -> `manifest.jsonc: entrypoint 'NoSuchNode' is not a node in the dialogue files`;
+  unknown command -> `dialogue/intro.yarn:6: unknown command 'dance' (node 'Start')`;
+  wrong category -> `dialogue/intro.yarn:6: 'sound': asset 'bg.room' belongs to images, expected audio (node 'Start')`;
+  invalid widget type -> `ui/dialogue.jsonc:12: unknown variant 'spinner', expected one of 'screen', 'overlay', 'panel', 'list', 'text', 'image', 'button', 'choiceList'`;
+  unknown screen -> `ui/dialogue.jsonc: /root/children/1/children/3/children/1/action/screen: missing screen ID 'ghost'`;
+  state.set type -> `ui/details.jsonc: /root/children/0/children/3/action/value: state 'curious' expects bool, got int`;
+  duplicate ID -> `assets/images.jsonc: /1/id: … first declared at …/0/id`;
+  missing ID -> `dialogue/main.yarn:3: 'background': images reference: missing catalog ID 'bg.missing' (node 'Start')`.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/error-paths.txt, asset-id-media.txt
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### Legacy panel fallback — agent on maintainer's machine (delegated)
+
+Covers the "legacy panel fallback" part of the branches bullet.
+
+```yaml
+check: legacy panel fallback (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: hello-story with `screens`, `initialScreen` and the `ui.screens/1` capability removed
+steps: check, export, launch the exported player
+expected: valid story; classic dialogue panel (speaker, text, advance hint) with no declarative widgets
+actual: >-
+  check OK (2 nodes, 2 assets); export produced 9 story files; the window shows the classic
+  panel only — no Next/Details buttons, no Curious label, no choiceList styling.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-2-windows-agent/hello-legacy-fallback.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### Custom font glyphs + corrupt font/image error panels — agent on maintainer's machine (delegated)
+
+Covers "Verify glyphs using a valid licensed custom font; corrupt font/media bytes produce the
+controlled error panel" and the font-catalog part of P2-09.
+
+```yaml
+check: font catalog + corrupt font/image (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: >-
+  hello-story + fonts.jsonc catalog; valid case binds `font.mono` (Georgia, georgia.ttf from
+  C:\Windows\Fonts) to the speaker and body text; corrupt cases use 4 KiB random bytes as
+  mono.ttf, and random bytes as the bg.room PNG
+steps: check + export + launch each; capture frames; close and record exit behaviour
+expected: valid font renders its glyphs; corrupt font/image show the controlled error panel with file + pointer; no panic
+actual: >-
+  Valid: Georgia serif renders on speaker and body (one proportional line vs the default
+  two-line mono wrap; unbound `Curious: false` stays mono in the same frame — in-frame control).
+  Corrupt font: check passes (decode is at render); player shows the Story error panel
+  `ui/dialogue.jsonc:/root/children/1/children/0/font: asset 'font.mono' is not a readable font`,
+  same line on stderr after close, player exit 1.
+  Corrupt image: Story error panel `ui/dialogue.jsonc:/root/children/0/image: asset 'bg.room' is
+  not a readable image: Format error decoding Png: Invalid PNG signature.`; no panic.
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-2-windows-agent/hello-font-ok.png,
+  hello-font-corrupt-error-panel.png, hello-corrupt-image-error-panel.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### String budget + exit codes — agent on maintainer's machine (delegated)
+
+Covers "Verify a valid Story that doubles a declared string fifteen times before its first line
+shows a source file/node budget error; closing afterward returns nonzero" and "Verify normal close
+and Escape on a valid Story both return zero".
+
+```yaml
+check: string budget error + close/Escape exit codes (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: valid Story that doubles a declared string fifteen times before its first line; valid hello-story for the zero-exit control
+steps: check + `weftora run` the budget fixture; close the error window; then close and Escape on the valid story
+expected: budget error names source file/node; close after the error returns nonzero; valid close and Escape return zero
+actual: >-
+  Budget fixture passes `weftora check` (valid story) and fails at runtime with the Story error
+  panel `dialogue error: main.yarn (node 'Start'): dialogue error: string budget (16384)
+  exceeded in node 'Start'`; after closing the window `weftora run` exits 1. Valid story:
+  normal window close → exit 0; Escape → exit 0.
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-2-windows-agent/hello-string-budget-error-panel.png,
+  runtime-behavior.txt
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
+### P2-01, P2-04, P2-06 scenario coverage — agent on maintainer's machine (delegated)
+
+Covers the P2-01 (choice → state → live view → later condition), P2-04 (background, two
+characters, CG, overlay, transitions and cleanup) and P2-06 (widgets, bindings, resize, click
+bounds) bullets; click-bounds evidence is the maintainer's real-mouse Q6/Q7 above.
+
+```yaml
+check: P2-01/P2-04/P2-06 scenarios (delegated)
+commit: c9f2aa0
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: examples/hello-story and examples/presentation-demo (release exports)
+steps: headless branch A/B traces; real windows at several story steps; resize to 684x461
+expected: choice changes state seen by view and later condition; media features render and clean up; widgets/resize hold up
+actual: >-
+  P2-01: choice 0 sets `curious` false→true (scope persistent) with a `state.changed` signal,
+  the live `Curious` label flips, and the later `if $curious` line differs per branch (traces A/B).
+  P2-04: day→night crossfade, two characters at different positions/scales/opacity, CG + tint
+  overlay stacked and cleaned up; all 25 presentation commands replayed headless.
+  P2-06: all widgets and bindings render; text re-wraps readable at 684x461; real-mouse clicks
+  land on visible button/choice/Volume positions (maintainer Q6/Q7).
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-2-windows-agent/headless-branch-a.jsonl, headless-branch-b.jsonl,
+  headless-presentation.jsonl, hello-2-curious-true.png, demo-0-day-characters.png,
+  demo-1-night-characters.png, demo-2-cg-overlay.png, hello-resize-narrow.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-15
+```
+
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.

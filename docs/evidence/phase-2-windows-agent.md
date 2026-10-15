@@ -163,6 +163,23 @@ machine, agent harness). This is a baseline observation, not an ADR revision.
   re-tested with the maintainer's real mouse (issue #5, Q6/Q7/Q9), which is what the linked records cite.
   Input-to-feedback p95 was not measured (frame-capture cost exceeds the latency being measured).
 
+## Phase 2 fixture battery (batch B/C)
+
+Each fixture is a hello-story copy with one defect, checked or run against the release CLI/player.
+
+| Fixture | Result | Diagnostic |
+| --- | --- | --- |
+| Unknown command | `check` exit 1 | `dialogue/intro.yarn:6: unknown command \`dance\` (node \`Start\`)` |
+| Image ID used as audio | `check` exit 1 | `dialogue/intro.yarn:6: \`sound\`: asset \`bg.room\` belongs to images, expected audio (node \`Start\`)` |
+| Invalid widget type | `check` exit 1 | `ui/dialogue.jsonc:12: unknown variant \`spinner\`, expected one of \`screen\`, \`overlay\`, \`panel\`, \`list\`, \`text\`, \`image\`, \`button\`, \`choiceList\`` |
+| Unknown screen reference | `check` exit 1 | `ui/dialogue.jsonc: /root/children/1/children/3/children/1/action/screen: missing screen ID \`ghost\`` |
+| `state.set` wrong type | `check` exit 1 | `ui/details.jsonc: /root/children/0/children/3/action/value: state \`curious\` expects bool, got int` |
+| Legacy fallback (no screens/capability) | `check` OK, export 9 files, runs | Classic panel only, no declarative widgets ([frame](./artifacts/phase-2-windows-agent/hello-legacy-fallback.png)) |
+| Valid font (Georgia via fonts catalog) | `check` OK, runs | Serif glyphs on bound speaker/body; unbound widgets stay mono ([frame](./artifacts/phase-2-windows-agent/hello-font-ok.png)) |
+| Corrupt font bytes | `check` OK, player controlled error, exit 1 | `ui/dialogue.jsonc:/root/children/1/children/0/font: asset \`font.mono\` is not a readable font` ([frame](./artifacts/phase-2-windows-agent/hello-font-corrupt-error-panel.png)) |
+| Corrupt image bytes | Player controlled error, no panic | `ui/dialogue.jsonc:/root/children/0/image: asset \`bg.room\` is not a readable image: Format error decoding Png: Invalid PNG signature.` ([frame](./artifacts/phase-2-windows-agent/hello-corrupt-image-error-panel.png)) |
+| String budget (x15 before first line) | `check` OK, runtime panel, close → run exit 1 | `dialogue error: main.yarn (node 'Start'): dialogue error: string budget (16384) exceeded in node 'Start'` ([frame](./artifacts/phase-2-windows-agent/hello-string-budget-error-panel.png)) |
+
 ## Reproduction
 
 ```text
