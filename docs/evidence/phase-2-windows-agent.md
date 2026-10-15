@@ -121,17 +121,17 @@ Driven with real keyboard/mouse input against the release build.
   [after](./artifacts/phase-2-windows-agent/hello-details-after-set.png).
 - **Resize.** Shrinking the window to 684×461 re-wraps the dialogue text without overflow; widgets and the
   state label stay inside the panel. [frame](./artifacts/phase-2-windows-agent/hello-resize-narrow.png).
-- **Decorative click-through — observed discrepancy.** With only the background layer present, clicking the
-  unoccupied background advanced a line (control,
-  [frame](./artifacts/phase-2-windows-agent/demo-click-control-advanced.png)). With the presentation-demo's
-  CG/tint decorative layers covering the same point, the same click did **not** advance — reproduced in 4 runs
-  across two different lines that both have CG/tint showing
-  ([frame](./artifacts/phase-2-windows-agent/demo-click-cg-blocked.png)). This is consistent with the CG/tint
-  layers intercepting background clicks, which would contradict the Story text ("It does not block clicks") and
-  the P2-04 expectation that decorative media does not block background clicks. The result is from synthetic
-  click injection and screenshot comparison, and the demo's keystroke delivery was nondeterministic run to run,
-  so it is recorded as a **reproducible observation, not a confirmed bug** — it should be re-checked with a
-  deterministic input harness before filing.
+- **Decorative click-through — resolved as a harness artifact.** With synthetic (injected) clicks, a
+  background click advanced when only the background layer was present (control,
+  [frame](./artifacts/phase-2-windows-agent/demo-click-control-advanced.png)) but did **not** advance when
+  CG/tint covered the point, reproduced in 4 runs
+  ([frame](./artifacts/phase-2-windows-agent/demo-click-cg-blocked.png)). That initially looked like decorative
+  media intercepting clicks. It was later shown that injected clicks in this harness fall through interactive
+  widgets as well (a click dead-centre on a choice row did nothing), while the maintainer's real mouse
+  activates the same UI correctly. The maintainer then ran the definitive real-click test at the tint step:
+  the click **passed through the decorative overlay and advanced the dialogue** (issue #5, Q9-A). Verdict:
+  decorative media does **not** block clicks; the earlier non-advance was an injected-input artifact, kept here
+  as an honest trace of the method's limits.
 
 The presentation-demo's Volume overlay did not open reliably through scripted Tab focus (focus order varied
 between launches), so its modal behaviour is not claimed here; the modal mechanism itself is demonstrated by
@@ -156,11 +156,12 @@ machine, agent harness). This is a baseline observation, not an ADR revision.
 - Idle memory is the player process's working set / private bytes; it does not include driver or OS-shared
   pages beyond what the process reports.
 - Perf numbers are from one machine and one harness run each; they are a baseline, not a multi-run statistics
-  package. A dedicated ADR should confirm or revise R15 per P2-08.
-- The decorative click-through result rests on synthetic clicks and screenshot comparison; the demo's
-  keystroke delivery varied between runs, so the finding above is an observation to re-confirm, not a
-  definitive pass/fail. Input-to-feedback p95 was not measured (frame-capture cost exceeds the latency being
-  measured).
+  package. [ADR 0006](../adr/0006-performance-baseline.md) records this baseline, confirms the measured R15
+  budgets and leaves p95 open per P2-08.
+- Synthetic click injection proved unreliable for interactive targets in this harness (clicks fell through
+  widgets; frame-capture and keystroke delivery also varied). Every click-dependent conclusion was therefore
+  re-tested with the maintainer's real mouse (issue #5, Q6/Q7/Q9), which is what the linked records cite.
+  Input-to-feedback p95 was not measured (frame-capture cost exceeds the latency being measured).
 
 ## Reproduction
 

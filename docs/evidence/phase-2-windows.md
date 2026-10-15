@@ -261,4 +261,41 @@ tested_by: agent + maintainer real-mouse checks (Andres-Holivin)
 tested_at: 2026-10-15
 ```
 
+### Volume overlay blocking + decorative click-through — maintainer real input
+
+Covers the issue #5 bullets "Details/Volume overlays block base actions, clicks and choice digits, and
+return focus after closing" (Volume part; Details part recorded above) and "Verify decorative media does
+not block background clicks, buttons or choices". Performed by the maintainer with their real mouse and
+keyboard on the presentation-demo; the agent's injected clicks were not used for these two bullets after
+injected input was shown unreliable.
+
+```yaml
+check: volume-blocking + decorative click-through (maintainer real input)
+commit: c9f2aa0
+build_profile: release
+player_sha256: 612f956035bcfe57009f28df36234a3e8563900f0d34b31cda0b9b8903d2bfec
+windows_build: 11 Pro 10.0.26300
+fixture: examples/presentation-demo (release export)
+steps: >-
+  Open the Volume overlay with the mouse; press Space and click the background
+  while it is open; click Close; press Enter. Then advance three lines to the
+  CG/tint step and click the tinted background.
+expected: >-
+  Story input blocked while Volume is open; focus returns to Volume on close
+  (Enter reopens it); decorative tint does not block the background click —
+  the dialogue advances.
+actual: >-
+  Maintainer answers (issue #5): Q8-A — while the panel was open, Space and the
+  background click did not advance the story; after Close + Enter, the Volume
+  panel reopened (focus returned). Q9-A — at the tint step the real background
+  click passed through the decorative overlay and advanced the dialogue. Q6/Q7
+  earlier confirmed real-mouse activation of choice rows, the Volume button and
+  the Details button. This also resolves the agent's earlier synthetic-click
+  "discrepancy" as a harness artifact (see phase-2-windows-agent).
+result: PASS
+logs_or_artifacts: issue #5 answers Q6/Q7/Q8/Q9; docs/evidence/artifacts/phase-2-windows-agent/demo-click-*.png
+tested_by: Andres-Holivin
+tested_at: 2026-10-15
+```
+
 Blank fields and unchecked issue items are not PASS. Completing a phase still requires its required evidence; only P0-10 has the existing explicit gate deferral. Historical evidence and current automated CI results remain intact.
