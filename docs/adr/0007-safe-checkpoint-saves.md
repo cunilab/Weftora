@@ -1,10 +1,10 @@
 ---
-id: WFT-ADR-006
-title: ADR 0006 — Safe Checkpoint Saves
+id: WFT-ADR-007
+title: ADR 0007 — Safe Checkpoint Saves
 status: accepted
 ---
 
-# ADR 0006 — Safe Checkpoint Saves
+# ADR 0007 — Safe Checkpoint Saves
 
 ## Decision
 

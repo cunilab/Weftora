@@ -69,7 +69,7 @@ Goal: full Yarn integration and the presentation primitives a visual novel needs
 
 Goal: a short, complete visual novel played through the prebuilt player.
 
-**Status:** development started. [ADR 0006](./docs/adr/0006-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, safe runtime checkpoints, headless save/load and candidate player restoration are implemented in review. Story A, its content-only edit proof, author tutorial and Windows test package are also implemented in review. Native Windows evidence remains maintainer-owned in issue #5; no Phase 3 gate is claimed.
+**Status:** implementation complete. [ADR 0007](./docs/adr/0007-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, runtime checkpoints, headless save/load, candidate player restoration, Story A, its automated content-only edit proof, author tutorial and Windows test package are implemented. Native Windows testing and the independent tutorial walkthrough remain maintainer-owned in issue #5; no Phase 3 gate is claimed.
 
 - [x] Add `examples/story-a/`, preserving Hello Story golden fixtures: menu, two branches, characters, CG, music, transitions, themed choice UI.
 - [x] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.

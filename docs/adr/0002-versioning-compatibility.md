@@ -56,7 +56,7 @@ Node-file provenance stays in memory: compiler debug information supplies it dur
 
 ## Save format 1
 
-[ADR 0006](./0006-safe-checkpoint-saves.md) defines the bounded/checksummed container and checkpoint replay contract. Stable checkpoint IDs are separate from Yarn node names and instruction offsets. Persistent removals are explicit null entries; compatible new fields keep current defaults. Session resets, current Settings are retained, and runtime visiting counters are restored separately. Until migrations exist, any save-schema mismatch refuses safely without modifying the live game or file. Format/storage implementation does not by itself prove player safe-point or view restoration.
+[ADR 0007](./0007-safe-checkpoint-saves.md) defines the bounded/checksummed container and checkpoint replay contract. Stable checkpoint IDs are separate from Yarn node names and instruction offsets. Persistent removals are explicit null entries; compatible new fields keep current defaults. Session resets, current Settings are retained, and runtime visiting counters are restored separately. Until migrations exist, any save-schema mismatch refuses safely without modifying the live game or file. Format/storage implementation does not by itself prove player safe-point or view restoration.
 
 ## Required fixtures
 

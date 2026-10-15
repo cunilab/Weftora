@@ -224,7 +224,7 @@ A valid dialogue screen file:
 
 Header fields: `saveFormat`, `storyId`, `storyVersion`, `saveSchema`, `checkpoint.id`, plus `writerEngineApi` and `writerEngineRelease` for diagnostics. Which of these decide compatibility is defined in [ADR 0002](./adr/0002-versioning-compatibility.md#compatibility-rules).
 
-Format 1 uses a bounded, checksummed envelope; its full contract is [ADR 0006](./adr/0006-safe-checkpoint-saves.md).
+Format 1 uses a bounded, checksummed envelope; its full contract is [ADR 0007](./adr/0007-safe-checkpoint-saves.md).
 
 ```json
 {

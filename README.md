@@ -58,7 +58,7 @@ A save-enabled Story declares positive saveSchema and the save/1 capability. Pla
     Welcome back.
     ===
 
-The first line or choices in that node is its save point. Progressing past it closes the point. The opening must reconstruct the complete scene; checkpoint nodes cannot use random functions or read Session variables. Keep IDs stable across compatible dialogue/image edits, and bump saveSchema when checkpoint meaning changes. See [ADR 0006](./docs/adr/0006-safe-checkpoint-saves.md).
+The first line or choices in that node is its save point. Progressing past it closes the point. The opening must reconstruct the complete scene; checkpoint nodes cannot use random functions or read Session variables. Keep IDs stable across compatible dialogue/image edits, and bump saveSchema when checkpoint meaning changes. See [ADR 0007](./docs/adr/0007-safe-checkpoint-saves.md).
 
 For deterministic headless checks:
 
