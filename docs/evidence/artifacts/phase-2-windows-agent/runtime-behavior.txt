@@ -1,0 +1,9 @@
+=== stale-artifact rejection (edit exported Yarn without re-export) ===
+player stderr: stale dialogue artifact: inputHash does not match the Story sources; use `weftora run` or export again
+player exit=1
+
+=== valid Story: normal window close ===
+EXITCODE=0
+
+=== valid Story: Escape key ===
+EXITCODE=0

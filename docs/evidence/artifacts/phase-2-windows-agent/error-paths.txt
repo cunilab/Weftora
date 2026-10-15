@@ -1,0 +1,34 @@
+=== P2-02 invalid syntax ===
+main.yarn:5: Unexpected "Guide" while reading an if clause (node 'Start')
+main.yarn:5: mismatched input 'Guide' expecting {OPERATOR_LOGICAL_LESS_THAN_EQUALS, OPERATOR_LOGICAL_GREATER_THAN_EQUALS, OPERATOR_LOGICAL_EQUALS, OPERATOR_LOGICAL_LESS, OPERATOR_LOGICAL_GREATER, OPERATOR_LOGICAL_NOT_EQUALS, OPERATOR_LOGICAL_AND, OPERATOR_LOGICAL_OR, OPERATOR_LOGICAL_XOR, '+', '-', '*', '/', '%', COMMAND_END} (node 'Start')
+exit=1
+
+=== P2-02 missing node ===
+manifest.jsonc: entrypoint `NoSuchNode` is not a node in the dialogue files
+exit=1
+
+=== P2-02 broken fixture: unknown command + missing asset ID ===
+dialogue/main.yarn:3: `background`: images reference: missing catalog ID `bg.missing` (node `Start`)
+dialogue/main.yarn:4: unknown command `teleport` (node `Start`)
+exit=1
+
+=== P2-02 nonexistent Story root ===
+manifest.jsonc: Story root `apps\does-not-exist`: cannot access Story root: The system cannot find the file specified. (os error 2)
+exit=1
+
+=== runtime string-budget error (headless) ===
+dialogue error: main.yarn (node 'Start'): dialogue error: string budget (16384) exceeded in node 'Start'
+exit=1
+
+=== valid hello-story headless (exit 0, control) ===
+{"args":["bg.room"],"event":"command","name":"background"}
+{"args":["sfx.chime"],"event":"command","name":"sound"}
+{"character":"Guide","event":"line","text":"Welcome to Weftora. Everything you see comes from a Story folder, not from Rust code."}
+{"character":"Guide","event":"line","text":"Want to see a choice change the game state?"}
+{"event":"choices","options":[{"available":true,"index":0,"text":"Yes, show me."},{"available":true,"index":1,"text":"Not right now."}]}
+{"event":"choose","index":0}
+{"character":"Guide","event":"line","text":"You looked closer, so the state key \"curious\" is now true."}
+{"character":"Guide","event":"line","text":"That is the whole walking skeleton. Edit dialogue/intro.yarn and run it again."}
+{"changes":[{"after":true,"before":false,"key":"curious","scope":"persistent"}],"event":"end","lifecycle":["boot","load","init:story","ready","play","shutdown:story","shutdown"],"signals":[{"id":"state.changed","value":"curious"}],"state":{"curious":true}}
+exit=0
+

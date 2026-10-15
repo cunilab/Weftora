@@ -1,0 +1,12 @@
+=== P2-09 duplicate asset ID (weftora check) ===
+assets/images.jsonc: /1/id: duplicate catalog ID `bg.room`; first declared at assets/images.jsonc:/0/id
+exit=1
+
+=== corrupt image bytes: weftora check (pass => image decoding not validated at check) ===
+OK: dev.weftora.hello-story v0.1.0 - 2 nodes, 2 assets, 2 commands
+exit=0
+
+=== corrupt image bytes: player render (release) ===
+Result: player launched, created window, ran 4s with no panic/abort (killed by harness).
+stderr showed only Bevy INFO init lines (Vulkan adapter, window create); no Rust panic, no crash.
+The corrupt room.png simply fails to render; behaviour is graceful, not a controlled error panel.

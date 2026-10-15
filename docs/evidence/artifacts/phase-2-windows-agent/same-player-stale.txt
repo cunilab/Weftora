@@ -1,0 +1,12 @@
+=== Recheck 2: edit + recompile, same player hash (agent-run, maintainer-delegated 2026-10-15) ===
+edited line: 'Guide: Edited on Windows by the maintainer.'
+CLI: target\release\weftora.exe run <edit-lab>   (compiles preview, launches player)
+player sha256 before: 612F956035BCFE57009F28DF36234A3E8563900F0D34B31CDA0B9B8903D2BFEC
+player sha256 after:  612F956035BCFE57009F28DF36234A3E8563900F0D34B31CDA0B9B8903D2BFEC
+unchanged: True (matches known release hash)
+rendered proof: hello-edited-line.png shows the edited line on screen
+
+=== Recheck 3: stale artifact rejection (export yarn edited in place, no re-export) ===
+stderr: stale dialogue artifact: inputHash does not match the Story sources; use weftora run or export again
+exit code: 1   (verified two ways: cmd wrapper LASTEXITCODE=1; Start-Process -Wait ExitCode=1)
+re-export to fresh dir + relaunch: window opens, edited line renders (hello-reexport-ok.png)
