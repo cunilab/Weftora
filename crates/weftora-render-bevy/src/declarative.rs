@@ -936,4 +936,229 @@ mod tests {
             }
         }
     }
+    fn screens_app() -> App {
+        let story = weftora_story::Story::load(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/screens-demo"),
+        )
+        .unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        app.init_resource::<Assets<Font>>()
+            .init_resource::<bevy::text::FontCx>()
+            .add_systems(Startup, setup)
+            .add_systems(
+                Update,
+                (sync_layers, sync_choices, restore_focus, update_bindings)
+                    .chain()
+                    .after(crate::drive),
+            );
+        app.update();
+        app
+    }
+    fn widget(app: &mut App, key: &str) -> Entity {
+        let world = app.world_mut();
+        world
+            .query::<(Entity, &FocusKey)>()
+            .iter(world)
+            .find_map(|(entity, value)| (value.0 == key).then_some(entity))
+            .unwrap_or_else(|| panic!("missing widget {key}"))
+    }
+    fn activate(app: &mut App, key: &str) {
+        let entity = widget(app, key);
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(entity, FocusCause::Navigated);
+        app.world_mut().trigger(Activate { entity });
+        app.update();
+    }
+    fn assert_tab_group(app: &mut App, prefix: &str) {
+        // Native Bevy propagates visibility in PostUpdate; this fixture omits render plugins.
+        let world = app.world_mut();
+        for mut visibility in world.query::<&mut InheritedVisibility>().iter_mut(world) {
+            *visibility = InheritedVisibility::VISIBLE;
+        }
+        use bevy::ecs::system::RunSystemOnce;
+        use bevy::input_focus::tab_navigation::{NavAction, TabNavigation};
+        for direction in [NavAction::Next, NavAction::Previous] {
+            for _ in 0..6 {
+                let next = app
+                    .world_mut()
+                    .run_system_once(move |nav: TabNavigation, focus: Res<InputFocus>| {
+                        nav.navigate(&focus, direction)
+                    })
+                    .unwrap()
+                    .unwrap();
+                assert!(
+                    app.world()
+                        .get::<FocusKey>(next)
+                        .unwrap()
+                        .0
+                        .starts_with(prefix)
+                );
+                app.world_mut()
+                    .resource_mut::<InputFocus>()
+                    .set(next, FocusCause::Navigated);
+            }
+        }
+    }
+    #[test]
+    fn authored_screens_keep_dialogue_and_state_across_navigation_and_modal_input() {
+        let mut app = screens_app();
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = true;
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        activate(&mut app, "menu/activity");
+        assert_eq!(app.world().resource::<Ui>().built, ["activity"]);
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        let panel = {
+            let world = app.world_mut();
+            world
+                .query::<(&Node, &BackgroundColor)>()
+                .iter(world)
+                .any(|(node, bg)| {
+                    node.width == percent(45) && bg.0 == Color::from(Srgba::hex("243C32").unwrap())
+                })
+        };
+        assert!(
+            panel,
+            "authored layout and theme must reach Bevy components"
+        );
+        activate(&mut app, "activity/pause");
+        assert!(app.world().resource::<Ui>().modal());
+        assert_tab_group(&mut app, "pause/");
+        // A stale underlying activation, global progression and digit selection all refuse.
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: Some("activity".into()),
+                action: UiAction::SetState {
+                    key: "prepared".into(),
+                    value: Value::Bool(true),
+                },
+            });
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: None,
+                action: UiAction::Advance,
+            });
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Digit1);
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert_eq!(
+            app.world()
+                .non_send::<Player>()
+                .state
+                .read()
+                .unwrap()
+                .get("prepared"),
+            Ok(&Value::Bool(false))
+        );
+        activate(&mut app, "pause/resume");
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<FocusKey>(focus).unwrap().0,
+            "activity/pause"
+        );
+        activate(&mut app, "activity/prepare");
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<(&BoundText, &Text)>()
+                .iter(world)
+                .any(|(binding, text)| {
+                    matches!(&binding.binding, Binding::State { state } if state == "prepared")
+                        && text.0 == "true"
+                })
+        );
+        activate(&mut app, "activity/dialogue");
+        assert_eq!(app.world().resource::<Ui>().built, ["dialogue"]);
+        activate(&mut app, "dialogue/next");
+        assert!(matches!(
+            app.world().non_send::<Player>().presenter.screen(),
+            Screen::Choices(_)
+        ));
+        let choices = app.world().non_send::<Player>().presenter.screen().clone();
+        activate(&mut app, "dialogue/pause");
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Digit1);
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Select {
+                layer: Some("dialogue".into()),
+                position: 0,
+            });
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        assert_eq!(
+            app.world().non_send::<Player>().presenter.screen(),
+            &choices
+        );
+        activate(&mut app, "pause/resume");
+        activate(&mut app, "dialogue/activity");
+        assert_eq!(
+            app.world().non_send::<Player>().presenter.screen(),
+            &choices
+        );
+        widget(&mut app, "activity/choices/0");
+        activate(&mut app, "activity/menu");
+        widget(&mut app, "menu/choices/0");
+        assert_eq!(
+            app.world().non_send::<Player>().presenter.screen(),
+            &choices
+        );
+        activate(&mut app, "menu/dialogue");
+        let entity = widget(&mut app, "dialogue/choices/0");
+        app.world_mut().trigger(Activate { entity });
+        app.update();
+        assert!(
+            matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Line { text, .. } if text == "Your prepared kit is ready for the station shift.")
+        );
+        activate(&mut app, "dialogue/activity");
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<(&BoundText, &Text)>()
+                .iter(world)
+                .any(|(binding, text)| {
+                    matches!(&binding.binding, Binding::State { state } if state == "task")
+                        && text.0 == "Station shift"
+                })
+        );
+    }
+    #[test]
+    fn authored_overlay_return_to_menu_clears_layers_and_rejects_stale_origins() {
+        let mut app = screens_app();
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = true;
+        activate(&mut app, "menu/activity");
+        activate(&mut app, "activity/pause");
+        activate(&mut app, "pause/menu");
+        assert_eq!(app.world().resource::<Ui>().built, ["menu"]);
+        assert!(!app.world().resource::<Ui>().modal());
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<FocusKey>(focus).unwrap().0,
+            "menu/activity"
+        );
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        for layer in ["pause", "activity"] {
+            app.world_mut()
+                .resource_mut::<Intents>()
+                .push(Intent::Action {
+                    layer: Some(layer.into()),
+                    action: UiAction::Advance,
+                });
+        }
+        app.update();
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert_tab_group(&mut app, "menu/");
+    }
 }

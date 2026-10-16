@@ -1,0 +1,16 @@
+title: Start
+---
+<<declare $prepared = false>>
+<<declare $task = "Plan the day">>
+Open the activity desk to prepare, or continue to choose your day.
+-> Take the station shift
+    <<set $task = "Station shift">>
+    <<if $prepared>>
+    Your prepared kit is ready for the station shift.
+    <<else>>
+    You start the station shift without a prepared kit.
+    <<endif>>
+-> Take a rest day
+    <<set $task = "Rest day">>
+    You take a quiet day at home.
+===

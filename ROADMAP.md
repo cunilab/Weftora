@@ -91,7 +91,7 @@ Goal: games define their own mechanics without Engine changes.
 - [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)). Flat scalar collections, whole-value actions and save replay are implemented with bounded decoding and automated checks; see [ADR 0009](./docs/adr/0009-flat-collection-state.md). Rhai provides bounded local entry operations; read-only Yarn length/membership helpers now provide scalar views ([ADR 0012](./docs/adr/0012-yarn-collection-queries.md)). Native demonstration remains.
 - [ ] Rhai script host: state/signal permissions, shared operation/work and depth/size limits, source diagnostics and no file/network/OS API are implemented ([ADR 0010](./docs/adr/0010-bounded-rhai-host.md)). Canonical seeded integer randomness and replay are implemented ([ADR 0011](./docs/adr/0011-canonical-seeded-randomness.md)); script-internal Engine calls and native acceptance remain.
 - [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn. Typed declarative commands and the UI notification bridge are implemented with automated replay checks; Bounded Rhai commands now share these paths; native acceptance remains.
-- [ ] Themed custom screens and navigation.
+- [ ] Themed custom screens and navigation. The authored [screens demo](./examples/screens-demo/README.md), renderer navigation/focus tests, CLI invalid fixtures and same-player UI edit proof cover P4-06 automatically; native Windows verification remains in issue #5.
 
 ## Phase 5 — Second Story proves reuse (Story B)
 

@@ -62,3 +62,9 @@ Windows rendering, focus, resize and font behavior still need the maintainer's v
 ## Story command actions
 
 A button can use `{"do":"command.call","command":"award","args":[3]}`. The loader checks the named command and canonical scalar arguments against the Story's `rules.commands/1` definitions. [Typed commands](./rules.md#typed-declarative-commands) share the rule bridge with UI `state.set` actions; both settle new state notifications before bindings refresh. Persistent UI mutations invalidate the current checkpoint save point until the next checkpoint. Existing modal/origin input gating applies before any command executes.
+
+## Custom screen walkthrough
+
+The [Station Desk demo](../examples/screens-demo/README.md) provides three replaceable base screens and a pause overlay. Layout/theme/navigation are authored directly in screen JSONC; there is no separate theme registry. Opening another base keeps the current Yarn display and canonical state, clears overlays and resets active keyboard focus to that screen. Closing an overlay restores its initiating focus key. A base screen still requires exactly one choice list, including a menu or activity view, because any view may show the current Yarn choices.
+
+Run `scripts/verify-screen-edits.py` with prebuilt CLI/player paths to export baseline and UI-only edits. It checks player/compiled-dialogue hashes and validates the edited package with the baseline player. Renderer model tests check navigation, focus, input gating and authored Bevy layout/color components. CLI fixtures check malformed widgets, bindings, colors, targets and state-action types. These automated checks do not prove native drawing, pointer picking or readable resizing; those steps remain in issue #5.

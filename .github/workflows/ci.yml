@@ -177,6 +177,19 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Package custom screens and prove UI-only edits
+        shell: pwsh
+        run: |
+          $screensPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-screens-preview"
+          python scripts/verify-screen-edits.py --cli target/debug/weftora.exe --player target/debug/weftora-player.exe --out $screensPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-screens-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-screens-preview/
+          retention-days: 14
       - name: Package Story A and prove content-only edits
         shell: pwsh
         run: |

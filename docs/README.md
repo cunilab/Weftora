@@ -26,7 +26,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [Declarative UI v1](./ui.md) | WFT-UI-001 | Screen schema, bindings, actions and input |
 | [Story rules](./rules.md) | WFT-RULES-001 | Headless typed conditions, deterministic events, ordered actions, limits and Phase 4 integration scope |
 | [ADR 0008 — Declarative events](./adr/0008-declarative-events.md) | WFT-ADR-008 | JSONC event files, dialogue notification boundaries and save-safe rule inputs |
-| [Phase 4 rules evidence](./evidence/phase-4.md) | WFT-EVID-009 | Automated condition/event/Story integration, candidate replay and rule-edit proof |
+| [Phase 4 rules evidence](./evidence/phase-4.md) | WFT-EVID-009 | Automated rules/queries/UI integration, candidate replay and same-player edit proofs |
 | [Story A author tutorial](./story-a-tutorial.md) | WFT-TUT-001 | Content-only dialogue/screen/theme/image edits and export |
 | [Phase 3 Windows manual verification](./evidence/phase-3-windows.md) | WFT-EVID-008 | Native Story A/save/load steps and blank maintainer records |
 | [Phase 3 implementation evidence](./evidence/phase-3.md) | WFT-EVID-007 | Save storage, checkpoints, player restoration and Story A automated checks |

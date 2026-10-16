@@ -82,3 +82,5 @@ The [scripts demo](./examples/scripts-demo/README.md) uses a bounded Rhai comman
 The [random demo](./examples/random-demo/README.md) keeps a seeded dice stream in canonical state and continues the same sequence after checkpoint load.
 
 The [queries demo](./examples/queries-demo/README.md) reads collection length and membership from Yarn through scalar-only helpers.
+
+The [screens demo](./examples/screens-demo/README.md) replaces layouts, colors and navigation using existing widgets, with a repeatable same-player UI edit proof.
