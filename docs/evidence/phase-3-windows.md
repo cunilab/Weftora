@@ -241,3 +241,34 @@ logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/volume-overlay-
 tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
 tested_at: 2026-10-16
 ```
+
+## Maintainer records
+
+Filled by or for the maintainer during the paired verification session (2026-10-16), completing the
+human-observed halves of the delegated PARTIAL records above.
+
+```yaml
+check: P3-01 audio audition and full-route listen (maintainer)
+commit: 881b010
+build_profile: release
+player_sha256: 0689bd5829b55c7d28aa53ce8003318c27e471ead53617df9b4b6e1b7521d26f
+windows_build: 11 Pro 10.0.26300
+audio_device: Realtek High Definition Audio (default device; no-argument launch of the exported package)
+fixture: exported Story A baseline package
+steps: >-
+  no-argument launch; listen at the title menu; About and Return; Begin to the Decision screen
+  (audio intentionally silent there); repair route to The End; Esc; relaunch; roof route to The
+  End; Volume overlay: master Mute -> 50% -> 100% and the music row the same way while playing
+expected: >-
+  music and ambience loop without seams, gaps, stutters, pops or unintended volume jumps; a short
+  receiver effect tone in each route at its cue line; every volume change audible immediately
+actual: >-
+  maintainer walked both routes on the real audio device and reported (verbatim answers) "Q1 good"
+  and "Q2 doing good": no unexpected seam/gap/stutter/pop/volume jump beyond the intended fades,
+  decision silence and ambience end at dawn; the short tone heard in both routes at their cue
+  lines; each master/music Mute/50%/100% change took effect immediately on the playing audio.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/ (visual frames from the same routes, agent side)
+tested_by: maintainer (Andres-Holivin), agent-recorded
+tested_at: 2026-10-16
+```
