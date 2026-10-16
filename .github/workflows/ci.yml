@@ -132,6 +132,27 @@ jobs:
           name: weftora-windows-scripts-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-scripts-preview/
           retention-days: 14
+      - name: Package and validate Windows random demo
+        shell: pwsh
+        run: |
+          $randomPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-random-preview"
+          .\target\debug\weftora.exe export examples/random-demo --out $randomPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $randomPreview "weftora-player.exe") (Join-Path $randomPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $randomHash = (Get-FileHash (Join-Path $randomPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $randomHash) { throw "Random demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $randomPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and random demo: $randomHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-random-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-random-preview/
+          retention-days: 14
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'

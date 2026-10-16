@@ -417,6 +417,7 @@ struct CommandDocument {
 struct ScriptDocument {
     file: String,
     function: String,
+    random: Option<String>,
     #[serde(default)]
     reads: Vec<String>,
     #[serde(default)]
@@ -953,6 +954,26 @@ fn load_script(
             }
         }
     }
+    if let Some(key) = &script.random {
+        if !manifest
+            .requires
+            .as_ref()
+            .is_some_and(|r| r.capabilities.iter().any(|c| c == "rules.random/1"))
+        {
+            return Err("script randomness requires rules.random/1".into());
+        }
+        if !script.reads.contains(key) || !script.writes.contains(key) {
+            return Err("random state key requires both read and write permission".into());
+        }
+        if state.scope(key).map_err(|e| e.to_string())? != Scope::Persistent
+            || !matches!(
+                state.default_value(key).map_err(|e| e.to_string())?,
+                Value::Int(_)
+            )
+        {
+            return Err("random state key must be a Persistent int".into());
+        }
+    }
     let path = resolve_in_root(root, &script.file).map_err(|e| e.to_string())?;
     if std::fs::metadata(&path).map_err(|e| e.to_string())?.len() > 65536 {
         return Err("script source exceeds 65536 bytes".into());
@@ -968,6 +989,7 @@ fn load_script(
         function: script.function.clone(),
         arity: command.parameters.len(),
         persistent_only: manifest.save_schema.is_some(),
+        random: script.random.clone(),
         reads: script.reads.clone(),
         writes: script.writes.clone(),
         signals: script.signals.clone(),

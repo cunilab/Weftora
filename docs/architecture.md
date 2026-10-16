@@ -188,7 +188,7 @@ input → screen button / Yarn choice → command → actions or Rhai
 
 Rhai is embedded for rules too complex for declarative actions. The implemented first slice is defined in [ADR 0010](./adr/0010-bounded-rhai-host.md): explicit state/signal permissions, a raw engine, shared dispatch operation/work limits, fresh per-call scope and source diagnostics. Typed commands are callable from Yarn, events and screen buttons, including isolated checkpoint replay. Scripts cannot access files, network, processes or clocks through this host.
 
-Script-internal Engine command calls and a canonical seeded random source remain deferred. Persistent script state must live in canonical state. These limits prevent common accidents; they do not certify hostile mods as safe.
+Canonical seeded integer randomness is implemented through a declared Persistent stream key ([ADR 0011](./adr/0011-canonical-seeded-randomness.md)); saves retain its exact position. Script-internal Engine command calls remain deferred. Persistent script state must live in canonical state. These limits prevent common accidents; they do not certify hostile mods as safe.
 
 ## 8. UI and presentation
 

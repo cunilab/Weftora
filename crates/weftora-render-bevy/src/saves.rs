@@ -460,6 +460,93 @@ mod tests {
     }
 
     #[test]
+    fn random_load_candidates_never_advance_the_live_sequence() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/random-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+            "roll.rhai",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        player.write_save().unwrap();
+        let path = temp.path().join("data/save.json");
+        let bytes = std::fs::read(&path).unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(-7046029254386353131))
+        );
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "roll".into(),
+                args: vec![],
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(4354685564936845354))
+        );
+        assert!(player.write_save().is_err());
+        let before = player.state.read().unwrap().clone();
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(-7046029254386353131))
+        );
+        assert_eq!(*player.state.read().unwrap(), before);
+        let source = std::fs::read_to_string(root.join("roll.rhai")).unwrap();
+        std::fs::write(
+            root.join("roll.rhai"),
+            source.replace("let rolls =", "state.get(\"denied\"); let rolls ="),
+        )
+        .unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let screen = player.presenter.screen().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("failed random replay activated"),
+            Err(e) => e,
+        };
+        assert!(error.contains("roll.rhai:3"), "{error}");
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(player.presenter.screen(), &screen);
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "roll".into(),
+                args: vec![],
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(-2691343689449507777))
+        );
+        assert_eq!(
+            player.state.read().unwrap().get("rolls"),
+            Ok(&Value::List(vec![
+                Value::Int(2),
+                Value::Int(1),
+                Value::Int(2)
+            ]))
+        );
+    }
+
+    #[test]
     fn rule_restore_uses_a_candidate_and_failure_preserves_live_state_and_slot() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("story");

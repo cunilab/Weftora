@@ -1,0 +1,8 @@
+{
+  "rulesSchema": 1,
+  "commands": [{
+    "id": "roll",
+    "script": {"file": "roll.rhai", "function": "roll", "random": "rng",
+               "reads": ["rng", "rolls"], "writes": ["rng", "rolls", "last"]}
+  }]
+}

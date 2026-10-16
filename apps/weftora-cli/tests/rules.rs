@@ -465,3 +465,71 @@ fn script_feedback_shares_work_and_operation_limits() {
         "{error}"
     );
 }
+
+fn random_fixture() -> tempfile::TempDir {
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/random-demo");
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join("story")).unwrap();
+    for file in [
+        "manifest.jsonc",
+        "main.yarn",
+        "events.jsonc",
+        "screen.jsonc",
+        "roll.rhai",
+    ] {
+        fs::copy(example.join(file), temp.path().join("story").join(file)).unwrap();
+    }
+    temp
+}
+#[test]
+fn seeded_random_sequence_continues_identically_after_each_checkpoint_load() {
+    let temp = random_fixture();
+    let uninterrupted = success(run(temp.path(), &[]));
+    let end = uninterrupted.last().unwrap();
+    assert_eq!(end["state"]["rolls"], json!([2, 1, 2]));
+    assert_eq!(end["state"]["rng"], -2691343689449507777i64);
+    for checkpoint in ["random.start", "random.second", "random.third"] {
+        let saved = success(run(temp.path(), &["--save-at", checkpoint]));
+        let slot = temp.path().join("saves/save.json");
+        let bytes = fs::read(&slot).unwrap();
+        for _ in 0..3 {
+            let resaved = success(run(temp.path(), &["--load", "--save-at", checkpoint]));
+            assert_eq!(
+                resaved.last().unwrap()["state"],
+                saved.last().unwrap()["state"]
+            );
+            assert_eq!(fs::read(&slot).unwrap(), bytes);
+            let restored = success(run(temp.path(), &["--load"]));
+            assert_eq!(restored.last().unwrap()["state"], end["state"]);
+        }
+    }
+}
+#[test]
+fn failed_random_replay_never_publishes_candidate_output_or_changes_save_files() {
+    let temp = random_fixture();
+    success(run(temp.path(), &["--save-at", "random.start"]));
+    success(run(temp.path(), &["--load", "--save-at", "random.start"]));
+    let slot = temp.path().join("saves/save.json");
+    let backup = temp.path().join("saves/save.bak");
+    let bytes = fs::read(&slot).unwrap();
+    let prior_backup = fs::read(&backup).unwrap();
+    let manifest = temp.path().join("story/manifest.jsonc");
+    let mut document: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
+    // Retain schema 1 deliberately: fresh launch succeeds, but the old checkpoint replay fails.
+    document["state"]["rng"]["default"] = json!(1);
+    fs::write(manifest, document.to_string()).unwrap();
+    let script = temp.path().join("story/roll.rhai");
+    let source = fs::read_to_string(&script).unwrap().replace(
+        "let rolls =",
+        "if state.get(\"rng\") == -7046029254386353131 { state.get(\"denied\"); }\n    let rolls =",
+    );
+    fs::write(script, source).unwrap();
+    let fresh = success(run(temp.path(), &[]));
+    assert_eq!(fresh.last().unwrap()["state"]["rolls"], json!([6, 2, 1]));
+    let failed = run(temp.path(), &["--load"]);
+    assert!(!failed.status.success());
+    assert!(failed.stdout.is_empty());
+    assert!(String::from_utf8_lossy(&failed.stderr).contains("roll.rhai:3"));
+    assert_eq!(fs::read(slot).unwrap(), bytes);
+    assert_eq!(fs::read(backup).unwrap(), prior_backup);
+}

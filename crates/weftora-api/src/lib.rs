@@ -88,6 +88,7 @@ pub struct ScriptDefinition {
     pub function: String,
     pub arity: usize,
     pub persistent_only: bool,
+    pub random: Option<String>,
     pub reads: Vec<String>,
     pub writes: Vec<String>,
     pub signals: Vec<String>,

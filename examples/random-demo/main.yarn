@@ -1,0 +1,21 @@
+title: Start
+---
+<<declare $last = 0>>
+<<checkpoint random.start>>
+<<roll>>
+Roll {$last}
+<<jump Second>>
+===
+title: Second
+---
+<<checkpoint random.second>>
+<<roll>>
+Roll {$last}
+<<jump Third>>
+===
+title: Third
+---
+<<checkpoint random.third>>
+<<roll>>
+Roll {$last}
+===

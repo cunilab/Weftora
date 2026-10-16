@@ -1,0 +1,87 @@
+{
+  "device": "MacBookAir",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "baseCommit": "e87fb063c9331468cb618aed32772edc32e69823",
+  "scope": "Automated export/package validation and headless RNG replay; no native Windows/visual acceptance. Working-tree RNG implementation built once; no Rust rebuild between exports or edits.",
+  "playerSha256": "d0b09ad733e55825437df559ae32b182e42a67fe3e1f3203e2846618770337e1",
+  "packages": [
+    {
+      "name": "hello",
+      "playerSha256": "d0b09ad733e55825437df559ae32b182e42a67fe3e1f3203e2846618770337e1"
+    },
+    {
+      "name": "random",
+      "playerSha256": "d0b09ad733e55825437df559ae32b182e42a67fe3e1f3203e2846618770337e1",
+      "lines": [
+        "Roll 2",
+        "Roll 1",
+        "Roll 2"
+      ],
+      "rolls": [
+        2,
+        1,
+        2
+      ],
+      "rng": -2691343689449507777,
+      "compiledDialogueSha256": "a4d84d9976f69c0050e44ee419a7478b8b3dfbe0f9339f7c26cf84d8a82c1156"
+    },
+    {
+      "name": "edited",
+      "playerSha256": "d0b09ad733e55825437df559ae32b182e42a67fe3e1f3203e2846618770337e1",
+      "lines": [
+        "Roll 6",
+        "Roll 2",
+        "Roll 1"
+      ],
+      "rolls": [
+        6,
+        2,
+        1
+      ],
+      "rng": -2691343689449507776,
+      "compiledDialogueSha256": "a4d84d9976f69c0050e44ee419a7478b8b3dfbe0f9339f7c26cf84d8a82c1156"
+    }
+  ],
+  "checkpoints": [
+    {
+      "checkpoint": "random.start",
+      "stateAtDisplay": {
+        "last": 2,
+        "rng": -7046029254386353131,
+        "rolls": [
+          2
+        ]
+      },
+      "resaveByteIdentical": true,
+      "continuationMatchesUninterrupted": true
+    },
+    {
+      "checkpoint": "random.second",
+      "stateAtDisplay": {
+        "last": 1,
+        "rng": 4354685564936845354,
+        "rolls": [
+          2,
+          1
+        ]
+      },
+      "resaveByteIdentical": true,
+      "continuationMatchesUninterrupted": true
+    },
+    {
+      "checkpoint": "random.third",
+      "stateAtDisplay": {
+        "last": 2,
+        "rng": -2691343689449507777,
+        "rolls": [
+          2,
+          1,
+          2
+        ]
+      },
+      "resaveByteIdentical": true,
+      "continuationMatchesUninterrupted": true
+    }
+  ],
+  "oldSchemaSaveRefusedWithoutOutputOrSlotChange": true
+}

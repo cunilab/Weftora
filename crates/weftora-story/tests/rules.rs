@@ -739,3 +739,59 @@ fn script_metadata_confines_sources_capabilities_permissions_and_variants() {
             .contains("exactly one")
     );
 }
+
+#[test]
+fn random_metadata_requires_capability_permissions_and_persistent_integer_state() {
+    for variant in ["valid", "capability", "read", "write", "scope", "type"] {
+        let temp = command_fixture(
+            json!([{"id":"roll","script":{"file":"roll.rhai","function":"roll","random":"rng","reads":["rng"],"writes":["rng"]}}]),
+        );
+        fs::write(
+            temp.path().join("roll.rhai"),
+            "fn roll(s) { s.random(1,6); }",
+        )
+        .unwrap();
+        update(temp.path(), "manifest.jsonc", |v| {
+            v["requires"]["capabilities"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!("rules.rhai/1"));
+            if variant != "capability" {
+                v["requires"]["capabilities"]
+                    .as_array_mut()
+                    .unwrap()
+                    .push(json!("rules.random/1"));
+            }
+            v["state"]["rng"] = json!({"default":0});
+            if variant == "scope" {
+                v["state"]["rng"]["scope"] = json!("session");
+            }
+            if variant == "type" {
+                v["state"]["rng"]["default"] = json!(false);
+            }
+        });
+        if variant == "read" || variant == "write" {
+            update(temp.path(), "events.jsonc", |v| {
+                v["commands"][0]["script"][if variant == "read" { "reads" } else { "writes" }] =
+                    json!([])
+            });
+        }
+        let result = Story::load(temp.path());
+        if variant == "valid" {
+            assert_eq!(
+                result.unwrap().rules().scripts()[0].random.as_deref(),
+                Some("rng")
+            );
+        } else {
+            let errors = result.unwrap_err();
+            assert!(
+                errors[0].message.contains(match variant {
+                    "capability" => "rules.random/1",
+                    "read" | "write" => "both read and write",
+                    _ => "Persistent",
+                }),
+                "{variant}: {errors:?}"
+            );
+        }
+    }
+}

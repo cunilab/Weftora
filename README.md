@@ -78,3 +78,5 @@ The [commands demo](./examples/commands-demo/README.md) exercises typed Story co
 The [collections demo](./examples/collections-demo/README.md) stores a flat list inventory and map schedule, with whole-value command edits and checkpoint replay.
 
 The [scripts demo](./examples/scripts-demo/README.md) uses a bounded Rhai command for inventory/schedule edits, callable from Yarn, events and screen buttons.
+
+The [random demo](./examples/random-demo/README.md) keeps a seeded dice stream in canonical state and continues the same sequence after checkpoint load.

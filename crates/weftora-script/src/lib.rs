@@ -304,6 +304,16 @@ fn scalar(value: Dynamic) -> Result<Value> {
     }
     from_dynamic(value)
 }
+// SplitMix64 v1; fixed wrapping arithmetic is part of the Story replay contract.
+// Reference (public domain): https://prng.di.unimi.it/splitmix64.c
+fn random_word(seed: i64) -> (i64, u64) {
+    let next = (seed as u64).wrapping_add(0x9e3779b97f4a7c15);
+    let mut word = next;
+    word = (word ^ (word >> 30)).wrapping_mul(0xbf58476d1ce4e5b9);
+    word = (word ^ (word >> 27)).wrapping_mul(0x94d049bb133111eb);
+    (next as i64, word ^ (word >> 31))
+}
+
 fn engine() -> Engine {
     let mut engine = Engine::new_raw();
     engine
@@ -390,6 +400,44 @@ fn engine() -> Engine {
             Ok(())
         },
     );
+    engine.register_fn(
+        "random",
+        |host: &mut Host, min: i64, max: i64| -> Result<i64> {
+            let mut context = host.0.borrow_mut();
+            let key = context
+                .definition
+                .random
+                .clone()
+                .ok_or_else(|| error("random state key is not configured"))?;
+            context.permission(&key, false)?;
+            context.permission(&key, true)?;
+            if context.state.scope(&key).map_err(error)? != StateScope::Persistent {
+                return Err(error("random state key must be a Persistent int"));
+            }
+            if min > max {
+                return Err(error("random minimum exceeds maximum"));
+            }
+            let span = (max as u64).wrapping_sub(min as u64).wrapping_add(1);
+            let threshold = if span == 0 {
+                0
+            } else {
+                span.wrapping_neg() % span
+            };
+            loop {
+                let Value::Int(seed) = context.state.get(&key).map_err(error)? else {
+                    return Err(error("random state key must be a Persistent int"));
+                };
+                let (next, word) = random_word(*seed);
+                // Each rejection is canonical work too, so sampling cannot bypass the dispatch cap.
+                context.spend()?;
+                context.state.set(&key, Value::Int(next)).map_err(error)?;
+                if span == 0 || word >= threshold {
+                    let offset = if span == 0 { word } else { word % span };
+                    return Ok(min.wrapping_add(offset as i64));
+                }
+            }
+        },
+    );
     engine.register_fn("len", |items: &mut Array| items.len() as i64);
     engine.register_fn("len", |items: &mut Map| items.len() as i64);
     engine.register_fn("len", |text: ImmutableString| text.len() as i64);
@@ -437,6 +485,7 @@ mod tests {
             function: "run".into(),
             arity: 0,
             persistent_only: true,
+            random: None,
             reads: vec!["count".into(), "items".into(), "schedule".into()],
             writes: vec!["count".into(), "items".into(), "schedule".into()],
             signals: vec!["done".into()],
@@ -455,6 +504,153 @@ mod tests {
         state.drain_changes();
         state
     }
+    fn random_definition(source: &str) -> ScriptDefinition {
+        let mut definition = definition(source);
+        definition.random = Some("rng".into());
+        definition.reads.push("rng".into());
+        definition.writes.push("rng".into());
+        definition
+    }
+    fn random_state(seed: i64) -> State {
+        let mut state = state();
+        state.set("rng", Value::Int(seed)).unwrap();
+        state.drain_changes();
+        state
+    }
+    #[test]
+    fn random_v1_golden_words_ranges_and_canonical_work_are_stable() {
+        let mut seed = 0;
+        for expected in [0xe220a8397b1dcdaf, 0x6e789e6aa1b965f4, 0x06c45d188009454f] {
+            let (next, word) = random_word(seed);
+            assert_eq!(word, expected);
+            seed = next;
+        }
+        let mut programs = Programs::compile(&[random_definition(
+            "fn run(s) { s.set(\"count\", s.random(1,6)); }",
+        )])
+        .unwrap();
+        let mut state = random_state(0);
+        let mut budget = Budget::new(100);
+        for expected in [2, 1, 2, 5, 2, 1] {
+            programs
+                .execute("test", &[], &mut state, &mut budget)
+                .unwrap();
+            assert_eq!(state.get("count"), Ok(&Value::Int(expected)));
+        }
+        assert_eq!(budget.remaining(), 88);
+        assert_eq!(state.get("rng"), Ok(&Value::Int(-5382687378899015554)));
+        // A full signed range cannot be represented as a positive i64 width.
+        let mut programs = Programs::compile(&[random_definition(
+            "fn run(s) { s.set(\"count\", s.random(-9223372036854775807-1,9223372036854775807)); }",
+        )])
+        .unwrap();
+        let mut state = random_state(0);
+        programs
+            .execute("test", &[], &mut state, &mut Budget::new(10))
+            .unwrap();
+        assert_eq!(state.get("count"), Ok(&Value::Int(0x6220a8397b1dcdaf)));
+        let mut programs = Programs::compile(&[random_definition(
+            "fn run(s) { s.set(\"count\", s.random(-5,-5)); }",
+        )])
+        .unwrap();
+        programs
+            .execute("test", &[], &mut state, &mut Budget::new(10))
+            .unwrap();
+        assert_eq!(state.get("count"), Ok(&Value::Int(-5)));
+        assert_eq!(state.get("rng"), Ok(&Value::Int(4354685564936845354)));
+    }
+    #[test]
+    fn random_rejections_charge_every_draw_and_failures_keep_completed_draws() {
+        let source = "fn run(s) { s.set(\"count\", s.random(-1,9223372036854775807)); }";
+        let mut programs = Programs::compile(&[random_definition(source)]).unwrap();
+        // Seed one step after zero: the next two words fall below the rejection threshold.
+        let mut state = random_state(-7046029254386353131);
+        let mut budget = Budget::new(1);
+        let error = programs
+            .execute("test", &[], &mut state, &mut budget)
+            .unwrap_err();
+        assert!(error.message.contains("work budget"), "{error}");
+        assert_eq!(budget.remaining(), 0);
+        assert_eq!(state.get("rng"), Ok(&Value::Int(4354685564936845354)));
+        let mut state = random_state(-7046029254386353131);
+        let mut budget = Budget::new(3);
+        let error = programs
+            .execute("test", &[], &mut state, &mut budget)
+            .unwrap_err();
+        assert!(error.message.contains("work budget"), "{error}");
+        assert_eq!(budget.remaining(), 0);
+        assert_eq!(state.get("rng"), Ok(&Value::Int(8709371129873690708)));
+        assert_eq!(state.get("count"), Ok(&Value::Int(0)));
+        let mut state = random_state(-7046029254386353131);
+        programs
+            .execute("test", &[], &mut state, &mut Budget::new(4))
+            .unwrap();
+        assert_eq!(state.get("count"), Ok(&Value::Int(0x788bb8a8724c81ea)));
+    }
+    #[test]
+    fn random_requires_config_permissions_persistent_int_and_valid_bounds() {
+        for variant in [
+            "unconfigured",
+            "read",
+            "write",
+            "session",
+            "type",
+            "removed",
+            "range",
+            "budget",
+        ] {
+            let source = if variant == "range" {
+                "fn run(s) { s.random(2,1); }"
+            } else {
+                "fn run(s) { s.random(1,6); }"
+            };
+            let mut definition = random_definition(source);
+            let mut state = random_state(0);
+            match variant {
+                "unconfigured" => definition.random = None,
+                "read" => definition.reads.retain(|k| k != "rng"),
+                "write" => definition.writes.retain(|k| k != "rng"),
+                "session" | "type" => {
+                    state = State::new();
+                    state
+                        .declare(
+                            "rng",
+                            weftora_core::StateDefinition {
+                                default: if variant == "type" {
+                                    Value::Bool(false)
+                                } else {
+                                    Value::Int(0)
+                                },
+                                scope: if variant == "session" {
+                                    StateScope::Session
+                                } else {
+                                    StateScope::Persistent
+                                },
+                            },
+                        )
+                        .unwrap();
+                }
+                "removed" => {
+                    state.remove("rng").unwrap();
+                }
+                _ => {}
+            }
+            let before = state.clone();
+            let mut programs = Programs::compile(&[definition]).unwrap();
+            let error = programs
+                .execute(
+                    "test",
+                    &[],
+                    &mut state,
+                    &mut Budget::new(if variant == "budget" { 0 } else { 10 }),
+                )
+                .unwrap_err();
+            assert_eq!(error.file, "mechanic.rhai");
+            assert_eq!(error.line, Some(1), "{variant}: {error}");
+            assert_eq!(state, before, "{variant}: {error}");
+        }
+    }
+
     #[test]
     fn collections_formulas_and_deferred_signals_use_canonical_state() {
         let source = r#"fn run(s) {
