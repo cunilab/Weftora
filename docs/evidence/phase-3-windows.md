@@ -295,3 +295,100 @@ result: PASS
 tested_by: maintainer (Andres-Holivin), agent-recorded
 tested_at: 2026-10-16
 ```
+
+## Agent-run records (paired session)
+
+Additional agent-run checks completed during the paired session after the maintainer
+directed the agent to finish the remaining P3-03 items directly instead of delegating them.
+
+```yaml
+check: P3-03 step 5, same-frame F5/F9 with Space (agent, paired session)
+commit: 71feafe
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player, raw keybd_event chord injection
+steps: >-
+  fresh player; warmup input; Begin; settle at the first Arrival display; chord with both
+  key-downs less than 1ms apart, held and released together: F5+Space gap 0ms twice, then a
+  positive control at gap 60ms; with the arrival save present, F9+Space gap 0ms twice and a
+  60ms control; PNG snapshot after every run; hash save.json after the first chord
+expected: >-
+  a simultaneous F5/F9 with Space never advances or skips the restored first display; the
+  60ms controls must show a normal advance so the gap-0 results are discriminating
+actual: >-
+  gap 0ms F5+Space: "Saved." with the line held at the first Arrival display (2/2 runs);
+  gap 0ms F9+Space: "Loaded." with the first display held (2/2 runs); gap 60ms controls:
+  status present and the line advanced to the next display in both variants, proving the
+  harness observes an advance when one happens; the chorded save.json matched the known
+  arrival hash 17379B0CE2FF7DBD44A8256D4B5C27148EA59A8FF7B379620A57C14857CAF00F
+  byte-for-byte (save determinism holds under chords)
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/c1-f5s-tight-s5.png, c2-f5s-tight2-s5.png,
+  c3-f5s-ctrl60-s5.png, c4-f9s-tight-s3.png, c5-f9s-tight2-s3.png, c6-f9s-ctrl60-s3.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-03 step 1, Tab/Shift+Tab focus at the Story A menu (agent, paired session)
+commit: 71feafe
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: fresh menu; Tab once; Shift+Tab once; Tab once; PNG snapshot after each
+expected: Tab and Shift+Tab move focus with no keyboard trap; the menu stays operable
+actual: >-
+  Tab focused "1. Begin" (visible ring); Shift+Tab cleared the ring with no element
+  highlighted - backward navigation from the first element does not visibly wrap to the
+  last element; the next Tab re-focused "1. Begin". No trap: forward navigation resumes
+  from the first element and every control stays reachable. Observation recorded for the
+  reviewer; the delegated keyboard record already covers Tab/Enter/digits and overlay
+  focus at 100%.
+result: PASS (with observation: Shift+Tab from the first element clears focus instead of wrapping)
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/shifttab-s3.png, shifttab-s4.png,
+  shifttab-s5.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: >-
+  P3-03 step 4, DPI scale rendering at 150% and input after a synthetic scale change
+  (agent, paired session)
+commit: 71feafe
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: >-
+  measure the player window DPI (GetDpiForWindow = 96, Windows scale 100%); deliver a
+  synthetic WM_DPICHANGED with DPI 144 to the player window only (per-window message, no
+  system state changed); capture menu, arrival dialogue, choice rows, footer and status
+  before and after; resize the window while at 144; probe click, Tab, Enter and Esc after
+  the message; three system-level automation attempts (SPI_SETLOGICALDPIOVERRIDE with two
+  value encodings, then display-config enumeration) all failed on this build and each
+  verified the setting unchanged (GET still -1)
+expected: >-
+  title, dialogue, choices, buttons and status remain readable and reachable at the changed
+  scale; the check's letter requires the actual Windows DPI setting
+actual: >-
+  rendering PASSED: the window adopted DPI 144 (client 1280x720 -> 1920x1080, exactly
+  1.5x) and every element - header, hint line, speaker, dialogue line, both choice rows,
+  four footer buttons and the route status - stayed inside the panel with no clipping or
+  overlap; a resize at 144 reflowed the scaled menu correctly (event loop alive); pre-kick
+  frames at 96 are the paired controls. FINDING (method-limited): after the synthetic
+  message, keyboard and mouse input stopped reaching the app (Tab/Enter/click/Esc all
+  no-ops in frames) while rendering continued; cause unresolved and possibly an artifact
+  of the synthetic path, because the real monitor DPI stayed 96 (GetDpiForWindow still 96)
+  and winit may re-query it, conflicting with the message's 144. The actual-Settings flip
+  (100% -> 150%) stays with the maintainer to confirm live readability and input after a
+  real change. (The NVIDIA toast visible in some frames is a driver overlay, not app UI.)
+result: PARTIAL (rendering at 150% verified with frames; actual-setting flip pending)
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/dpi-kick-s4.png, dpi-kick-s6.png,
+  dpi-choice4-s14.png, dpi-choice4-s16.png, dpi-alive-s5.png, dpi-alive-s8.png,
+  dpi-input-s7.png, dpi-input-s11.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
