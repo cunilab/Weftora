@@ -392,3 +392,49 @@ logs_or_artifacts: >-
 tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
 tested_at: 2026-10-16
 ```
+
+```yaml
+check: >-
+  P3-03 step 4 (resolution), actual Windows DPI setting flip 100% -> 125%: readability
+  and input after a real scale change (agent, paired session)
+commit: b14b46f
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: >-
+  enumerate the active display path (GetDisplayConfigBufferSizes + QueryDisplayConfig:
+  adapter LUID 64417, source id 0) and read the scale info the Settings app uses
+  (DisplayConfigGetDeviceInfo type -3: min=-1 cur=-1 max=2); SET type -4 to cur+1, one
+  standard step = 125%; three runs: (a) fresh launch already at 125% with keyboard and
+  click probes, (b) player running at 96, flip the scale live so the open window receives
+  a real WM_DPICHANGED, then probe space/click/Tab and capture full frames under a
+  per-thread DPI-aware capture context, (c) reach the Decision screen at 96, flip live,
+  capture the choice rows before and after; every run restores the scale in a finally
+  block and re-reads GET to confirm
+expected: >-
+  title, dialogue, choices, buttons and status readable and reachable at the actual
+  changed scale; input still delivered after the real change; original scale restored
+actual: >-
+  SET succeeded (cur -1 -> 0, hr=0) and GetDpiForWindow reported 120 on every probe frame
+  (96 -> 120 = 100% -> 125%); fresh-launch run at 125%: a click on Continue advanced the
+  line (clipped control frames real-flip-input-s4/s6); on the live flip the open window
+  client grew 1280x720 -> 1600x900 as Windows delivered the real WM_DPICHANGED, and
+  input after the change stayed alive - space advanced Mara ferry -> Ivo receiver, a
+  click on Continue advanced to the sister line, Tab showed the focus ring on Continue,
+  and four more spaces walked battery -> prompt -> Decision where the last space
+  confirmed the default choice (frame shows Route: repair; space acts as confirm on the
+  Decision screen at any DPI, an untested-before behavior, not a glitch) - so the earlier
+  no-input observation is an artifact of the synthetic message path, not a product bug;
+  full frames at 120 show header, hint, speaker, dialogue, both choice rows, all four
+  footer buttons and the route status readable with no clipping, window inside the
+  1920x1080 desktop; restore: hr=0 in all three runs, GET cur back to -1, and
+  GetDpiForWindow 96 re-verified after relaunch
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/real-flip-input-s4.png,
+  real-flip-input-s6.png, live-d1-dialogue.png, live-d2-after-space.png,
+  live-d3-after-click.png, live-d4-after-tab.png, live-d5-choices.png,
+  live-d6-pre-flip-decision.png, live-d6-choices-125.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
