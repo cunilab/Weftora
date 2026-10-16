@@ -1,0 +1,92 @@
+{
+  "rulesSchema": 1,
+  "commands": [
+    {
+      "id": "pack",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": "int"
+        }
+      ],
+      "script": {
+        "file": "mechanics.rhai",
+        "function": "pack",
+        "reads": [
+          "items",
+          "schedule"
+        ],
+        "writes": [
+          "items",
+          "schedule",
+          "item_count",
+          "status"
+        ],
+        "signals": [
+          "kit.packed"
+        ]
+      }
+    },
+    {
+      "id": "unpack",
+      "actions": [
+        {
+          "do": "state.reset",
+          "key": "items"
+        },
+        {
+          "do": "state.reset",
+          "key": "schedule"
+        },
+        {
+          "do": "state.reset",
+          "key": "item_count"
+        },
+        {
+          "do": "state.reset",
+          "key": "status"
+        },
+        {
+          "do": "state.reset",
+          "key": "request"
+        }
+      ]
+    }
+  ],
+  "events": [
+    {
+      "id": "request.pack",
+      "trigger": "state.changed.request",
+      "condition": {
+        "op": "compare",
+        "operator": "==",
+        "left": {
+          "state": "request"
+        },
+        "right": {
+          "literal": true
+        }
+      },
+      "actions": [
+        {
+          "do": "command.call",
+          "command": "pack",
+          "args": [
+            2
+          ]
+        }
+      ]
+    },
+    {
+      "id": "packed",
+      "trigger": "kit.packed",
+      "actions": [
+        {
+          "do": "state.set",
+          "key": "status",
+          "value": "Kit packed"
+        }
+      ]
+    }
+  ]
+}

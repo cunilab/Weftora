@@ -295,6 +295,7 @@ pub struct DialogueRunner {
     capture: Option<checkpoint::Capture>,
     state: SharedState,
     rules: weftora_story::rules::Rules,
+    scripts: weftora_script::Programs,
     program: Program,
     failure: Option<String>,
     node_files: BTreeMap<String, String>,
@@ -347,6 +348,7 @@ impl DialogueRunner {
             capture: None,
             state,
             rules: weftora_story::rules::Rules::default(),
+            scripts: weftora_script::Programs::default(),
             program: dialogue.program.clone(),
             failure: default_error.or_else(|| {
                 initialization
@@ -375,6 +377,18 @@ impl DialogueRunner {
     ) -> Self {
         let mut runner = Self::new(dialogue, state);
         runner.rules = story.rules().clone();
+        match weftora_script::Programs::compile(runner.rules.scripts()) {
+            Ok(scripts) => runner.scripts = scripts,
+            Err(errors) => {
+                runner.failure = Some(
+                    errors
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                )
+            }
+        }
         runner
     }
 
@@ -447,11 +461,17 @@ impl DialogueRunner {
                                 .parse_command(&command.name, &command.args, false)
                                 .map_err(|e| e.to_string())?;
                             self.rules
-                                .call(&command.name, &args, &mut state, from)
+                                .call_with(
+                                    &command.name,
+                                    &args,
+                                    &mut state,
+                                    from,
+                                    &mut self.scripts,
+                                )
                                 .map_err(|e| e.to_string())?;
                         } else {
                             self.rules
-                                .settle(&mut state, from)
+                                .settle_with(&mut state, from, &mut self.scripts)
                                 .map_err(|e| e.to_string())?;
                         }
                         self.storage
@@ -490,12 +510,12 @@ impl DialogueRunner {
                     state.get(key).map_err(|e| e.to_string())?;
                     state.set(key, value.clone()).map_err(|e| e.to_string())?;
                     self.rules
-                        .settle(&mut state, from)
+                        .settle_with(&mut state, from, &mut self.scripts)
                         .map_err(|e| e.to_string())?;
                 }
                 weftora_story::ui::UiAction::CallCommand { command, args } => {
                     self.rules
-                        .call(command, args, &mut state, from)
+                        .call_with(command, args, &mut state, from, &mut self.scripts)
                         .map_err(|e| e.to_string())?;
                 }
                 _ => return Err("expected a state or command UI action".into()),

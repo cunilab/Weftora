@@ -111,6 +111,27 @@ jobs:
           name: weftora-windows-collections-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-collections-preview/
           retention-days: 14
+      - name: Package and validate Windows scripts demo
+        shell: pwsh
+        run: |
+          $scriptsPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-scripts-preview"
+          .\target\debug\weftora.exe export examples/scripts-demo --out $scriptsPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $scriptsPreview "weftora-player.exe") (Join-Path $scriptsPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $scriptsHash = (Get-FileHash (Join-Path $scriptsPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $scriptsHash) { throw "Scripts demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $scriptsPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and scripts demo: $scriptsHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-scripts-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-scripts-preview/
+          retention-days: 14
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'

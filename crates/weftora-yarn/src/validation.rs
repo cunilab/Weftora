@@ -4,7 +4,9 @@ use weftora_api::Diagnostic;
 use weftora_story::Story;
 
 pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic> {
-    let mut errors = Vec::new();
+    let mut errors = weftora_script::Programs::compile(story.rules().scripts())
+        .err()
+        .unwrap_or_default();
     match story.initial_state() {
         Ok(state) => {
             errors.extend(

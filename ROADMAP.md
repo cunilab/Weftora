@@ -84,13 +84,13 @@ Goal: a short, complete visual novel played through the prebuilt player.
 
 Goal: games define their own mechanics without Engine changes.
 
-**Status:** development in progress while earlier native acceptance remains queued in issue #5. Scalar conditions, deterministic events and ordered state actions are implemented in `weftora-flow`; JSONC Story files connect them to the shared dialogue runner and checkpoint candidates; typed declarative commands now run from Yarn, events and screen buttons. [Rule semantics and scope](./docs/rules.md) describe the authoring format and command/UI semantics and remaining script integration. No Phase 4 gate is claimed.
+**Status:** development in progress while earlier native acceptance remains queued in issue #5. Scalar conditions, deterministic events and ordered state actions are implemented in `weftora-flow`; JSONC Story files connect them to the shared dialogue runner and checkpoint candidates; typed declarative commands now run from Yarn, events and screen buttons. [Rule semantics and scope](./docs/rules.md) describe the authoring format and command/UI semantics and bounded script integration. No Phase 4 gate is claimed.
 
 - [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling. Scheduler, JSONC files and dialogue-state notification bridge implemented; native evidence follows.
 - [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not. Evaluator and Story file integration implemented; Windows CI evidence follows.
-- [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)). Flat scalar collections, whole-value actions and save replay are implemented with bounded decoding and automated checks; see [ADR 0009](./docs/adr/0009-flat-collection-state.md). Entry operations and native demonstration remain.
-- [ ] Rhai script host: allowlisted Engine API, operation/depth/size limits, errors mapped to Story diagnostics, no file/network/OS access.
-- [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn. Typed declarative commands and the UI notification bridge are implemented with automated replay checks; Rhai and native acceptance remain.
+- [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)). Flat scalar collections, whole-value actions and save replay are implemented with bounded decoding and automated checks; see [ADR 0009](./docs/adr/0009-flat-collection-state.md). Rhai provides bounded local entry operations; native demonstration remains.
+- [ ] Rhai script host: state/signal permissions, shared operation/work and depth/size limits, source diagnostics and no file/network/OS API are implemented ([ADR 0010](./docs/adr/0010-bounded-rhai-host.md)). Script-internal Engine calls, seeded randomness and native acceptance remain.
+- [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn. Typed declarative commands and the UI notification bridge are implemented with automated replay checks; Bounded Rhai commands now share these paths; native acceptance remains.
 - [ ] Themed custom screens and navigation.
 
 ## Phase 5 — Second Story proves reuse (Story B)

@@ -365,3 +365,103 @@ fn collections_are_not_mapped_into_yarn_or_text_bindings() {
     assert!(!failed.status.success());
     assert!(String::from_utf8_lossy(&failed.stderr).contains("scalar"));
 }
+
+fn scripts_fixture() -> tempfile::TempDir {
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/scripts-demo");
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join("story")).unwrap();
+    for file in [
+        "manifest.jsonc",
+        "main.yarn",
+        "events.jsonc",
+        "screen.jsonc",
+        "mechanics.rhai",
+    ] {
+        fs::copy(example.join(file), temp.path().join("story").join(file)).unwrap();
+    }
+    temp
+}
+#[test]
+fn scripts_run_once_through_shared_commands_and_checkpoint_candidates() {
+    let temp = scripts_fixture();
+    let trace = success(run(temp.path(), &[]));
+    let lines: Vec<_> = trace
+        .iter()
+        .filter(|v| v["event"] == "line")
+        .map(|v| v["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(lines, ["Packed 2 items", "Items after reset 0"]);
+    let saved = success(run(temp.path(), &["--save-at", "scripts.start"]));
+    assert_eq!(
+        saved.last().unwrap()["state"]["items"],
+        json!(["key", "ticket"])
+    );
+    assert_eq!(saved.last().unwrap()["state"]["schedule"]["energy"], 8);
+    let slot = temp.path().join("saves/save.json");
+    let bytes = fs::read(&slot).unwrap();
+    success(run(temp.path(), &["--load", "--save-at", "scripts.start"]));
+    assert_eq!(fs::read(&slot).unwrap(), bytes);
+    let script = temp.path().join("story/mechanics.rhai");
+    let source = fs::read_to_string(&script).unwrap().replace(
+        "state.emit(\"kit.packed\", true);",
+        "state.add(\"item_count\", 9223372036854775807);",
+    );
+    fs::write(script, source).unwrap();
+    let failed = run(temp.path(), &["--load"]);
+    assert!(!failed.status.success());
+    assert!(failed.stdout.is_empty());
+    let error = String::from_utf8_lossy(&failed.stderr);
+    assert!(
+        error.contains("mechanics.rhai:") && error.contains("overflow"),
+        "{error}"
+    );
+    assert_eq!(fs::read(&slot).unwrap(), bytes);
+    assert_eq!(fs::read(temp.path().join("saves/save.bak")).unwrap(), bytes);
+}
+#[test]
+fn script_compile_errors_and_permission_failures_are_source_diagnostics() {
+    for source in [
+        "fn pack(state, amount) {",
+        "let hidden=1; fn pack(state,amount) {}",
+        "fn wrong(state,amount) {}",
+    ] {
+        let temp = scripts_fixture();
+        fs::write(temp.path().join("story/mechanics.rhai"), source).unwrap();
+        let failed = run(temp.path(), &[]);
+        assert!(!failed.status.success());
+        assert!(String::from_utf8_lossy(&failed.stderr).contains("mechanics.rhai"));
+    }
+    let temp = scripts_fixture();
+    fs::write(
+        temp.path().join("story/mechanics.rhai"),
+        "fn pack(state,amount) {\n state.get(\"status\");\n}",
+    )
+    .unwrap();
+    let failed = run(temp.path(), &[]);
+    let error = String::from_utf8_lossy(&failed.stderr);
+    assert!(!failed.status.success());
+    assert!(
+        error.contains("mechanics.rhai:2") && error.contains("permission denied"),
+        "{error}"
+    );
+}
+#[test]
+fn script_feedback_shares_work_and_operation_limits() {
+    let temp = scripts_fixture();
+    fs::write(
+        temp.path().join("story/mechanics.rhai"),
+        "fn pack(state,amount) { state.add(\"item_count\",1); }",
+    )
+    .unwrap();
+    let path = temp.path().join("story/events.jsonc");
+    let mut rules: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    rules["events"] = json!([{"id":"cycle","trigger":"state.changed.item_count","actions":[{"do":"command.call","command":"pack","args":[2]}]}]);
+    fs::write(path, rules.to_string()).unwrap();
+    let failed = run(temp.path(), &[]);
+    assert!(!failed.status.success());
+    let error = String::from_utf8_lossy(&failed.stderr);
+    assert!(
+        error.contains("budget") || error.contains("operations"),
+        "{error}"
+    );
+}

@@ -1,0 +1,17 @@
+[package]
+name = "weftora-script"
+description = "Bounded Rhai adapter for declared Story commands."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+weftora-api.workspace = true
+weftora-core.workspace = true
+weftora-flow.workspace = true
+rhai = { version = "=1.26.1", default-features = false, features = ["std", "only_i64", "no_time", "no_module", "no_custom_syntax", "no_closure", "no_optimize", "internals"] }
+
+[lints]
+workspace = true

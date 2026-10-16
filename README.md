@@ -76,3 +76,5 @@ Use the [author tutorial](./docs/story-a-tutorial.md) to edit dialogue, screens/
 The [commands demo](./examples/commands-demo/README.md) exercises typed Story commands from Yarn, events and screen buttons, including checkpoint save replay. Native Windows checks remain queued in issue #5.
 
 The [collections demo](./examples/collections-demo/README.md) stores a flat list inventory and map schedule, with whole-value command edits and checkpoint replay.
+
+The [scripts demo](./examples/scripts-demo/README.md) uses a bounded Rhai command for inventory/schedule edits, callable from Yarn, events and screen buttons.

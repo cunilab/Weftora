@@ -6,7 +6,7 @@ status: proposed
 
 # Phase 4 Rules Evidence
 
-[PR #19](https://github.com/cunilab/Weftora/pull/19) implements the scalar condition/event foundation and JSONC Story integration described in [ADR 0008](../adr/0008-declarative-events.md). These are development-host and automated results, not native Windows acceptance. Phase 4 remains incomplete; typed declarative commands and UI state-write bridging are now implemented, while arbitrary host writes, collection operations and Rhai remain future work.
+[PR #19](https://github.com/cunilab/Weftora/pull/19) implements the scalar condition/event foundation and JSONC Story integration described in [ADR 0008](../adr/0008-declarative-events.md). These are development-host and automated results, not native Windows acceptance. Phase 4 remains incomplete. Typed commands, UI state-write bridging, flat collection state and the bounded Rhai host below are implemented. Arbitrary external host-write bridging, deferred script features and native acceptance remain open.
 
 ## Automated results
 
@@ -72,3 +72,17 @@ Checkpoint capture and display arming now check the complete Persistent declarat
 The [collection edit proof](./phase-4-collections-edit-proof-macos.json) records Hello Story, baseline collections and a three-item/schema-2 variant exported after one build. All player SHA-256 hashes are `ea1497dc55caa2ff6add97bb85d430096bdc4a57e473833db722e0733f0fc570`. The retained baseline player validated the edited package. Headless output changed from `Packed 2 items` to `Packed 3 items`; both next displays reset to zero, while inspected canonical state contains the expected list and schedule map. Compiled dialogue hashes stayed identical. Loading the old-schema save refused with no output or slot changes. No build occurred between exports or edits; this is package/headless evidence, not a native visual run.
 
 Windows CI exports/validates `collections-demo`, compares its player hash with Hello Story and uploads `weftora-windows-collections-preview-<sha>` with the matching CLI. Concrete collection/UI/save/edit/error checks remain queued in issue #5. Native acceptance and the Phase 4 gate remain open and do not block development.
+
+## Bounded Rhai commands
+
+PR #19 adds the `weftora-script` adapter under `rules.rhai/1`, with explicit state/signal permissions, raw-engine helpers, shared dispatch/feedback operation and work allowances, depth/data limits, source diagnostics and fresh invocation scope. The same runner executes scripts from Yarn, event actions and screen commands, including isolated checkpoint candidates. [ADR 0010](../adr/0010-bounded-rhai-host.md) records the adapter-composition exception, resource contract and deferred features.
+
+On MacBookAir, the locked workspace run passed **341 reported tests**, zero failures, including bounded-child executions. New tests cover compile and runtime source diagnostics, permissions/scope/type/data rejection, FIFO external command execution, shared budgets, button/event calls, deterministic resaves and CLI/renderer candidate isolation. Workspace Clippy with warnings denied, formatting, dependency direction, documentation and cargo deny passed; locked CLI/player builds passed. The advisory exception below remains explicit.
+
+The [script edit proof](./phase-4-scripts-edit-proof-macos.json) records Hello Story, baseline scripts and a three-item/schema-2 variant exported after one build on MacBookAir. All player hashes are `1520a7dad743e083f510e102e50eed6d20f84f07d9509fcb110776baeeba160c`. The retained baseline player validates the edited package. Changing only the script's limit (plus the required save schema) changes headless output from `Packed 2 items` to `Packed 3 items`, with canonical schedule energy changing from 8 to 7. Both next displays reset to zero. Compiled dialogue hashes stay identical; loading an old-schema save refuses without output or slot changes. This is package/headless evidence, not a native visual run.
+
+Tools-disabled Claude Opus 5.5 medium independently reviewed the implementation and found no confirmed blocker. Its AST statement-form concern was hardened explicitly; expression/statement/method reflection checks and anonymous-function rejection are covered. Recursion runs in a deadline-bounded child on a 1 MiB stack using the deepest accepted nested expression. The host uses conservative call/expression depth limits of 8/16. Validation already compiles scripts before activation. Per-dispatch versus per-display allowances are documented explicitly.
+
+Rhai's mandatory smartstring dependency is subject to unmaintained advisory RUSTSEC-2026-0249, with no patched release. The specific `deny.toml` exception and ongoing maintenance risk are recorded in ADR 0010. No general advisory suppression was added.
+
+Windows CI exports and validates `scripts-demo`, compares its player hash with Hello Story and uploads `weftora-windows-scripts-preview-<sha>` with the matching CLI. Issue #5 queues button/event/save/edit/error scenarios for the maintainer. Script-internal Engine calls, canonical seeded randomness, native acceptance and the Phase 4 gate remain open; Windows testing does not block development.

@@ -12,6 +12,7 @@ pub const CAPABILITIES: &[&str] = &[
     "rules.events/1",
     "rules.commands/1",
     "state.collections/1",
+    "rules.rhai/1",
 ];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

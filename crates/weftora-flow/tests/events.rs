@@ -670,3 +670,71 @@ fn direct_sequences_defer_signals_and_identify_root_failures() {
         .unwrap_err();
     assert!(matches!(error.error, FlowError::Budget { event: Some(id), .. } if id == "observer"));
 }
+
+#[test]
+fn external_commands_share_work_and_append_signals_after_root_actions() {
+    use weftora_api::Diagnostic;
+    use weftora_flow::events::{Budget, CommandExecutor};
+    struct Executor;
+    impl CommandExecutor for Executor {
+        fn execute(
+            &mut self,
+            command: &str,
+            args: &[Value],
+            state: &mut State,
+            budget: &mut Budget,
+        ) -> Result<Vec<Signal>, Diagnostic> {
+            assert_eq!(command, "external");
+            assert_eq!(args, &[Value::Int(2)]);
+            budget
+                .consume(1)
+                .map_err(|e| Diagnostic::new("test", None, e))?;
+            state.add("count", &args[0]).unwrap();
+            Ok(vec![signal("done")])
+        }
+    }
+    let mut state = state();
+    let scheduler =
+        Scheduler::new(vec![event("finish", "done", 0, vec![add(10)])], &state).unwrap();
+    let actions = [
+        Action::Call {
+            command: "external".into(),
+            args: vec![Value::Int(2)],
+        },
+        add(1),
+    ];
+    assert!(
+        scheduler
+            .execute_actions("root", &actions, &mut state, &mut Budget::new(10))
+            .is_err()
+    );
+    assert_eq!(state.get("count"), Ok(&Value::Int(0)));
+    let mut budget = Budget::new(7);
+    let trace = scheduler
+        .execute_with("root", &actions, &mut state, &mut budget, &mut Executor)
+        .unwrap();
+    assert_eq!(state.get("count"), Ok(&Value::Int(13)));
+    assert_eq!(budget.remaining(), 0);
+    assert_eq!(
+        trace,
+        vec![
+            Trace::Action {
+                event: "root".into(),
+                index: 0
+            },
+            Trace::Action {
+                event: "root".into(),
+                index: 1
+            },
+            Trace::Signal(signal("done")),
+            Trace::Event {
+                id: "finish".into(),
+                matched: true
+            },
+            Trace::Action {
+                event: "finish".into(),
+                index: 0
+            },
+        ]
+    );
+}

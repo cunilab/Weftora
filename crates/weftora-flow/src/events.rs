@@ -2,7 +2,7 @@
 
 use crate::{Condition, ConditionError};
 use std::collections::{BTreeMap, BTreeSet, VecDeque};
-use weftora_api::{StateError, Value};
+use weftora_api::{Diagnostic, StateError, Value};
 use weftora_core::{
     State,
     signal::{self, Signal, SignalError},
@@ -19,10 +19,13 @@ pub enum Action {
     Remove { key: String },
     Reset { key: String },
     Emit(Signal),
+    Call { command: String, args: Vec<Value> },
 }
 
 #[derive(Debug, PartialEq, thiserror::Error)]
 pub enum ActionError {
+    #[error("command execution failed: {0}")]
+    Command(Diagnostic),
     #[error(transparent)]
     State(#[from] StateError),
     #[error(transparent)]
@@ -37,7 +40,7 @@ impl Action {
             | Self::Add { key, .. }
             | Self::Remove { key }
             | Self::Reset { key } => Some(key),
-            Self::Emit(_) => None,
+            Self::Emit(_) | Self::Call { .. } => None,
         };
         if let Some(key) = key {
             let default = state.default_value(key)?;
@@ -49,11 +52,35 @@ impl Action {
             };
             candidate.set(key, value)?;
         }
+        if let Self::Call { command, args } = self {
+            validate_key(command)?;
+            if args.len() > 16
+                || args.iter().any(|value| {
+                    value.is_collection()
+                        || value.validate().is_err()
+                        || value.payload_bytes() > 16384
+                })
+            {
+                return Err(ActionError::Command(Diagnostic::new(
+                    "",
+                    None,
+                    "calls require at most 16 bounded scalar arguments",
+                )));
+            }
+            return Ok(());
+        }
         self.apply(&mut candidate).map(|_| ())
     }
 
     fn apply(&self, state: &mut State) -> Result<Option<Signal>, ActionError> {
         match self {
+            Self::Call { command, .. } => {
+                return Err(ActionError::Command(Diagnostic::new(
+                    "",
+                    None,
+                    format!("no executor for `{command}`"),
+                )));
+            }
             Self::Set { key, value } => state.set(key, value.clone())?,
             Self::Add { key, amount } => state.add(key, amount)?,
             Self::Remove { key } => {
@@ -163,6 +190,33 @@ pub struct DispatchError {
     pub trace: Vec<Trace>,
 }
 
+/// Caller-owned command execution; implementations never reacquire the supplied State's lock.
+pub trait CommandExecutor {
+    fn execute(
+        &mut self,
+        command: &str,
+        args: &[Value],
+        state: &mut State,
+        budget: &mut Budget,
+    ) -> Result<Vec<Signal>, Diagnostic>;
+}
+pub struct NoCommands;
+impl CommandExecutor for NoCommands {
+    fn execute(
+        &mut self,
+        command: &str,
+        _: &[Value],
+        _: &mut State,
+        _: &mut Budget,
+    ) -> Result<Vec<Signal>, Diagnostic> {
+        Err(Diagnostic::new(
+            "",
+            None,
+            format!("no executor for `{command}`"),
+        ))
+    }
+}
+
 /// Immutable definitions; queues and traces belong to each dispatch, never to the scheduler.
 #[derive(Debug, Default)]
 pub struct Scheduler {
@@ -215,8 +269,18 @@ impl Scheduler {
         state: &mut State,
         budget: &mut Budget,
     ) -> Result<Vec<Trace>, DispatchError> {
+        self.dispatch_with(signal, state, budget, &mut NoCommands)
+    }
+
+    pub fn dispatch_with(
+        &self,
+        signal: Signal,
+        state: &mut State,
+        budget: &mut Budget,
+        executor: &mut dyn CommandExecutor,
+    ) -> Result<Vec<Trace>, DispatchError> {
         let mut trace = Vec::new();
-        match self.run(signal, state, budget, &mut trace) {
+        match self.run(signal, state, budget, &mut trace, executor) {
             Ok(()) => Ok(trace),
             Err(error) => Err(DispatchError { error, trace }),
         }
@@ -230,6 +294,17 @@ impl Scheduler {
         actions: &[Action],
         state: &mut State,
         budget: &mut Budget,
+    ) -> Result<Vec<Trace>, DispatchError> {
+        self.execute_with(name, actions, state, budget, &mut NoCommands)
+    }
+
+    pub fn execute_with(
+        &self,
+        name: &str,
+        actions: &[Action],
+        state: &mut State,
+        budget: &mut Budget,
+        executor: &mut dyn CommandExecutor,
     ) -> Result<Vec<Trace>, DispatchError> {
         let mut trace = Vec::new();
         let result = (|| {
@@ -245,10 +320,10 @@ impl Scheduler {
             (|| {
                 root.validate(state)?;
                 budget.spend(Some(name), None)?;
-                run_actions(&root, state, budget, &mut queue, &mut trace)
+                run_actions(&root, state, budget, &mut queue, &mut trace, executor)
             })()
             .map_err(|error| FlowError::Sequence(Box::new(error)))?;
-            self.deliver(&mut queue, state, budget, &mut trace)
+            self.deliver(&mut queue, state, budget, &mut trace, executor)
         })();
         match result {
             Ok(()) => Ok(trace),
@@ -269,12 +344,19 @@ impl Scheduler {
         state: &mut State,
         budget: &mut Budget,
         trace: &mut Vec<Trace>,
+        executor: &mut dyn CommandExecutor,
     ) -> Result<(), FlowError> {
         signal::validate(&signal)?;
         // Callers may supply a different State; reject schema drift before performing any write.
         self.validate(state)?;
         budget.spend(None, None)?;
-        self.deliver(&mut VecDeque::from([signal]), state, budget, trace)
+        self.deliver(
+            &mut VecDeque::from([signal]),
+            state,
+            budget,
+            trace,
+            executor,
+        )
     }
 
     fn deliver(
@@ -283,6 +365,7 @@ impl Scheduler {
         state: &mut State,
         budget: &mut Budget,
         trace: &mut Vec<Trace>,
+        executor: &mut dyn CommandExecutor,
     ) -> Result<(), FlowError> {
         while let Some(signal) = queue.pop_front() {
             let events = self.events.get(&signal.id);
@@ -307,7 +390,7 @@ impl Scheduler {
                 if !matched {
                     continue;
                 }
-                run_actions(event, state, budget, queue, trace)?;
+                run_actions(event, state, budget, queue, trace, executor)?;
             }
         }
         Ok(())
@@ -320,11 +403,31 @@ fn run_actions(
     budget: &mut Budget,
     queue: &mut VecDeque<Signal>,
     trace: &mut Vec<Trace>,
+    executor: &mut dyn CommandExecutor,
 ) -> Result<(), FlowError> {
     for (index, action) in event.actions.iter().enumerate() {
         budget.spend(Some(&event.id), Some(index))?;
         if matches!(action, Action::Emit(_)) {
             budget.spend(Some(&event.id), Some(index))?;
+        }
+        if let Action::Call { command, args } = action {
+            let signals = executor
+                .execute(command, args, state, budget)
+                .map_err(|error| FlowError::Action {
+                    event: event.id.clone(),
+                    index,
+                    source: ActionError::Command(error),
+                })?;
+            for signal in signals {
+                signal::validate(&signal)?;
+                budget.spend(Some(&event.id), Some(index))?;
+                queue.push_back(signal);
+            }
+            trace.push(Trace::Action {
+                event: event.id.clone(),
+                index,
+            });
+            continue;
         }
         let next = action.apply(state).map_err(|source| FlowError::Action {
             event: event.id.clone(),
@@ -345,6 +448,7 @@ fn run_actions(
 pub struct Budget {
     limit: usize,
     remaining: usize,
+    external_operations: u64,
 }
 
 impl Budget {
@@ -352,7 +456,29 @@ impl Budget {
         Self {
             limit,
             remaining: limit,
+            external_operations: 10000,
         }
+    }
+
+    pub fn remaining(&self) -> usize {
+        self.remaining
+    }
+    pub fn consume(&mut self, units: usize) -> Result<(), String> {
+        self.remaining = self
+            .remaining
+            .checked_sub(units)
+            .ok_or("command work budget exceeded")?;
+        Ok(())
+    }
+    pub fn external_operations(&self) -> u64 {
+        self.external_operations
+    }
+    pub fn consume_external_operations(&mut self, units: u64) -> Result<(), String> {
+        self.external_operations = self
+            .external_operations
+            .checked_sub(units)
+            .ok_or("script operation budget exceeded")?;
+        Ok(())
     }
 
     fn spend(&mut self, event: Option<&str>, action: Option<usize>) -> Result<(), FlowError> {

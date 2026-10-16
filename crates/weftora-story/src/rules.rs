@@ -6,11 +6,14 @@ use std::{
     path::Path,
     sync::Arc,
 };
-use weftora_api::{Diagnostic, Value};
+use weftora_api::{Diagnostic, ScriptDefinition, Value};
 use weftora_core::{Scope, State, catalog::Catalog, command::ValueType, signal::Signal};
 use weftora_flow::{
     CompareOp, Condition, MAX_DEPTH, MAX_NODES, Operand,
-    events::{Action, Budget, Event, FlowError, MAX_ACTIONS, MAX_EVENTS, Scheduler},
+    events::{
+        Action, Budget, CommandExecutor, Event, FlowError, MAX_ACTIONS, MAX_EVENTS, NoCommands,
+        Scheduler,
+    },
 };
 
 pub const DISPATCH_BUDGET: usize = 1024;
@@ -23,6 +26,7 @@ pub struct Rules {
     sources: Arc<BTreeMap<String, (String, String)>>,
     action_sources: Arc<BTreeMap<String, Vec<Location>>>,
     commands: Arc<BTreeMap<String, Command>>,
+    scripts: Arc<Vec<ScriptDefinition>>,
 }
 
 impl Rules {
@@ -31,6 +35,9 @@ impl Rules {
     }
 
     fn diagnostic(&self, error: FlowError) -> Diagnostic {
+        if let Some(diagnostic) = command_diagnostic(&error) {
+            return diagnostic;
+        }
         let (event, suffix) = match &error {
             FlowError::Action { event, index, .. } => (Some(event), format!("/actions/{index}")),
             FlowError::Condition { event, .. } => (Some(event), "/condition".into()),
@@ -71,7 +78,20 @@ impl Rules {
     /// Settle new notifications under the caller's exclusive State borrow; preserve the full queue.
     /// The starting index is captured before one VM call, which never drains this queue.
     pub fn settle(&self, state: &mut State, from: usize) -> Result<(), Diagnostic> {
-        self.settle_budgeted(state, from, &mut Budget::new(DISPATCH_BUDGET))
+        self.settle_with(state, from, &mut NoCommands)
+    }
+
+    pub fn scripts(&self) -> &[ScriptDefinition] {
+        &self.scripts
+    }
+
+    pub fn settle_with(
+        &self,
+        state: &mut State,
+        from: usize,
+        executor: &mut dyn CommandExecutor,
+    ) -> Result<(), Diagnostic> {
+        self.settle_budgeted(state, from, &mut Budget::new(DISPATCH_BUDGET), executor)
     }
 
     fn settle_budgeted(
@@ -79,6 +99,7 @@ impl Rules {
         state: &mut State,
         from: usize,
         budget: &mut Budget,
+        executor: &mut dyn CommandExecutor,
     ) -> Result<(), Diagnostic> {
         check_notifications(state, from)?;
         let mut cursor = from;
@@ -88,13 +109,14 @@ impl Rules {
             for trigger in [CHANGED.to_owned(), format!("{CHANGED_KEY}{key}")] {
                 if self.scheduler.has_trigger(&trigger) {
                     self.scheduler
-                        .dispatch_budgeted(
+                        .dispatch_with(
                             Signal {
                                 id: trigger,
                                 value: Value::String(key.clone()),
                             },
                             state,
                             budget,
+                            executor,
                         )
                         .map_err(|error| self.diagnostic(error.error))?;
                     check_notifications(state, from)?;
@@ -102,6 +124,17 @@ impl Rules {
             }
         }
         Ok(())
+    }
+}
+
+fn command_diagnostic(error: &FlowError) -> Option<Diagnostic> {
+    match error {
+        FlowError::Sequence(error) => command_diagnostic(error),
+        FlowError::Action {
+            source: weftora_flow::events::ActionError::Command(diagnostic),
+            ..
+        } if !diagnostic.file.is_empty() => Some(diagnostic.clone()),
+        _ => None,
     }
 }
 
@@ -376,7 +409,20 @@ struct CommandDocument {
     id: String,
     #[serde(default)]
     parameters: Vec<Parameter>,
-    actions: Vec<ActionDocument>,
+    actions: Option<Vec<ActionDocument>>,
+    script: Option<ScriptDocument>,
+}
+#[derive(Deserialize)]
+#[serde(deny_unknown_fields)]
+struct ScriptDocument {
+    file: String,
+    function: String,
+    #[serde(default)]
+    reads: Vec<String>,
+    #[serde(default)]
+    writes: Vec<String>,
+    #[serde(default)]
+    signals: Vec<String>,
 }
 #[derive(Debug, Clone)]
 struct LocatedAction {
@@ -392,6 +438,9 @@ struct Command {
 type CommandDocuments = BTreeMap<String, (CommandDocument, Location)>;
 
 fn validate_command_definition(command: &CommandDocument) -> Result<(), String> {
+    if command.actions.is_some() == command.script.is_some() {
+        return Err("commands require exactly one of actions or script".into());
+    }
     weftora_core::state::validate_key(&command.id).map_err(|e| e.to_string())?;
     if command.id.len() > 512
         || command
@@ -475,7 +524,7 @@ fn expand(
                 let (definition, target) = commands
                     .get(command)
                     .ok_or_else(|| location.error(format!("unknown command `{command}`")))?;
-                if stack.contains(command) || stack.len() >= 16 {
+                if definition.script.is_none() && (stack.contains(command) || stack.len() >= 16) {
                     return Err(
                         location.error("recursive command call or command depth exceeds 16")
                     );
@@ -498,9 +547,26 @@ fn expand(
                     }
                     next.insert(parameter.name.clone(), value);
                 }
+                if definition.script.is_some() {
+                    result.push(LocatedAction {
+                        action: ActionDocument::Call {
+                            command: command.clone(),
+                            args: definition
+                                .parameters
+                                .iter()
+                                .map(|p| next[&p.name].clone())
+                                .collect(),
+                        },
+                        location: target.clone(),
+                    });
+                    if result.len() > MAX_ACTIONS {
+                        return Err(location.error("expanded action count exceeds 256"));
+                    }
+                    continue;
+                }
                 stack.push(command.clone());
                 let nested = expand(
-                    &definition.actions,
+                    definition.actions.as_deref().unwrap_or_default(),
                     target,
                     &next,
                     types,
@@ -556,7 +622,10 @@ fn materialize(
                 }),
                 ActionDocument::Remove { key } => Action::Remove { key: key.clone() },
                 ActionDocument::Reset { key } => Action::Reset { key: key.clone() },
-                ActionDocument::Call { .. } => unreachable!("calls expanded at load"),
+                ActionDocument::Call { command, args } => Action::Call {
+                    command: command.clone(),
+                    args: args.iter().map(value).collect::<Result<_, _>>()?,
+                },
             })
         })
         .collect()
@@ -570,7 +639,9 @@ fn charge_expansion(actions: &[LocatedAction], bytes: &mut usize) -> Result<(), 
             }
             ActionDocument::Emit { id, value } => id.len() + slot_bytes(value),
             ActionDocument::Remove { key } | ActionDocument::Reset { key } => key.len(),
-            ActionDocument::Call { .. } => unreachable!("calls expanded at load"),
+            ActionDocument::Call { command, args } => {
+                command.len() + args.iter().map(slot_bytes).sum::<usize>()
+            }
         };
         *bytes = bytes.saturating_add(size + entry.location.file.len() + entry.location.path.len());
         if *bytes > 32 * 1024 * 1024 {
@@ -700,6 +771,17 @@ impl Rules {
         state: &mut State,
         from: usize,
     ) -> Result<(), Diagnostic> {
+        self.call_with(name, args, state, from, &mut NoCommands)
+    }
+
+    pub fn call_with(
+        &self,
+        name: &str,
+        args: &[Value],
+        state: &mut State,
+        from: usize,
+        executor: &mut dyn CommandExecutor,
+    ) -> Result<(), Diagnostic> {
         check_notifications(state, from)?;
         self.validate_command(name, args)?;
         let command = &self.commands[name];
@@ -712,23 +794,28 @@ impl Rules {
         let actions = materialize(&command.actions, &bindings)?;
         let mut budget = Budget::new(DISPATCH_BUDGET);
         self.scheduler
-            .execute_actions(name, &actions, state, &mut budget)
-            .map_err(|error| match error.error {
-                FlowError::Sequence(error) => {
-                    let index = match &*error {
-                        FlowError::Action { index, .. } => Some(*index),
-                        FlowError::Budget { action, .. } => *action,
-                        _ => None,
-                    };
-                    index
-                        .and_then(|i| command.actions.get(i))
-                        .map(|a| &a.location)
-                        .unwrap_or(&command.location)
-                        .error(error)
+            .execute_with(name, &actions, state, &mut budget, executor)
+            .map_err(|error| {
+                if let Some(diagnostic) = command_diagnostic(&error.error) {
+                    return diagnostic;
                 }
-                error => self.diagnostic(error),
+                match error.error {
+                    FlowError::Sequence(error) => {
+                        let index = match &*error {
+                            FlowError::Action { index, .. } => Some(*index),
+                            FlowError::Budget { action, .. } => *action,
+                            _ => None,
+                        };
+                        index
+                            .and_then(|i| command.actions.get(i))
+                            .map(|a| &a.location)
+                            .unwrap_or(&command.location)
+                            .error(error)
+                    }
+                    error => self.diagnostic(error),
+                }
             })?;
-        self.settle_budgeted(state, from, &mut budget)
+        self.settle_budgeted(state, from, &mut budget, executor)
     }
 }
 
@@ -779,6 +866,11 @@ fn validate_scopes(event: &Event, manifest: &Manifest, state: &State) -> Result<
                     _ => {}
                 }
             }
+            Action::Call { args, .. } => {
+                for value in args {
+                    value_limit(value)?;
+                }
+            }
             Action::Emit(signal) => {
                 if signal.id.len() > 1024 {
                     return Err("signal ID exceeds 1024 bytes".into());
@@ -804,6 +896,82 @@ fn validate_scopes(event: &Event, manifest: &Manifest, state: &State) -> Result<
         }
     }
     Ok(())
+}
+
+fn load_script(
+    root: &Path,
+    manifest: &Manifest,
+    state: &State,
+    command: &CommandDocument,
+    script: &ScriptDocument,
+) -> Result<ScriptDefinition, String> {
+    if !manifest
+        .requires
+        .as_ref()
+        .is_some_and(|r| r.capabilities.iter().any(|c| c == "rules.rhai/1"))
+    {
+        return Err("script commands require rules.rhai/1".into());
+    }
+    let valid_name =
+        !script.function.is_empty()
+            && script.function.len() <= 128
+            && script.function.bytes().enumerate().all(|(i, b)| {
+                b.is_ascii_alphabetic() || b == b'_' || (i > 0 && b.is_ascii_digit())
+            });
+    if !valid_name {
+        return Err("script function must be an ASCII identifier of at most 128 bytes".into());
+    }
+    for (label, keys) in [
+        ("reads", &script.reads),
+        ("writes", &script.writes),
+        ("signals", &script.signals),
+    ] {
+        if keys.len() > 256 {
+            return Err(format!("script {label} permission count exceeds 256"));
+        }
+        let mut unique = BTreeSet::new();
+        for key in keys {
+            weftora_core::state::validate_key(key).map_err(|e| e.to_string())?;
+            if key.len() > 512 || !unique.insert(key) {
+                return Err(format!(
+                    "script {label} permissions must be unique and at most 512 bytes"
+                ));
+            }
+            if label == "signals" && (key == CHANGED || key.starts_with(CHANGED_KEY)) {
+                return Err(
+                    "script signals may not impersonate state.changed notifications".into(),
+                );
+            }
+            if label != "signals" {
+                let scope = state.scope(key).map_err(|e| e.to_string())?;
+                value_limit(state.default_value(key).map_err(|e| e.to_string())?)?;
+                if manifest.save_schema.is_some() && scope != Scope::Persistent {
+                    return Err(format!(
+                        "save-enabled scripts require Persistent permissions, found `{key}`"
+                    ));
+                }
+            }
+        }
+    }
+    let path = resolve_in_root(root, &script.file).map_err(|e| e.to_string())?;
+    if std::fs::metadata(&path).map_err(|e| e.to_string())?.len() > 65536 {
+        return Err("script source exceeds 65536 bytes".into());
+    }
+    let source = paths::read_text(path)?;
+    if source.len() > 65536 {
+        return Err("script source exceeds 65536 bytes".into());
+    }
+    Ok(ScriptDefinition {
+        id: command.id.clone(),
+        file: script.file.clone(),
+        source,
+        function: script.function.clone(),
+        arity: command.parameters.len(),
+        persistent_only: manifest.save_schema.is_some(),
+        reads: script.reads.clone(),
+        writes: script.writes.clone(),
+        signals: script.signals.clone(),
+    })
 }
 
 pub(crate) fn load(
@@ -834,6 +1002,8 @@ pub(crate) fn load(
     let mut action_sources = BTreeMap::new();
     let mut expanded_bytes = 0;
     let mut files = BTreeSet::new();
+    let mut scripts = Vec::new();
+    let mut script_bytes = 0usize;
     for (file_index, file) in manifest.events.iter().enumerate() {
         let fail = |message: String| vec![Diagnostic::new(file, None, message)];
         if !files.insert(file) {
@@ -880,6 +1050,17 @@ pub(crate) fn load(
                 return Err(vec![location.error("commands require rules.commands/1")]);
             }
             validate_command_definition(&command).map_err(|e| vec![location.error(e)])?;
+            if let Some(script) = &command.script {
+                let definition = load_script(root, manifest, state, &command, script)
+                    .map_err(|error| vec![location.error(error)])?;
+                script_bytes = script_bytes.saturating_add(definition.source.len());
+                if scripts.len() >= 64 || script_bytes > 1024 * 1024 {
+                    return Err(vec![
+                        location.error("scripts exceed 64 commands or 1 MiB total source"),
+                    ]);
+                }
+                scripts.push(definition);
+            }
             let id = command.id.clone();
             if raw_commands
                 .insert(id.clone(), (command, location.clone()))
@@ -911,8 +1092,22 @@ pub(crate) fn load(
             .iter()
             .map(|p| (p.name.clone(), p.kind))
             .collect();
+        let root_actions = if command.script.is_some() {
+            vec![ActionDocument::Call {
+                command: id.clone(),
+                args: command
+                    .parameters
+                    .iter()
+                    .map(|p| SlotValue::Argument {
+                        argument: p.name.clone(),
+                    })
+                    .collect(),
+            }]
+        } else {
+            Vec::new()
+        };
         let actions = expand(
-            &command.actions,
+            command.actions.as_deref().unwrap_or(&root_actions),
             location,
             &bindings,
             &types,
@@ -1004,5 +1199,6 @@ pub(crate) fn load(
         sources: Arc::new(sources),
         action_sources: Arc::new(action_sources),
         commands: Arc::new(commands),
+        scripts: Arc::new(scripts),
     })
 }

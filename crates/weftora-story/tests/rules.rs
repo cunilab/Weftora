@@ -679,3 +679,63 @@ fn collection_payloads_are_charged_during_static_command_expansion() {
             .contains("expanded rule data exceeds 32 MiB")
     );
 }
+
+#[test]
+fn script_metadata_confines_sources_capabilities_permissions_and_variants() {
+    for (field, value, expected) in [
+        ("file", json!("../escape.rhai"), "must not contain"),
+        ("function", json!("bad-name"), "identifier"),
+        ("reads", json!(["missing"]), "does not exist"),
+        ("signals", json!(["state.changed.points"]), "impersonate"),
+        ("writes", json!(["temporary"]), "Persistent"),
+    ] {
+        let temp = command_fixture(
+            json!([{"id":"scripted","script":{"file":"mechanics.rhai","function":"run"}}]),
+        );
+        update(temp.path(), "manifest.jsonc", |v| {
+            v["requires"]["capabilities"]
+                .as_array_mut()
+                .unwrap()
+                .push(json!("rules.rhai/1"))
+        });
+        fs::write(temp.path().join("mechanics.rhai"), "fn run(state) {}").unwrap();
+        update(temp.path(), "events.jsonc", |v| {
+            v["commands"][0]["script"][field] = value
+        });
+        let errors = Story::load(temp.path()).unwrap_err();
+        assert!(errors[0].message.contains(expected), "{errors:?}");
+    }
+    let temp = command_fixture(
+        json!([{"id":"scripted","script":{"file":"mechanics.rhai","function":"run"}}]),
+    );
+    fs::write(temp.path().join("mechanics.rhai"), "fn run(state) {}").unwrap();
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("rules.rhai/1")
+    );
+    update(temp.path(), "manifest.jsonc", |v| {
+        v["requires"]["capabilities"]
+            .as_array_mut()
+            .unwrap()
+            .push(json!("rules.rhai/1"))
+    });
+    let story = Story::load(temp.path()).unwrap();
+    assert_eq!(story.rules().scripts().len(), 1);
+    assert!(
+        story
+            .rules()
+            .call("scripted", &[], &mut story.initial_state().unwrap(), 0)
+            .unwrap_err()
+            .message
+            .contains("no executor")
+    );
+    update(temp.path(), "events.jsonc", |v| {
+        v["commands"][0]["actions"] = json!([])
+    });
+    assert!(
+        Story::load(temp.path()).unwrap_err()[0]
+            .message
+            .contains("exactly one")
+    );
+}

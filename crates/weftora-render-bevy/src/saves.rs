@@ -377,6 +377,89 @@ mod tests {
     }
 
     #[test]
+    fn script_buttons_events_and_failed_restore_use_isolated_state() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/scripts-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+            "mechanics.rhai",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        player.write_save().unwrap();
+        let path = temp.path().join("data/save.json");
+        let bytes = std::fs::read(&path).unwrap();
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "unpack".into(),
+                args: vec![],
+            })
+            .unwrap();
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "pack".into(),
+                args: vec![Value::Int(1)],
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("item_count"),
+            Ok(&Value::Int(1))
+        );
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::SetState {
+                key: "request".into(),
+                value: Value::Bool(true),
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("item_count"),
+            Ok(&Value::Int(2))
+        );
+        assert!(player.presenter.source().save_point().is_err());
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("item_count"),
+            Ok(&Value::Int(2))
+        );
+        let source = std::fs::read_to_string(root.join("mechanics.rhai")).unwrap();
+        std::fs::write(
+            root.join("mechanics.rhai"),
+            source.replace(
+                "state.emit(\"kit.packed\", true);",
+                "state.add(\"item_count\", 9223372036854775807);",
+            ),
+        )
+        .unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let before = player.state.read().unwrap().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("failed script activated"),
+            Err(e) => e,
+        };
+        assert!(error.contains("overflow"), "{error}");
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+
+    #[test]
     fn rule_restore_uses_a_candidate_and_failure_preserves_live_state_and_slot() {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("story");

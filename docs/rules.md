@@ -6,7 +6,7 @@ status: proposed
 
 # Story Rules
 
-Phase 4 uses typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). [ADR 0008](./adr/0008-declarative-events.md) defines their JSONC Story format and shared dialogue notification boundary. Typed declarative commands and screen state writes use the same rule boundary. Flat collection state is available through whole-value actions; arbitrary host writes and Rhai remain to implement. Existing Stories without rules retain their behavior.
+Phase 4 uses typed scalar conditions, deterministic events and ordered state actions in the headless `weftora-flow` crate, following [architecture §5](./architecture.md#5-runtime-model). [ADR 0008](./adr/0008-declarative-events.md) defines their JSONC Story format and shared dialogue notification boundary. Typed declarative commands and screen state writes use the same rule boundary. Flat collection state is available through whole-value actions; bounded Rhai commands can also edit local collection entries and write them back. Arbitrary external host-write bridging remains open. Existing Stories without rules retain their behavior.
 
 ## Story files
 
@@ -72,7 +72,7 @@ Require `state.collections/1` when declaring a list or map in manifest state/def
 
 Whole-value set/reset/remove work through the existing actions. In rule action `value` slots use an explicit wrapper, for example `{"do":"state.set","key":"items","value":{"literal":["key","ticket"]}}`. The wrapper also permits a map containing `argument` or `literal` keys without confusing command argument references. Screen `state.set` accepts ordinary collection JSON directly.
 
-Limits are 256 entries and 16384 retained payload bytes per collection (eight bytes per entry, plus string/key UTF-8 bytes). Map keys are arbitrary strings of up to 512 bytes. Numeric add, conditions, command parameters, signals, Yarn variables and text bindings remain scalar-only. Maintain authored scalar views where needed. [ADR 0009](./adr/0009-flat-collection-state.md) defines encoding, resource accounting and save behavior; [collections-demo](../examples/collections-demo/README.md) demonstrates replay. Entry operations and Rhai remain later work.
+Limits are 256 entries and 16384 retained payload bytes per collection (eight bytes per entry, plus string/key UTF-8 bytes). Map keys are arbitrary strings of up to 512 bytes. Numeric add, conditions, command parameters, signals, Yarn variables and text bindings remain scalar-only. Maintain authored scalar views where needed. [ADR 0009](./adr/0009-flat-collection-state.md) defines encoding, resource accounting and save behavior; [collections-demo](../examples/collections-demo/README.md) demonstrates replay. Rhai commands support bounded local entry operations, then whole-value writes.
 
 ## Scalar conditions
 
@@ -123,4 +123,26 @@ Low-level dispatch only mutates its supplied `&mut State`; definitions contain n
 
 Run `cargo test -p weftora-flow --locked` for operator/type tables, nested boolean logic, invalid skipped branches, nonfinite values, live state and removal, i64 precision, no condition mutation, and depth/node boundaries. Event tests replay the priority/condition/action/FIFO golden fixture in ten fresh runs and pin a cycle's trace prefix; they also cover Core bus ordering parity, action/condition errors, notification preservation, schema drift, dispatch on a cloned state, repeated dispatches and definition/budget boundaries. `cargo test -p xtask --locked` includes a negative dependency fixture for Flow; `cargo xtask deps` checks the actual graph. Flow must never depend on Bevy, Yarn, Rhai, apps or Stories.
 
-Story/CLI rules tests cover authoring diagnostics, repeated real execution and save replay; the renderer candidate test covers live-state/file preservation on rule failure. [Phase 4 evidence](./evidence/phase-4.md) records results for the automated portions of P4-01/P4-02 and initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). Arbitrary host-write bridging, collection operations and Rhai remain separate work; no Phase 4 acceptance is claimed. Windows CI runs workspace tests; native checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking development.
+Story/CLI rules tests cover authoring diagnostics, repeated real execution and save replay; the renderer candidate test covers live-state/file preservation on rule failure. [Phase 4 evidence](./evidence/phase-4.md) records results for the automated portions of P4-01/P4-02 and initial ordered-action semantics in the [success criteria](./success-criteria.md#phase-4--story-defined-rules). Arbitrary external host-write bridging and the deferred scripting features in ADR 0010 remain separate work; no Phase 4 acceptance is claimed. Windows CI runs workspace tests; native checks remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking development.
+
+## Rhai commands
+
+Require `rules.rhai/1` as well as `rules.commands/1` and `rules.events/1`. Replace a command's `actions` with a script declaration:
+
+```json
+{"id":"pack","parameters":[{"name":"amount","type":"int"}],
+ "script":{"file":"mechanics.rhai","function":"pack",
+           "reads":["items"],"writes":["items","item_count"],"signals":["kit.packed"]}}
+```
+
+```rhai
+fn pack(state, amount) {
+    let items = state.get("items");
+    if amount > 0 && !items.contains("key") { items.push("key"); }
+    state.set("items", items);
+    state.set("item_count", items.len());
+    state.emit("kit.packed", true);
+}
+```
+
+The state handle is the first function argument. Reads/writes require declared keys and explicit permissions; emitted signal IDs require permission too. Save-enabled Stories may use only Persistent state. Local values are copies; write collections back explicitly and maintain scalar views for Yarn/UI. Functions must return unit and sources contain only function definitions. Check/export compiles scripts before activation. File confinement, limits, allowed helpers, failure semantics and deferred Engine calls/randomness are specified in [ADR 0010](./adr/0010-bounded-rhai-host.md). [Scripts demo](../examples/scripts-demo/README.md) exercises all three call origins and save replay.

@@ -55,7 +55,7 @@ Story packages never load native code.
 
 - Headless crates must not depend, directly or transitively, on `bevy`, `yarnspinner`, `rhai`, any adapter, any app or any Story. CI enforces this from `cargo metadata`.
 - Adapters depend inward on headless crates, never the reverse.
-- Only the apps compose adapters.
+- Apps compose adapters, with one explicit exception: the shared Yarn DialogueRunner hosts the script adapter so play and checkpoint reconstruction share a boundary ([ADR 0010](./adr/0010-bounded-rhai-host.md)).
 - Public `weftora-api` types never expose Bevy, Yarn or Rhai types.
 - Ordering and semantics of narrative flow are defined and tested in headless code; never rely on Bevy system scheduling order for them.
 
@@ -143,7 +143,7 @@ The headless CLI registers one `story` service. It owns validated Story/dialogue
 One canonical game state. Keys are namespaced strings (`world.day`, `character.alice.affection`); the Engine never interprets them.
 
 - Phase 1 value types: `bool`, `int` (i64), `float` (finite f64), `string`.
-- Phase 4 adds flat `list` and `map` (string keys) of those scalar values, required by Story B ([ADR 0003](./adr/0003-story-rules-language.md)). The implemented bounds, encoding and scalar-only Yarn/UI boundaries are defined in [ADR 0009](./adr/0009-flat-collection-state.md); entry operations and Rhai remain future work.
+- Phase 4 adds flat `list` and `map` (string keys) of those scalar values, required by Story B ([ADR 0003](./adr/0003-story-rules-language.md)). The implemented bounds, encoding and scalar-only Yarn/UI boundaries are defined in [ADR 0009](./adr/0009-flat-collection-state.md); Rhai now provides bounded local entry operations ([ADR 0010](./adr/0010-bounded-rhai-host.md)).
 - Every key has a scope: `persistent` (saved), `session` (not saved) or `settings` (saved separately from progress).
 - `state` declares typed defaults and scopes; `initialState` applies overrides after defaults. Legacy initial keys and missing Yarn defaults infer a persistent declaration on their first write. Once declared, a key's type cannot change, including after removal. `reset` restores the default; `remove` returns `Result<Value, StateError>` and reports a missing key explicitly. JSON `2` and `2.0` infer distinct int and float declarations; `set` must preserve that type, while numeric `add` permits an int amount on a float key.
 - Mutations enqueue notifications in write order with key, scope, old value and new value; no-op and rejected writes emit nothing. Consumers drain the queue at their update boundary. State construction does not emit notifications. CLI validation and the dialogue runner preflight all Yarn declaration names and scalar defaults before initialization, because the upstream runtime only logs storage errors. Invalid declarations cannot partially populate canonical state. The headless runtime also clears valid Yarn default-fill notifications before entering play; it then drains changes at each dialogue event and emits `state.changed` signals with the changed key as their string payload. Scope snapshots and iteration have stable key order; the Phase 3 save container records Persistent entries, including explicit removals. Whole-State equality includes declarations and pending notifications; compare scope snapshots when only values matter.
@@ -186,15 +186,9 @@ input → screen button / Yarn choice → command → actions or Rhai
 
 ## 7. Rules scripting (Rhai)
 
-Rhai is embedded for rules too complex for declarative actions; the reasons are in [ADR 0003](./adr/0003-story-rules-language.md). This section is the host contract:
+Rhai is embedded for rules too complex for declarative actions. The implemented first slice is defined in [ADR 0010](./adr/0010-bounded-rhai-host.md): explicit state/signal permissions, a raw engine, shared dispatch operation/work limits, fresh per-call scope and source diagnostics. Typed commands are callable from Yarn, events and screen buttons, including isolated checkpoint replay. Scripts cannot access files, network, processes or clocks through this host.
 
-- **Allowlisted API only:** read and write state, execute commands, emit signals, and a deterministic random source whose seed is stored in canonical state.
-- **Nothing else reachable:** build the engine with `Engine::new_raw()` plus only the needed packages; no file module resolver and `set_max_modules(0)` (no `import`); `eval` disabled; the `no_time` feature enabled; no file, network, process or reflection access.
-- **Limits:** operations per call, call depth, string, array and map sizes. Exceeding a limit is a Story error, not a crash or hang.
-- **No hidden script state:** scripts keep nothing between calls; anything persistent lives in canonical state, so saves stay complete.
-- **Diagnostics:** `weftora check` compiles every script; syntax and runtime errors report Story file and line.
-
-This makes accidents safe; it is **not** a guarantee that hostile mods are safe.
+Script-internal Engine command calls and a canonical seeded random source remain deferred. Persistent script state must live in canonical state. These limits prevent common accidents; they do not certify hostile mods as safe.
 
 ## 8. UI and presentation
 

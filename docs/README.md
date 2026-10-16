@@ -42,3 +42,5 @@ To add a document, copy the [template](./templates/document.md) and follow the [
 - [ADR 0007: safe checkpoint saves](./adr/0007-safe-checkpoint-saves.md)
 
 - [ADR 0009 — Flat collection state](./adr/0009-flat-collection-state.md)
+
+- [ADR 0010 — Bounded Rhai host](./adr/0010-bounded-rhai-host.md)

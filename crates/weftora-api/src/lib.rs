@@ -78,3 +78,17 @@ pub struct StoryCommand {
     pub name: String,
     pub args: Vec<String>,
 }
+
+/// Script source and explicit permissions; no scripting-runtime types cross this boundary.
+#[derive(Debug, Clone)]
+pub struct ScriptDefinition {
+    pub id: String,
+    pub file: String,
+    pub source: String,
+    pub function: String,
+    pub arity: usize,
+    pub persistent_only: bool,
+    pub reads: Vec<String>,
+    pub writes: Vec<String>,
+    pub signals: Vec<String>,
+}
