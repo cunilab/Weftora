@@ -1,0 +1,73 @@
+{"args":["left","0"],"event":"command","name":"hide"}
+{"args":["right","0"],"event":"command","name":"hide"}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["none","0"],"event":"command","name":"ambience"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.night"],"event":"command","name":"background"}
+{"args":["audio.music","0"],"event":"command","name":"music"}
+{"event":"choices","options":[{"available":true,"index":0,"text":"Begin"},{"available":true,"index":1,"text":"About"}]}
+{"event":"choose","index":0}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["left","0.25","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["right","0.75","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.day"],"event":"command","name":"background"}
+{"args":["left","actor.alice","500"],"event":"command","name":"show"}
+{"args":["right","actor.bob","500"],"event":"command","name":"show"}
+{"args":["audio.music","500"],"event":"command","name":"music"}
+{"args":["audio.ambience","500"],"event":"command","name":"ambience"}
+{"character":"Mara","event":"line","text":"The ferry leaves at dawn. If the beacon stays dark, they will pass us."}
+{"character":"Ivo","event":"line","text":"The old receiver still has power. The antenna on the roof does not."}
+{"character":"Mara","event":"line","text":"My sister promised to listen tonight. I promised there would be something to hear."}
+{"character":"Ivo","event":"line","text":"Then we have one battery and two bad ideas."}
+{"args":["background","bg.night","800"],"event":"command","name":"show"}
+{"character":"Mara","event":"line","text":"We could repair the receiver down here, or carry the battery up to the antenna."}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["left","0.25","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["right","0.75","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.night"],"event":"command","name":"background"}
+{"args":["left","actor.alice","0"],"event":"command","name":"show"}
+{"args":["right","actor.bob","0"],"event":"command","name":"show"}
+{"args":["audio.music","0"],"event":"command","name":"music"}
+{"args":["audio.ambience","0"],"event":"command","name":"ambience"}
+{"event":"choices","options":[{"available":true,"index":0,"text":"Repair the old receiver with Ivo"},{"available":true,"index":1,"text":"Carry the battery to the roof with Mara"}]}
+{"event":"choose","index":1}
+{"args":["right","0"],"event":"command","name":"hide"}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["left","0.25","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.night"],"event":"command","name":"background"}
+{"args":["left","actor.alice","500"],"event":"command","name":"show"}
+{"args":["audio.music","500"],"event":"command","name":"music"}
+{"args":["audio.ambience","500"],"event":"command","name":"ambience"}
+{"character":"Mara","event":"line","text":"The stairs always seemed shorter when someone else carried the battery."}
+{"character":"Ivo","event":"line","text":"I can still hear you complaining from downstairs. The antenna must be working."}
+{"args":["left","0.4","0.45","1.2","1","1000"],"event":"command","name":"move"}
+{"character":"Mara","event":"line","text":"There. The cable reaches if I stand right here."}
+{"args":["audio.effect","250"],"event":"command","name":"effect"}
+{"character":null,"event":"line","text":"For a moment, the rooftop is brighter than the sea."}
+{"character":"Mara","event":"line","text":"Signal sent. Come up before I decide to keep the view."}
+{"args":["left","0"],"event":"command","name":"hide"}
+{"args":["right","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.day"],"event":"command","name":"background"}
+{"args":["cg","cg.sun","1000"],"event":"command","name":"show"}
+{"args":["audio.music","500"],"event":"command","name":"music"}
+{"args":["none","500"],"event":"command","name":"ambience"}
+{"character":"Ivo","event":"line","text":"She saw the rooftop flash. She says you can stop waving now."}
+{"character":"Mara","event":"line","text":"I was not waving. I was keeping warm."}
+{"character":null,"event":"line","text":"Beyond the window, the ferry turns toward the little harbor."}
+{"character":"Mara","event":"line","text":"We should leave the light on."}
+{"character":null,"event":"line","text":"The End — Last Signal"}
+{"changes":[{"after":"roof","before":"undecided","key":"story.route","scope":"persistent"},{"after":1.0,"before":0.0,"key":"story.attempts","scope":"persistent"},{"after":true,"before":false,"key":"story.signal","scope":"persistent"}],"event":"end","lifecycle":["boot","load","init:story","ready","play","shutdown:story","shutdown"],"signals":[{"id":"state.changed","value":"story.route"},{"id":"state.changed","value":"story.attempts"},{"id":"state.changed","value":"story.signal"}],"state":{"settings.audio.ambience":1.0,"settings.audio.effects":1.0,"settings.audio.master":0.5,"settings.audio.music":1.0,"settings.audio.voice":1.0,"story.attempts":1.0,"story.route":"roof","story.signal":true}}

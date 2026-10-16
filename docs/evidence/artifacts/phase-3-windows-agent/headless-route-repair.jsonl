@@ -1,0 +1,74 @@
+{"args":["left","0"],"event":"command","name":"hide"}
+{"args":["right","0"],"event":"command","name":"hide"}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["none","0"],"event":"command","name":"ambience"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.night"],"event":"command","name":"background"}
+{"args":["audio.music","0"],"event":"command","name":"music"}
+{"event":"choices","options":[{"available":true,"index":0,"text":"Begin"},{"available":true,"index":1,"text":"About"}]}
+{"event":"choose","index":0}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["left","0.25","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["right","0.75","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.day"],"event":"command","name":"background"}
+{"args":["left","actor.alice","500"],"event":"command","name":"show"}
+{"args":["right","actor.bob","500"],"event":"command","name":"show"}
+{"args":["audio.music","500"],"event":"command","name":"music"}
+{"args":["audio.ambience","500"],"event":"command","name":"ambience"}
+{"character":"Mara","event":"line","text":"The ferry leaves at dawn. If the beacon stays dark, they will pass us."}
+{"character":"Ivo","event":"line","text":"The old receiver still has power. The antenna on the roof does not."}
+{"character":"Mara","event":"line","text":"My sister promised to listen tonight. I promised there would be something to hear."}
+{"character":"Ivo","event":"line","text":"Then we have one battery and two bad ideas."}
+{"args":["background","bg.night","800"],"event":"command","name":"show"}
+{"character":"Mara","event":"line","text":"We could repair the receiver down here, or carry the battery up to the antenna."}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["left","0.25","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["right","0.75","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.night"],"event":"command","name":"background"}
+{"args":["left","actor.alice","0"],"event":"command","name":"show"}
+{"args":["right","actor.bob","0"],"event":"command","name":"show"}
+{"args":["audio.music","0"],"event":"command","name":"music"}
+{"args":["audio.ambience","0"],"event":"command","name":"ambience"}
+{"event":"choices","options":[{"available":true,"index":0,"text":"Repair the old receiver with Ivo"},{"available":true,"index":1,"text":"Carry the battery to the roof with Mara"}]}
+{"event":"choose","index":0}
+{"args":["left","0.25","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["cg","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["right","0.75","0.5","1","1","0"],"event":"command","name":"move"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.night"],"event":"command","name":"background"}
+{"args":["left","actor.alice","500"],"event":"command","name":"show"}
+{"args":["right","actor.bob","500"],"event":"command","name":"show"}
+{"args":["audio.music","500"],"event":"command","name":"music"}
+{"args":["audio.ambience","500"],"event":"command","name":"ambience"}
+{"character":"Ivo","event":"line","text":"Hold these two wires together. I will tell you when to let go."}
+{"character":null,"event":"line","text":"The receiver answers with a thin, uncertain tone."}
+{"args":["audio.effect","250"],"event":"command","name":"effect"}
+{"character":"Mara","event":"line","text":"It sounds like someone trying very hard to whistle."}
+{"character":"Ivo","event":"line","text":"That is the clearest thing this room has said in years."}
+{"character":"Mara","event":"line","text":"Tell them we are here. Tell them we kept the light."}
+{"character":"Ivo","event":"line","text":"Signal sent. Now we listen."}
+{"args":["left","0"],"event":"command","name":"hide"}
+{"args":["right","0"],"event":"command","name":"hide"}
+{"args":["overlay","0"],"event":"command","name":"hide"}
+{"args":["none","0"],"event":"command","name":"voice"}
+{"args":["none","0"],"event":"command","name":"effect"}
+{"args":["bg.day"],"event":"command","name":"background"}
+{"args":["cg","cg.sun","1000"],"event":"command","name":"show"}
+{"args":["audio.music","500"],"event":"command","name":"music"}
+{"args":["none","500"],"event":"command","name":"ambience"}
+{"character":"Ivo","event":"line","text":"She says she heard the whistle. She is bringing a better radio."}
+{"character":"Mara","event":"line","text":"I was not waving. I was keeping warm."}
+{"character":null,"event":"line","text":"Beyond the window, the ferry turns toward the little harbor."}
+{"character":"Mara","event":"line","text":"We should leave the light on."}
+{"character":null,"event":"line","text":"The End — Last Signal"}
+{"changes":[{"after":"repair","before":"undecided","key":"story.route","scope":"persistent"},{"after":1.0,"before":0.0,"key":"story.attempts","scope":"persistent"},{"after":true,"before":false,"key":"story.signal","scope":"persistent"}],"event":"end","lifecycle":["boot","load","init:story","ready","play","shutdown:story","shutdown"],"signals":[{"id":"state.changed","value":"story.route"},{"id":"state.changed","value":"story.attempts"},{"id":"state.changed","value":"story.signal"}],"state":{"settings.audio.ambience":1.0,"settings.audio.effects":1.0,"settings.audio.master":0.5,"settings.audio.music":1.0,"settings.audio.voice":1.0,"story.attempts":1.0,"story.route":"repair","story.signal":true}}
