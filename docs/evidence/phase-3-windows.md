@@ -89,3 +89,155 @@ Copy one record per check into issue #5 after testing. Every actual/device/resul
     logs_or_artifacts:
     tested_by:
     tested_at:
+
+## Agent-run records (delegated)
+
+Machine-checkable Phase 3 checks run by the agent on the maintainer's machine under the 2026-10-16
+delegation ("test everything you can do without me"). Full method, frames and hashes:
+[phase-3-windows-agent.md](./phase-3-windows-agent.md). The native/human items above stay
+maintainer-owned; no Phase 3 gate is claimed here.
+
+```yaml
+check: P3-02 same-player edits (delegated)
+commit: 48a965b
+build_profile: release
+player_sha256: 0689bd5829b55c7d28aa53ce8003318c27e471ead53617df9b4b6e1b7521d26f
+cli_sha256: 4ee2954eb3e527102b4dbd45306ec7ec03c0e6d8e610737ddbe972e9fc76858d
+windows_build: 11 Pro 10.0.26300
+fixture: examples/story-a via scripts/verify-story-a-edits.py, baseline + edit-dialogue-screen + edit-theme-image
+steps: >-
+  run the proof script; hash all three exports; launch baseline player, save at first Arrival;
+  run baseline player against both variant story dirs; F9 the arrival save in the text-patched variant
+expected: >-
+  one player hash across exports; edited banner and sentence render; baseline save loads with edited
+  line and intact state; changed panel theme and day image visible; load does not change save bytes
+actual: >-
+  proof script exit 0: three validated exports, identical player 0689bd58…, dialogue/screen/image
+  hashes differ per variant, "baseline Arrival save created", text-patch load OK with save hash
+  unchanged. Real windows: banner "LAST SIGNAL / EDIT 1"; F9 -> "Loaded." with
+  "The ferry sails at sunrise. If the beacon stays dark, they will pass us." and
+  Route: undecided / Signal sent: false retained; theme variant shows recolored panel + replaced day image.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/edit1-menu-banner.png, edit1-loaded-sentence.png, edit2-theme-image.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-04 save/load behavior (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player, real %LOCALAPPDATA% slot
+steps: >-
+  F5 during a view transition, at first display after fades, at a later line, with an overlay open;
+  quit/relaunch/F9 at line, repair and menu checkpoints; F5 at menu then story progress; volume change
+  then load; F9 with overlay open; finish after load and inspect save bodies
+expected: >-
+  refusals with reasons outside the save point; restore returns the exact first display with scene and
+  state; attempts increments once; Settings survive load; overlay load returns to base; menu load
+  refreshes choice text
+actual: >-
+  messages observed verbatim: "Save/load: wait for the view/audio transition before saving" (mid 1000ms
+  move), "Save/load: save is available only at the first line or choice after a checkpoint",
+  "Save/load: close overlays and return to the initial screen before saving", "Saved.", "Loaded.".
+  Restore frames show the exact checkpoint first line with Route/Signal state rebuilt; save bodies:
+  repair attempts 0.0 (checkpoint-boundary), after load -> finish -> re-save attempts 1.0 (never 2.0);
+  master volume set 0 stayed 0 after F9 and reopened; F9 with Volume open returned to initial base with
+  focus reset; menu-checkpoint load rebuilt "1. Begin / 2. About".
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/f9-loaded-repair-restore.png, f5-refuse-mid-transition.png, f5-refuse-later-line.png, f5-refuse-overlay-open.png, master-0-retained-after-load.png, f9-menu-choice-refresh.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-05 user data and failure behavior (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+save_directory: C:\Users\andre\AppData\Local\Weftora\saves\dev.weftora.story-a
+fixture: real player saves plus agent-written corrupt bytes and a removed directory
+steps: >-
+  save twice across runs; hash slot and backup; replace save.json with invalid JSON, F9; restore bytes,
+  F9; move the directory away, F9; confirm no silent slot creation
+expected: >-
+  saves at the documented path; backup equals previous slot bytes; corrupt load is nonfatal and does
+  not rewrite the slot; restored file loads; missing slot reports clearly without creating a slot
+actual: >-
+  save.json/save.bak at the documented LOCALAPPDATA path; save.bak byte-equal to the previous slot
+  (verified twice: arrival -> repair, repair -> dawn); corrupt F9 ->
+  "Save/load: corrupt save: key must be a string at line 1 column 2", menu alive behind, slot hash
+  unchanged (526F50D0… before and after); restored file -> "Loaded." with unchanged bytes; missing
+  directory -> "Save/load: no save file exists", no save.json created.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/corrupt-save-nonfatal.png, restored-save-loads.png, missing-slot-message.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-06 compatibility refusals (delegated)
+commit: 48a965b
+build_profile: release
+cli_sha256: 4ee2954eb3e527102b4dbd45306ec7ec03c0e6d8e610737ddbe972e9fc76858d
+windows_build: 11 Pro 10.0.26300
+fixture: story-a copies with `<<checkpoint scene.arrival>>` removed, and with "saveSchema": 2
+steps: >-
+  check each fixture; load the baseline arrival save headlessly against each; verify exit codes and
+  slot bytes; load the baseline save into the text-patched variant (with P3-02)
+expected: valid fixtures check OK; loads refuse with reasons; slot bytes unchanged; patched variant loads
+actual: >-
+  removed checkpoint: check OK (7 nodes), load exit 1 "save checkpoint 'scene.arrival' is not
+  available"; saveSchema 2: check OK, load exit 1 "no save migration from schema 1 to 2"; slot hash
+  17379B0C… identical before and after both loads; text-patched variant loads the same save with the
+  edited line (P3-02 record); attempts chain stays 1.0 through load/finish/re-save.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/compat-refusals.txt
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-01 Story A walkthrough, visual/state parts (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline, keyboard-only drive with per-step PrintWindow frames
+steps: >-
+  title menu, About and Return, Begin, both decision branches to dawn and end; headless replay of both
+  routes for canonical state
+expected: menu offers Begin/About and returns; characters and backgrounds render per node; route and
+  signal bindings track choices; each route ends with its own reply
+actual: >-
+  all observed in frames and traces: About returns to the identical menu; Route flips undecided ->
+  repair/roof at the first route line; Signal sent flips true by dawn; distinct replies ("She says she
+  heard the whistle…" vs "She saw the rooftop flash…"); end frames show The End with Route/Signal set;
+  headless end states attempts=1.0, signal=true on both routes. Audio looping/tones NOT covered here.
+result: PARTIAL (audio audition stays with the maintainer)
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/menu-after-about-return.png, decision-choices.png, dawn-repair-reply.png, dawn-roof-reply.png, headless-route-roof.jsonl
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-03 input/focus/resize, keyboard parts (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: >-
+  Tab/Enter through buttons and choices; digit selection; Volume overlay open/block/close; F5/F9 under
+  overlay; resize window to 900x600 and back
+expected: documented focus order; overlay blocks base input; buttons do not also advance; close restores
+  focus; resize reflows readably
+actual: >-
+  Tab order Continue -> Volume -> Save -> Load; Enter activates without advancing the line; digits
+  select choices; overlay focused its first button and blocked a digit probe; Close restored focus to
+  Volume (highlighted); load reset focus to Continue; 900x600 reflow kept text and buttons inside the
+  panel. Real-mouse completion, DPI scale and same-frame F5+Space/click NOT covered here.
+result: PARTIAL (mouse, DPI, combined same-frame input stay with the maintainer)
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/volume-overlay-open.png, close-focus-restore.png, resize-900x600.png, f9-base-after-overlay.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
