@@ -272,3 +272,26 @@ logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/ (visual frames
 tested_by: maintainer (Andres-Holivin), agent-recorded
 tested_at: 2026-10-16
 ```
+
+```yaml
+check: P3-03 mouse activation, one-activation semantics, decorative clicks (maintainer)
+commit: 4982551
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player, real mouse
+steps: >-
+  mouse-only session: About, Return, Begin; Continue clicks; clicks on character art and empty
+  background; decision choice-row click; Volume overlay music 50% and Close; Save (F5) button at
+  the repair first line followed by exactly one Continue click; Esc
+expected: >-
+  every click activates exactly one thing; decorative media clicks are no-ops; Save shows Saved.
+  and does not also advance the line; overlay closes back to dialogue
+actual: >-
+  maintainer reports (verbatim) "everyting doing great": no misfires in either direction (no
+  double advance, no dead clicks); character-art and background clicks were clean no-ops; Save ->
+  Saved. then exactly one line advance per Continue click; Volume overlay operated and closed by
+  mouse.
+result: PASS
+tested_by: maintainer (Andres-Holivin), agent-recorded
+tested_at: 2026-10-16
+```
