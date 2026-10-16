@@ -5,6 +5,7 @@
 
 pub(crate) use self::{execution_state::*, state::*};
 use crate::Result;
+use yarnspinner_core::types::TypedValue;
 use crate::markup::{LineParser, ParsedMarkup};
 use crate::prelude::*;
 use crate::resource_limits::*;
@@ -377,7 +378,11 @@ impl VirtualMachine {
     pub(crate) fn run_instruction(
         &mut self,
         instruction: &Instruction,
-        mut function_call_fn: impl FnMut(&dyn UntypedYarnFn, Vec<YarnValue>) -> YarnValue,
+        mut function_call_fn: impl FnMut(
+            &str,
+            &dyn UntypedYarnFn,
+            Vec<YarnValue>,
+        ) -> core::result::Result<YarnValue, String>,
     ) -> crate::Result<()> {
         let opcode: OpCode = instruction.opcode.try_into().unwrap();
         if matches!(
@@ -567,11 +572,17 @@ impl VirtualMachine {
                 parameters.reverse();
 
                 // Invoke the function
-                let return_value = function_call_fn(function, parameters);
+                let return_value = function_call_fn(&function_name, function, parameters)
+                    .map_err(|message| self.invalid_execution(message))?;
                 let return_type = function
                     .return_type()
                     .try_into()
                     .unwrap_or_else(|e| panic!("Failed to get Yarn type for return type id of function {function_name}: {e:?}"));
+                if return_type != Type::Any && return_value.r#type() != return_type {
+                    return Err(self.invalid_execution(format!(
+                        "function '{function_name}' returned the wrong type"
+                    )));
+                }
                 let typed_return_value = InternalValue {
                     raw_value: return_value,
                     r#type: return_type,

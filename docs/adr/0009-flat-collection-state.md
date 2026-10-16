@@ -16,7 +16,7 @@ Collections have at most 256 entries and 16384 payload bytes. Each entry costs e
 
 ## Runtime and authoring
 
-Existing `state.set`, `state.reset` and `state.remove` operate on whole collections. Numeric `state.add`, conditions, command parameters and signal payloads remain scalar-only. Per-entry edits, collection queries and Rhai are later slices. Authors may maintain explicit scalar views alongside collection writes; Yarn variables and UI text bindings reject collection values rather than stringify or round them.
+Existing `state.set`, `state.reset` and `state.remove` operate on whole collections. Numeric `state.add`, conditions, command parameters and signal payloads remain scalar-only. Bounded local entry edits through Rhai are defined in [ADR 0010](./0010-bounded-rhai-host.md); read-only Yarn scalar queries are defined in [ADR 0012](./0012-yarn-collection-queries.md). Authors may maintain explicit scalar views alongside collection writes; Yarn variables and UI text bindings reject collection values rather than stringify or round them.
 
 In rule actions and call arguments, `{"literal": value}` explicitly wraps a collection. This preserves the existing `{"argument":"name"}` syntax even for maps with `argument` or `literal` keys. Wrapping a scalar is also accepted. Bare arrays/objects in action value slots refuse with a format diagnostic. Manifest defaults and screen `state.set` actions do not have this ambiguity and accept ordinary arrays/objects.
 

@@ -533,3 +533,187 @@ fn failed_random_replay_never_publishes_candidate_output_or_changes_save_files()
     assert_eq!(fs::read(slot).unwrap(), bytes);
     assert_eq!(fs::read(backup).unwrap(), prior_backup);
 }
+
+fn queries_fixture() -> tempfile::TempDir {
+    let example = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/queries-demo");
+    let temp = tempfile::tempdir().unwrap();
+    fs::create_dir(temp.path().join("story")).unwrap();
+    for file in [
+        "manifest.jsonc",
+        "main.yarn",
+        "events.jsonc",
+        "screen.jsonc",
+    ] {
+        fs::copy(example.join(file), temp.path().join("story").join(file)).unwrap();
+    }
+    temp
+}
+#[test]
+fn collection_queries_replay_without_derived_scalar_state_or_save_changes() {
+    let temp = queries_fixture();
+    let fresh = success(run(temp.path(), &[]));
+    let lines: Vec<_> = fresh
+        .iter()
+        .filter(|v| v["event"] == "line")
+        .map(|v| v["text"].as_str().unwrap())
+        .collect();
+    assert_eq!(
+        lines,
+        [
+            "Packed 2 items",
+            "Now 2, key true, schedule 3, morning true",
+            "Items after reset 0"
+        ]
+    );
+    assert!(fresh.last().unwrap()["state"].get("item_count").is_none());
+    for checkpoint in ["queries.start", "queries.next"] {
+        let saved = success(run(temp.path(), &["--save-at", checkpoint]));
+        let slot = temp.path().join("saves/save.json");
+        let bytes = fs::read(&slot).unwrap();
+        let restored = success(run(temp.path(), &["--load", "--save-at", checkpoint]));
+        assert_eq!(
+            saved.last().unwrap()["state"],
+            restored.last().unwrap()["state"]
+        );
+        assert_eq!(fs::read(slot).unwrap(), bytes);
+        assert_eq!(
+            success(run(temp.path(), &["--load"])).last().unwrap()["state"],
+            fresh.last().unwrap()["state"]
+        );
+    }
+}
+#[test]
+fn collection_query_capabilities_literal_targets_and_scopes_validate_before_activation() {
+    for variant in [
+        "capability",
+        "missing",
+        "type",
+        "scope",
+        "dynamic",
+        "dynamic_scope",
+    ] {
+        let temp = queries_fixture();
+        let root = temp.path().join("story");
+        let manifest = root.join("manifest.jsonc");
+        let mut m: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
+        let source = fs::read_to_string(root.join("main.yarn")).unwrap();
+        match variant {
+            "capability" => m["requires"]["capabilities"]
+                .as_array_mut()
+                .unwrap()
+                .retain(|v| v != "dialogue.collections/1"),
+            "scope" => m["state"]["items"]["scope"] = json!("session"),
+            "missing" => fs::write(
+                root.join("main.yarn"),
+                source.replace("state_list_len(\"items\")", "state_list_len(\"missing\")"),
+            )
+            .unwrap(),
+            "type" => fs::write(
+                root.join("main.yarn"),
+                source.replace("state_list_len(\"items\")", "state_list_len(\"status\")"),
+            )
+            .unwrap(),
+            "dynamic_scope" => {
+                m["state"]["temporary"] = json!({"scope":"session","default":[]});
+                fs::write(
+                    root.join("main.yarn"),
+                    source
+                        .replace(
+                            "<<checkpoint queries.start>>",
+                            "<<declare $target = \"temporary\">>\n<<checkpoint queries.start>>",
+                        )
+                        .replace("state_list_len(\"items\")", "state_list_len($target)"),
+                )
+                .unwrap();
+            }
+            "dynamic" => fs::write(
+                root.join("main.yarn"),
+                source
+                    .replace(
+                        "<<checkpoint queries.start>>",
+                        "<<declare $target = \"items\">>\n<<checkpoint queries.start>>",
+                    )
+                    .replace("state_list_len(\"items\")", "state_list_len($target)"),
+            )
+            .unwrap(),
+            _ => unreachable!(),
+        }
+        fs::write(&manifest, m.to_string()).unwrap();
+        let checked = Command::new(env!("CARGO_BIN_EXE_weftora"))
+            .arg("check")
+            .arg(&root)
+            .output()
+            .unwrap();
+        if variant == "dynamic_scope" {
+            assert!(
+                checked.status.success(),
+                "{}",
+                String::from_utf8_lossy(&checked.stderr)
+            );
+            let failed = run(temp.path(), &[]);
+            assert!(!failed.status.success());
+            assert!(failed.stdout.is_empty());
+            assert!(String::from_utf8_lossy(&failed.stderr).contains("Persistent"));
+        } else if variant == "dynamic" {
+            assert!(
+                checked.status.success(),
+                "{}",
+                String::from_utf8_lossy(&checked.stderr)
+            );
+            success(run(temp.path(), &[]));
+        } else {
+            assert!(!checked.status.success(), "{variant}");
+            let error = String::from_utf8_lossy(&checked.stderr);
+            assert!(
+                error.contains(if variant == "scope" {
+                    "Persistent"
+                } else if variant == "capability" {
+                    "dialogue.collections/1"
+                } else {
+                    "main.yarn"
+                }),
+                "{variant}: {error}"
+            );
+        }
+    }
+}
+#[test]
+fn removed_collection_query_during_load_preserves_slot_and_publishes_no_output() {
+    let temp = queries_fixture();
+    success(run(temp.path(), &["--save-at", "queries.start"]));
+    success(run(temp.path(), &["--load", "--save-at", "queries.start"]));
+    let slot = temp.path().join("saves/save.json");
+    let bytes = fs::read(&slot).unwrap();
+    let backup = temp.path().join("saves/save.bak");
+    let prior_backup = fs::read(&backup).unwrap();
+    let rules = temp.path().join("story/events.jsonc");
+    let mut document: Value = serde_json::from_slice(&fs::read(&rules).unwrap()).unwrap();
+    document["commands"]
+        .as_array_mut()
+        .unwrap()
+        .push(json!({"id":"break_queries","actions":[{"do":"state.remove","key":"items"}]}));
+    fs::write(rules, document.to_string()).unwrap();
+    // Deliberately retain schema 1: a fresh launch is valid, but an old node-entry value selects a failing replay.
+    let manifest = temp.path().join("story/manifest.jsonc");
+    let mut metadata: Value = serde_json::from_slice(&fs::read(&manifest).unwrap()).unwrap();
+    metadata["state"]["status"]["default"] = json!("Fresh");
+    fs::write(manifest, metadata.to_string()).unwrap();
+    let yarn = temp.path().join("story/main.yarn");
+    let source=fs::read_to_string(&yarn).unwrap().replace("<<checkpoint queries.start>>","<<declare $status = \"Fresh\">>\n<<checkpoint queries.start>>").replace("<<pack>>","<<if $status == \"Empty kit\">>\n<<pack>>\n<<break_queries>>\n<<else>>\n<<pack>>\n<<endif>>");
+    fs::write(yarn, source).unwrap();
+    let fresh = success(run(temp.path(), &[]));
+    assert_eq!(
+        fresh.iter().find(|v| v["event"] == "line").unwrap()["text"],
+        "Packed 2 items"
+    );
+    let failed = run(temp.path(), &["--load"]);
+    assert!(!failed.status.success());
+    assert!(failed.stdout.is_empty());
+    let error = String::from_utf8_lossy(&failed.stderr);
+    assert!(
+        error.contains("main.yarn") && error.contains("state_list_len") && error.contains("items"),
+        "{error}"
+    );
+    assert_eq!(fs::read(slot).unwrap(), bytes);
+    assert_eq!(fs::read(backup).unwrap(), prior_backup);
+}

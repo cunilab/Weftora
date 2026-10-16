@@ -244,7 +244,8 @@ impl CompiledDialogue {
             }
             validate_operand(value).map_err(|e| format!("Yarn declaration `{name}`: {e}"))?;
         }
-        let library = Library::standard_library();
+        let mut library = Library::standard_library();
+        library.extend(crate::queries::library());
         let mut total = 0;
         let mut commands = Vec::new();
         let mut checkpoints = std::collections::BTreeSet::new();
@@ -590,8 +591,9 @@ mod tests {
         );
     }
     #[test]
-    fn checkpoint_random_policy_requires_review_when_standard_functions_change() {
-        let library = Library::standard_library();
+    fn checkpoint_policy_requires_review_when_functions_change() {
+        let mut library = Library::standard_library();
+        library.extend(crate::queries::library());
         let mut names: Vec<_> = library.names().filter(|name| !name.contains('.')).collect();
         names.sort_unstable();
         assert_eq!(
@@ -612,6 +614,10 @@ mod tests {
                 "random_range_float",
                 "round",
                 "round_places",
+                "state_list_contains",
+                "state_list_len",
+                "state_map_contains_key",
+                "state_map_len",
                 "string"
             ]
         );

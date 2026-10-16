@@ -19,6 +19,9 @@ use yarnspinner_runtime::prelude::{Dialogue, OptionId, StringTableTextProvider};
 
 mod artifact;
 mod checkpoint;
+mod queries;
+#[doc(hidden)]
+pub use queries::library as collection_query_library;
 mod storage;
 mod validation;
 pub use artifact::{
@@ -296,6 +299,7 @@ pub struct DialogueRunner {
     state: SharedState,
     rules: weftora_story::rules::Rules,
     scripts: weftora_script::Programs,
+    query_persistent_only: bool,
     program: Program,
     failure: Option<String>,
     node_files: BTreeMap<String, String>,
@@ -330,6 +334,7 @@ impl DialogueRunner {
         let storage = StateStorage::new(state.clone());
         let (writes, write_bytes) = storage.write_counters();
         let mut yarn = Dialogue::new(Box::new(storage.clone()), Box::new(text));
+        yarn.library_mut().extend(queries::library());
         let default_error = match state.read() {
             Ok(state) => check_defaults(&dialogue.program, &state)
                 .into_iter()
@@ -349,6 +354,7 @@ impl DialogueRunner {
             state,
             rules: weftora_story::rules::Rules::default(),
             scripts: weftora_script::Programs::default(),
+            query_persistent_only: false,
             program: dialogue.program.clone(),
             failure: default_error.or_else(|| {
                 initialization
@@ -377,6 +383,10 @@ impl DialogueRunner {
     ) -> Self {
         let mut runner = Self::new(dialogue, state);
         runner.rules = story.rules().clone();
+        runner.query_persistent_only = story.manifest().save_schema.is_some();
+        if let Some(error) = queries::validate(story, dialogue).first() {
+            runner.failure.get_or_insert_with(|| error.to_string());
+        }
         match weftora_script::Programs::compile(runner.rules.scripts()) {
             Ok(scripts) => runner.scripts = scripts,
             Err(errors) => {
@@ -558,19 +568,25 @@ impl DialogueRunner {
         let per_call_budget = self.dialogue.instruction_budget();
         self.dialogue
             .set_instruction_budget(remaining.min(per_call_budget));
+        let query_state = self.state.clone();
+        let persistent_only = self.query_persistent_only;
         let result = self.runtime_call(|dialogue| {
-            dialogue.continue_().map_err(|error| match error {
-                yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
-                    node_name,
-                    ..
-                } if remaining < per_call_budget => {
+            dialogue
+                .continue_with_function_handler(|name, args| {
+                    queries::evaluate(name, args, &query_state, persistent_only)
+                })
+                .map_err(|error| match error {
                     yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
                         node_name,
-                        budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
+                        ..
+                    } if remaining < per_call_budget => {
+                        yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
+                            node_name,
+                            budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
+                        }
                     }
-                }
-                other => other,
-            })
+                    other => other,
+                })
         });
         self.dialogue.set_instruction_budget(per_call_budget);
         self.instructions_since_blocking += self.dialogue.last_instruction_count();

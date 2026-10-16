@@ -1,0 +1,57 @@
+{
+  "device": "MacBookAir",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "baseCommit": "72fba860552d95ea720f65ff837a298bf4e2f1dc",
+  "scope": "Automated package validation and headless execution; no native Windows or visual acceptance. Working-tree collection query implementation built once before exports; no Rust build between exports/edits.",
+  "playerSha256": "185e9b571d596c9064d6f75951916cc029594d01f5aa800c8b822e1fec2ddfcf",
+  "packages": [
+    {
+      "name": "hello",
+      "playerSha256": "185e9b571d596c9064d6f75951916cc029594d01f5aa800c8b822e1fec2ddfcf"
+    },
+    {
+      "name": "queries",
+      "playerSha256": "185e9b571d596c9064d6f75951916cc029594d01f5aa800c8b822e1fec2ddfcf",
+      "lines": [
+        "Packed 2 items",
+        "Now 2, key true, schedule 3, morning true",
+        "Items after reset 0"
+      ],
+      "finalItems": [],
+      "finalSchedule": {},
+      "packedItems": [
+        "key",
+        "ticket"
+      ],
+      "packedSchedule": {
+        "argument": "literal map entry",
+        "energy": 3,
+        "morning": "station"
+      },
+      "compiledDialogueSha256": "244f36b40b9dd84331e08d571a8fbc168138403ad5e984b6f35bad8212eb72b0"
+    },
+    {
+      "name": "edited",
+      "playerSha256": "185e9b571d596c9064d6f75951916cc029594d01f5aa800c8b822e1fec2ddfcf",
+      "lines": [
+        "Packed 3 items",
+        "Now 3, key true, schedule 3, morning true",
+        "Items after reset 0"
+      ],
+      "finalItems": [],
+      "finalSchedule": {},
+      "packedItems": [
+        "key",
+        "ticket",
+        "pass"
+      ],
+      "packedSchedule": {
+        "argument": "literal map entry",
+        "energy": 3,
+        "morning": "station"
+      },
+      "compiledDialogueSha256": "244f36b40b9dd84331e08d571a8fbc168138403ad5e984b6f35bad8212eb72b0"
+    }
+  ],
+  "oldSchemaSaveRefusedWithoutOutputOrSlotChange": true
+}

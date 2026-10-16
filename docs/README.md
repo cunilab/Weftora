@@ -46,3 +46,5 @@ To add a document, copy the [template](./templates/document.md) and follow the [
 - [ADR 0010 — Bounded Rhai host](./adr/0010-bounded-rhai-host.md)
 
 - [ADR 0011 — Canonical seeded randomness](./adr/0011-canonical-seeded-randomness.md)
+
+- [ADR 0012 — Yarn collection queries](./adr/0012-yarn-collection-queries.md)

@@ -1,0 +1,41 @@
+{
+  "manifestSchema": 1,
+  "saveSchema": 1,
+  "id": "dev.weftora.queries-demo",
+  "storyVersion": "0.1.0",
+  "title": "Collection Queries Demo",
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": [
+      "dialogue.yarn/1",
+      "rules.events/1",
+      "save/1",
+      "rules.commands/1",
+      "ui.screens/1",
+      "state.collections/1",
+      "dialogue.collections/1"
+    ]
+  },
+  "entrypoint": "Start",
+  "dialogue": [
+    "main.yarn"
+  ],
+  "events": [
+    "events.jsonc"
+  ],
+  "state": {
+    "items": {
+      "default": []
+    },
+    "schedule": {
+      "default": {}
+    },
+    "status": {
+      "default": "Empty kit"
+    }
+  },
+  "screens": [
+    "screen.jsonc"
+  ],
+  "initialScreen": "dialogue"
+}

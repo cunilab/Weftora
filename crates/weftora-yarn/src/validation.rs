@@ -7,6 +7,7 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
     let mut errors = weftora_script::Programs::compile(story.rules().scripts())
         .err()
         .unwrap_or_default();
+    errors.extend(crate::queries::validate(story, dialogue));
     match story.initial_state() {
         Ok(state) => {
             errors.extend(

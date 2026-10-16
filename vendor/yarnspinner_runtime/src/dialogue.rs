@@ -292,8 +292,24 @@ impl Dialogue {
         );
 
         self.vm.continue_(|vm, instruction| {
-            vm.run_instruction(instruction, |function, parameters| {
-                function.call(parameters)
+            vm.run_instruction(instruction, |_, function, parameters| {
+                Ok(function.call(parameters))
+            })
+        })
+    }
+
+    /// Continues with a fallible host function handler. `None` delegates to the library.
+    /// Errors stop execution before a return value or later instruction is processed.
+    pub fn continue_with_function_handler(
+        &mut self,
+        mut handler: impl FnMut(&str, &[YarnValue]) -> core::result::Result<Option<YarnValue>, String>,
+    ) -> Result<Vec<DialogueEvent>> {
+        self.vm.continue_(|vm, instruction| {
+            vm.run_instruction(instruction, |name, function, parameters| {
+                match handler(name, &parameters)? {
+                    Some(value) => Ok(value),
+                    None => Ok(function.call(parameters)),
+                }
             })
         })
     }
@@ -318,8 +334,8 @@ impl Dialogue {
     /// also allows unsound parallel mutation of [`Dialogue`]'s state, which would result in a deadlock in our case.
     pub fn continue_with_world(&mut self, world: &mut World) -> Result<Vec<DialogueEvent>> {
         self.vm.continue_(move |vm, instruction| {
-            vm.run_instruction(instruction, |function, parameters| {
-                function.call_with_world(parameters, world)
+            vm.run_instruction(instruction, |_, function, parameters| {
+                Ok(function.call_with_world(parameters, world))
             })
         })
     }

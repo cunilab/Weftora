@@ -80,3 +80,5 @@ The [collections demo](./examples/collections-demo/README.md) stores a flat list
 The [scripts demo](./examples/scripts-demo/README.md) uses a bounded Rhai command for inventory/schedule edits, callable from Yarn, events and screen buttons.
 
 The [random demo](./examples/random-demo/README.md) keeps a seeded dice stream in canonical state and continues the same sequence after checkpoint load.
+
+The [queries demo](./examples/queries-demo/README.md) reads collection length and membership from Yarn through scalar-only helpers.

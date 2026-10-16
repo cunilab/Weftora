@@ -153,6 +153,27 @@ jobs:
           name: weftora-windows-random-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-random-preview/
           retention-days: 14
+      - name: Package and validate Windows queries demo
+        shell: pwsh
+        run: |
+          $queriesPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-queries-preview"
+          .\target\debug\weftora.exe export examples/queries-demo --out $queriesPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $queriesPreview "weftora-player.exe") (Join-Path $queriesPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $queriesHash = (Get-FileHash (Join-Path $queriesPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $queriesHash) { throw "Queries demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $queriesPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and queries demo: $queriesHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-queries-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-queries-preview/
+          retention-days: 14
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'

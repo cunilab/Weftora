@@ -1,0 +1,14 @@
+title: Start
+---
+<<checkpoint queries.start>>
+<<pack>>
+Packed {state_list_len("items")} items
+Now {state_list_len("items")}, key {state_list_contains("items", "key")}, schedule {state_map_len("schedule")}, morning {state_map_contains_key("schedule", "morning")}
+<<jump Next>>
+===
+title: Next
+---
+<<checkpoint queries.next>>
+<<unpack>>
+Items after reset {state_list_len("items")}
+===
