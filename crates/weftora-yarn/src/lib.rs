@@ -19,6 +19,9 @@ use yarnspinner_runtime::prelude::{Dialogue, OptionId, StringTableTextProvider};
 
 mod artifact;
 mod checkpoint;
+mod queries;
+#[doc(hidden)]
+pub use queries::library as collection_query_library;
 mod storage;
 mod validation;
 pub use artifact::{
@@ -294,6 +297,9 @@ pub struct DialogueRunner {
     storage: StateStorage,
     capture: Option<checkpoint::Capture>,
     state: SharedState,
+    rules: weftora_story::rules::Rules,
+    scripts: weftora_script::Programs,
+    query_persistent_only: bool,
     program: Program,
     failure: Option<String>,
     node_files: BTreeMap<String, String>,
@@ -328,6 +334,7 @@ impl DialogueRunner {
         let storage = StateStorage::new(state.clone());
         let (writes, write_bytes) = storage.write_counters();
         let mut yarn = Dialogue::new(Box::new(storage.clone()), Box::new(text));
+        yarn.library_mut().extend(queries::library());
         let default_error = match state.read() {
             Ok(state) => check_defaults(&dialogue.program, &state)
                 .into_iter()
@@ -345,6 +352,9 @@ impl DialogueRunner {
             storage,
             capture: None,
             state,
+            rules: weftora_story::rules::Rules::default(),
+            scripts: weftora_script::Programs::default(),
+            query_persistent_only: false,
             program: dialogue.program.clone(),
             failure: default_error.or_else(|| {
                 initialization
@@ -363,6 +373,33 @@ impl DialogueRunner {
             started: false,
             ended: false,
         }
+    }
+
+    /// Creates a Story-aware runner, including its validated rules. Hosts use this for play and restore.
+    pub fn for_story(
+        dialogue: &CompiledDialogue,
+        state: SharedState,
+        story: &weftora_story::Story,
+    ) -> Self {
+        let mut runner = Self::new(dialogue, state);
+        runner.rules = story.rules().clone();
+        runner.query_persistent_only = story.manifest().save_schema.is_some();
+        if let Some(error) = queries::validate(story, dialogue).first() {
+            runner.failure.get_or_insert_with(|| error.to_string());
+        }
+        match weftora_script::Programs::compile(runner.rules.scripts()) {
+            Ok(scripts) => runner.scripts = scripts,
+            Err(errors) => {
+                runner.failure = Some(
+                    errors
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                )
+            }
+        }
+        runner
     }
 
     /// Starts (or restarts) the dialogue at `node`.
@@ -405,7 +442,59 @@ impl DialogueRunner {
             self.disarm_after_progress();
         }
         loop {
+            let from = if self.rules.is_empty() {
+                0
+            } else {
+                self.state
+                    .read()
+                    .map_err(|_| DialogueError::Runtime("state lock is poisoned".into()))?
+                    .pending_changes()
+                    .len()
+            };
             let event = self.next_event_one()?;
+            let story_command = match &event {
+                DialogueEvent::Command(command) if self.rules.has_command(&command.name) => {
+                    Some(command)
+                }
+                _ => None,
+            };
+            if !self.rules.is_empty() {
+                let settled = self
+                    .state
+                    .write()
+                    .map_err(|_| "state lock is poisoned".to_string())
+                    .and_then(|mut state| {
+                        let after_vm = state.pending_changes().len();
+                        if let Some(command) = story_command {
+                            let args = self
+                                .rules
+                                .parse_command(&command.name, &command.args, false)
+                                .map_err(|e| e.to_string())?;
+                            self.rules
+                                .call_with(
+                                    &command.name,
+                                    &args,
+                                    &mut state,
+                                    from,
+                                    &mut self.scripts,
+                                )
+                                .map_err(|e| e.to_string())?;
+                        } else {
+                            self.rules
+                                .settle_with(&mut state, from, &mut self.scripts)
+                                .map_err(|e| e.to_string())?;
+                        }
+                        self.storage
+                            .charge_rule_changes(&state.pending_changes()[after_vm..])
+                            .map_err(|e| e.to_string())
+                    });
+                if let Err(error) = settled {
+                    return self.fail_with_context(DialogueError::Runtime(error));
+                }
+            }
+            if story_command.is_some() {
+                continue;
+            }
             if let DialogueEvent::Command(command) = &event
                 && command.name == "checkpoint"
             {
@@ -414,6 +503,46 @@ impl DialogueRunner {
             }
             self.arm_checkpoint(&event);
             return Ok(event);
+        }
+    }
+
+    /// Apply a screen action through the same bounded rule bridge as Yarn commands.
+    pub fn ui_action(&mut self, action: &weftora_story::ui::UiAction) -> Result<(), DialogueError> {
+        self.ensure_healthy()?;
+        let result = (|| {
+            let mut state = self
+                .state
+                .write()
+                .map_err(|_| "state lock is poisoned".to_string())?;
+            let from = state.pending_changes().len();
+            match action {
+                weftora_story::ui::UiAction::SetState { key, value } => {
+                    state.get(key).map_err(|e| e.to_string())?;
+                    state.set(key, value.clone()).map_err(|e| e.to_string())?;
+                    self.rules
+                        .settle_with(&mut state, from, &mut self.scripts)
+                        .map_err(|e| e.to_string())?;
+                }
+                weftora_story::ui::UiAction::CallCommand { command, args } => {
+                    self.rules
+                        .call_with(command, args, &mut state, from, &mut self.scripts)
+                        .map_err(|e| e.to_string())?;
+                }
+                _ => return Err("expected a state or command UI action".into()),
+            }
+            // Each user action has its own bounded dispatch/notification budget.
+            // UI inputs are absent from checkpoint replay, including changes later reversed by rules.
+            if state.pending_changes()[from..]
+                .iter()
+                .any(|change| state.scope(&change.key) == Ok(weftora_core::Scope::Persistent))
+            {
+                self.capture = None;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(()),
+            Err(error) => self.fail_with_context(DialogueError::Runtime(error)),
         }
     }
 
@@ -439,19 +568,25 @@ impl DialogueRunner {
         let per_call_budget = self.dialogue.instruction_budget();
         self.dialogue
             .set_instruction_budget(remaining.min(per_call_budget));
+        let query_state = self.state.clone();
+        let persistent_only = self.query_persistent_only;
         let result = self.runtime_call(|dialogue| {
-            dialogue.continue_().map_err(|error| match error {
-                yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
-                    node_name,
-                    ..
-                } if remaining < per_call_budget => {
+            dialogue
+                .continue_with_function_handler(|name, args| {
+                    queries::evaluate(name, args, &query_state, persistent_only)
+                })
+                .map_err(|error| match error {
                     yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
                         node_name,
-                        budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
+                        ..
+                    } if remaining < per_call_budget => {
+                        yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
+                            node_name,
+                            budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
+                        }
                     }
-                }
-                other => other,
-            })
+                    other => other,
+                })
         });
         self.dialogue.set_instruction_budget(per_call_budget);
         self.instructions_since_blocking += self.dialogue.last_instruction_count();

@@ -5,10 +5,16 @@ use serde::Deserialize;
 pub const ENGINE_API: &str = "0.1.0";
 pub const CAPABILITIES: &[&str] = &[
     "dialogue.yarn/1",
+    "dialogue.collections/1",
     "assets.catalog/1",
     "ui.screens/1",
     "presentation.media/1",
     "save/1",
+    "rules.events/1",
+    "rules.commands/1",
+    "state.collections/1",
+    "rules.rhai/1",
+    "rules.random/1",
 ];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

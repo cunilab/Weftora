@@ -72,3 +72,17 @@ Save stops at the eligible display and emits a saved record. Load validates and 
 [Story A](./examples/story-a/README.md) is a complete short example with a title menu, two routes, characters, CG, music, transitions, themed choices and checkpoint saves. Its CC0 rectangles and tones are prototype assets. Hello Story remains the unchanged earlier test fixture.
 
 Use the [author tutorial](./docs/story-a-tutorial.md) to edit dialogue, screens/theme and an image with prebuilt tools. Windows CI packages baseline and two edited variants with the same player hash. [Native Windows and independent-author steps](./docs/evidence/phase-3-windows.md) remain in issue #5 with blank results.
+
+The [commands demo](./examples/commands-demo/README.md) exercises typed Story commands from Yarn, events and screen buttons, including checkpoint save replay. Native Windows checks remain queued in issue #5.
+
+The [collections demo](./examples/collections-demo/README.md) stores a flat list inventory and map schedule, with whole-value command edits and checkpoint replay.
+
+The [scripts demo](./examples/scripts-demo/README.md) uses a bounded Rhai command for inventory/schedule edits, callable from Yarn, events and screen buttons.
+
+The [random demo](./examples/random-demo/README.md) keeps a seeded dice stream in canonical state and continues the same sequence after checkpoint load.
+
+The [queries demo](./examples/queries-demo/README.md) reads collection length and membership from Yarn through scalar-only helpers.
+
+The [screens demo](./examples/screens-demo/README.md) replaces layouts, colors and navigation using existing widgets, with a repeatable same-player UI edit proof.
+
+[Market Day (Story B)](./examples/life-sim/README.md) is a short life-sim with Home/Market, scheduled work, energy/coins, inventory and replayable seeded pay on the same Engine.

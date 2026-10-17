@@ -1,0 +1,115 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen",
+    "id": "dialogue",
+    "background": "#14251F",
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 32,
+      "gap": 18
+    },
+    "children": [
+      {
+        "type": "text",
+        "text": "STATION LOG",
+        "size": 32,
+        "color": "#E8EEE7"
+      },
+      {
+        "type": "panel",
+        "background": "#243C32",
+        "layout": {
+          "width": "100%",
+          "padding": 20,
+          "gap": 14
+        },
+        "children": [
+          {
+            "type": "text",
+            "bind": {
+              "dialogue": "text"
+            },
+            "size": 22,
+            "color": "#E8EEE7"
+          },
+          {
+            "type": "choiceList",
+            "id": "choices",
+            "size": 22,
+            "color": "#E9C46A"
+          },
+          {
+            "type": "button",
+            "id": "next",
+            "text": "Continue",
+            "action": {
+              "do": "dialogue.advance"
+            },
+            "size": 20,
+            "color": "#F8F1D7",
+            "background": "#344E41",
+            "layout": {
+              "padding": 10
+            }
+          }
+        ]
+      },
+      {
+        "type": "list",
+        "layout": {
+          "direction": "row",
+          "gap": 12
+        },
+        "children": [
+          {
+            "type": "button",
+            "id": "menu",
+            "text": "Menu",
+            "action": {
+              "do": "screen.open",
+              "screen": "menu"
+            },
+            "size": 20,
+            "color": "#F8F1D7",
+            "background": "#344E41",
+            "layout": {
+              "padding": 10
+            }
+          },
+          {
+            "type": "button",
+            "id": "activity",
+            "text": "Activity desk",
+            "action": {
+              "do": "screen.open",
+              "screen": "activity"
+            },
+            "size": 20,
+            "color": "#F8F1D7",
+            "background": "#344E41",
+            "layout": {
+              "padding": 10
+            }
+          },
+          {
+            "type": "button",
+            "id": "pause",
+            "text": "Pause",
+            "action": {
+              "do": "screen.open",
+              "screen": "pause"
+            },
+            "size": 20,
+            "color": "#F8F1D7",
+            "background": "#344E41",
+            "layout": {
+              "padding": 10
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -212,3 +212,86 @@ fn invalid_continue_while_choices_wait_preserves_save_point() {
     assert!(runner.next_event().is_err());
     assert_eq!(runner.save_point().unwrap(), before);
 }
+
+#[test]
+fn collection_float_bits_participate_in_checkpoint_eligibility() {
+    let compiled = compile(&sources(SCRIPT)).unwrap();
+    let state = Arc::new(RwLock::new(State::new()));
+    state
+        .write()
+        .unwrap()
+        .set("items", Value::List(vec![Value::Float(-0.0)]))
+        .unwrap();
+    let mut runner = DialogueRunner::new(&compiled, state.clone());
+    runner.start("Start").unwrap();
+    runner.next_event().unwrap();
+    assert!(runner.save_point().is_ok());
+    state
+        .write()
+        .unwrap()
+        .set("items", Value::List(vec![Value::Float(0.0)]))
+        .unwrap();
+    assert!(matches!(runner.save_point(), Err(SaveRefusal::Changed)));
+}
+#[test]
+fn oversized_collection_checkpoint_reports_data_error_without_arming_a_snapshot() {
+    let compiled = compile(&sources(SCRIPT)).unwrap();
+    let mut initial = State::new();
+    let value = Value::List(vec![Value::String(
+        "x".repeat(weftora_api::MAX_COLLECTION_BYTES - 8),
+    )]);
+    for index in 0..513 {
+        initial
+            .declare(
+                &format!("large.n{index}"),
+                StateDefinition {
+                    default: value.clone(),
+                    scope: Scope::Persistent,
+                },
+            )
+            .unwrap();
+    }
+    let state = Arc::new(RwLock::new(initial));
+    let mut runner = DialogueRunner::new(&compiled, state);
+    runner.start("Start").unwrap();
+    assert!(matches!(
+        runner.next_event().unwrap(),
+        DialogueEvent::Line { .. }
+    ));
+    let error = runner.save_point().unwrap_err();
+    assert!(
+        matches!(&error,SaveRefusal::Data(message) if message.contains("save limit")),
+        "{error}"
+    );
+}
+
+#[test]
+fn removed_declarations_count_toward_expected_snapshot_limits() {
+    let compiled = compile(&sources(
+        "title: Start\n---\n<<checkpoint scene.start>>\n<<background bg.room>>\nFirst\n===\n",
+    ))
+    .unwrap();
+    let state = Arc::new(RwLock::new(State::new()));
+    let mut runner = DialogueRunner::new(&compiled, state.clone());
+    runner.start("Start").unwrap();
+    assert!(matches!(
+        runner.next_event().unwrap(),
+        DialogueEvent::Command(_)
+    ));
+    {
+        let mut state = state.write().unwrap();
+        for index in 0..4097 {
+            let key = format!("removed.n{index}");
+            state.set(&key, Value::Bool(true)).unwrap();
+            state.remove(&key).unwrap();
+        }
+        state.drain_changes();
+    }
+    assert!(matches!(
+        runner.next_event().unwrap(),
+        DialogueEvent::Line { .. }
+    ));
+    assert!(
+        matches!(runner.save_point(),Err(SaveRefusal::Data(message)) if message.contains("save limit"))
+    );
+}

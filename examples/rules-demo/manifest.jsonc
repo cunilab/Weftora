@@ -1,0 +1,20 @@
+{
+  "manifestSchema": 1,
+  "saveSchema": 1,
+  "id": "dev.weftora.rules-demo",
+  "storyVersion": "0.1.0",
+  "title": "Rules Demo",
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": ["dialogue.yarn/1", "rules.events/1", "save/1"]
+  },
+  "entrypoint": "Start",
+  "dialogue": ["main.yarn"],
+  "events": ["events.jsonc"],
+  "state": {
+    "input": {"default": false},
+    "awarded": {"default": false},
+    "points": {"default": 0},
+    "temporary": {"default": 0, "scope": "session"}
+  }
+}

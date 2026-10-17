@@ -77,7 +77,7 @@ impl State {
     /// Declares a typed key with its default and persistence scope.
     pub fn declare(&mut self, key: &str, definition: StateDefinition) -> Result<(), StateError> {
         validate_key(key)?;
-        validate_value(&definition.default)?;
+        definition.default.validate()?;
         if self.definitions.contains_key(key) {
             return Err(StateError::DuplicateKey(key.into()));
         }
@@ -99,7 +99,7 @@ impl State {
     /// New keys infer a persistent default; an existing declaration fixes the type until state is discarded.
     pub fn set(&mut self, key: &str, value: Value) -> Result<(), StateError> {
         validate_key(key)?;
-        validate_value(&value)?;
+        value.validate()?;
         if let Some(definition) = self.definitions.get(key) {
             if definition.default.type_name() != value.type_name() {
                 return Err(StateError::TypeMismatch {
@@ -155,6 +155,11 @@ impl State {
         self.set(key, default)
     }
 
+    /// Read notifications without consuming them; mutation appends and never reorders them.
+    pub fn pending_changes(&self) -> &[StateChange] {
+        &self.changes
+    }
+
     /// Notifications in mutation order; no-op writes and rejected writes emit nothing.
     pub fn drain_changes(&mut self) -> Vec<StateChange> {
         std::mem::take(&mut self.changes)
@@ -169,12 +174,18 @@ impl State {
             .collect()
     }
 
-    /// Includes removed declarations so restoring a save cannot resurrect their defaults.
-    pub fn snapshot_entries(&self, scope: Scope) -> BTreeMap<String, Option<Value>> {
+    /// Borrow every declaration in a scope, including removed values, in key order.
+    pub fn scope_entries(&self, scope: Scope) -> impl Iterator<Item = (&str, Option<&Value>)> {
         self.definitions
             .iter()
-            .filter(|(_, definition)| definition.scope == scope)
-            .map(|(key, _)| (key.clone(), self.values.get(key).cloned()))
+            .filter(move |(_, definition)| definition.scope == scope)
+            .map(|(key, _)| (key.as_str(), self.values.get(key)))
+    }
+
+    /// Includes removed declarations so restoring a save cannot resurrect their defaults.
+    pub fn snapshot_entries(&self, scope: Scope) -> BTreeMap<String, Option<Value>> {
+        self.scope_entries(scope)
+            .map(|(key, value)| (key.into(), value.cloned()))
             .collect()
     }
 
@@ -194,10 +205,9 @@ impl State {
                 return false;
             };
             let equal = match (self.values.get(key), expected.as_ref()) {
-                (Some(Value::Float(actual)), Some(Value::Float(expected))) => {
-                    actual.to_bits() == expected.to_bits()
-                }
-                (actual, expected) => actual == expected,
+                (Some(actual), Some(expected)) => actual.same_bits(expected),
+                (None, None) => true,
+                _ => false,
             };
             if !equal {
                 return false;
@@ -286,15 +296,6 @@ impl State {
     pub fn iter(&self) -> impl Iterator<Item = (&str, &Value)> {
         self.values.iter().map(|(k, v)| (k.as_str(), v))
     }
-}
-
-fn validate_value(value: &Value) -> Result<(), StateError> {
-    if let Value::Float(f) = value
-        && !f.is_finite()
-    {
-        return Err(StateError::NonFinite);
-    }
-    Ok(())
 }
 
 /// Validates a state key: non-empty dot-separated segments of `[a-z0-9_]`, each starting with a letter or `_`.
@@ -466,5 +467,75 @@ mod tests {
         assert!(State::with_values(&good).is_ok());
         let bad: BTreeMap<String, Value> = [("A".to_string(), Value::Int(1))].into();
         assert!(State::with_values(&bad).is_err());
+    }
+}
+
+#[cfg(test)]
+mod collection_tests {
+    use super::*;
+    #[test]
+    fn collections_keep_root_type_and_notifications_and_restore_atomically() {
+        let mut state = State::new();
+        state
+            .declare(
+                "items",
+                StateDefinition {
+                    default: Value::List(vec![]),
+                    scope: Scope::Persistent,
+                },
+            )
+            .unwrap();
+        let items = Value::List(vec![Value::String("key".into()), Value::Int(2)]);
+        state.set("items", items.clone()).unwrap();
+        assert_eq!(state.pending_changes().len(), 1);
+        state.set("items", items.clone()).unwrap();
+        assert_eq!(state.pending_changes().len(), 1);
+        for bad in [
+            Value::Map(BTreeMap::new()),
+            Value::List(vec![Value::Float(f64::NAN)]),
+            Value::List(vec![Value::List(vec![])]),
+        ] {
+            let before = state.clone();
+            assert!(state.set("items", bad).is_err());
+            assert_eq!(state, before);
+        }
+        assert!(state.add("items", &Value::Int(1)).is_err());
+        let snapshot = state.snapshot_entries(Scope::Persistent);
+        state.reset("items").unwrap();
+        assert_eq!(state.get("items"), Ok(&Value::List(vec![])));
+        state.apply_snapshot(Scope::Persistent, &snapshot).unwrap();
+        assert_eq!(state.get("items"), Ok(&items));
+        assert!(state.pending_changes().is_empty());
+        state.remove("items").unwrap();
+        state.reset("items").unwrap();
+        assert_eq!(state.get("items"), Ok(&Value::List(vec![])));
+    }
+    #[test]
+    fn collection_snapshot_detects_signed_zero_and_rejects_invalid_candidate() {
+        let mut state = State::new();
+        state
+            .set(
+                "map",
+                Value::Map(BTreeMap::from([("zero".into(), Value::Float(-0.0))])),
+            )
+            .unwrap();
+        let snapshot = state.snapshot_entries(Scope::Persistent);
+        state
+            .set(
+                "map",
+                Value::Map(BTreeMap::from([("zero".into(), Value::Float(0.0))])),
+            )
+            .unwrap();
+        assert!(!state.matches_snapshot(Scope::Persistent, &snapshot));
+        let before = state.clone();
+        let invalid = BTreeMap::from([(
+            "map".into(),
+            Some(Value::Map(BTreeMap::from([(
+                "bad".into(),
+                Value::Float(f64::INFINITY),
+            )]))),
+        )]);
+        assert!(state.apply_snapshot(Scope::Persistent, &invalid).is_err());
+        assert_eq!(state, before);
     }
 }

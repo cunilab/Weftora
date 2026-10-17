@@ -447,3 +447,65 @@ fn fifo_slot_is_rejected_without_opening() {
         std::thread::sleep(std::time::Duration::from_millis(20));
     }
 }
+
+#[test]
+fn collection_saves_are_deterministic_preserve_types_bits_and_removal() {
+    let ctx = context();
+    let mut state = State::new();
+    state
+        .set(
+            "items",
+            Value::List(vec![
+                Value::String("key".into()),
+                Value::Int(2),
+                Value::Float(2.0),
+            ]),
+        )
+        .unwrap();
+    state
+        .set(
+            "schedule",
+            Value::Map(BTreeMap::from([
+                ("z".into(), Value::Float(-0.0)),
+                ("a".into(), Value::Bool(true)),
+            ])),
+        )
+        .unwrap();
+    state.set("removed", Value::List(vec![])).unwrap();
+    state.remove("removed").unwrap();
+    let entries = state.snapshot_entries(Scope::Persistent);
+    let game = SavedGame::new(
+        &ctx,
+        Snapshot {
+            checkpoint: "scene.intro".into(),
+            state: entries.clone(),
+            visits: BTreeMap::new(),
+        },
+    )
+    .unwrap();
+    let bytes = game.to_bytes().unwrap();
+    let loaded = SavedGame::from_bytes(&bytes, &ctx).unwrap();
+    assert_eq!(loaded.to_bytes().unwrap(), bytes);
+    for (key, value) in &entries {
+        match value {
+            Some(value) => assert!(value.same_bits(loaded.state()[key].as_ref().unwrap())),
+            None => assert_eq!(loaded.state()[key], None),
+        }
+    }
+    let mut fresh = State::new();
+    fresh.set("items", Value::List(vec![])).unwrap();
+    fresh.set("schedule", Value::Map(BTreeMap::new())).unwrap();
+    fresh.set("removed", Value::List(vec![])).unwrap();
+    let candidate = loaded.prepare_state(&ctx, &fresh, &fresh).unwrap();
+    assert!(candidate.matches_snapshot(Scope::Persistent, &entries));
+    assert!(candidate.pending_changes().is_empty());
+    let invalid = Snapshot {
+        checkpoint: "scene.intro".into(),
+        state: BTreeMap::from([(
+            "bad".into(),
+            Some(Value::List(vec![Value::Float(f64::NAN)])),
+        )]),
+        visits: BTreeMap::new(),
+    };
+    assert!(SavedGame::new(&ctx, invalid).is_err());
+}

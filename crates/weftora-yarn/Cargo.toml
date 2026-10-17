@@ -12,6 +12,7 @@ weftora-api.workspace = true
 weftora-core.workspace = true
 weftora-save.workspace = true
 weftora-story.workspace = true
+weftora-script.workspace = true
 yarnspinner_core.workspace = true
 yarnspinner_runtime.workspace = true
 serde.workspace = true

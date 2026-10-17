@@ -5,6 +5,7 @@ all-features = true
 version = 2
 unmaintained = "all"
 ignore = [
+    { id = "RUSTSEC-2026-0249", reason = "smartstring: mandatory Rhai 1.26.1 dependency, all versions unmaintained with no fixed upgrade; bounded host isolates use; re-evaluate on Rhai upgrades (ADR 0010)" },
     { id = "RUSTSEC-2024-0384", reason = "instant: via antlr-rust in yarnspinner_compiler; authoring-only compiler; player dependency guard excludes it (P2-03); no upgrade available" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser: via winit's Linux Wayland decorations (sctk-adwaita), not used on Windows; no upgrade available" },
 ]

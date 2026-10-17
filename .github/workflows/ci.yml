@@ -48,9 +48,148 @@ jobs:
           $mediaHash = (Get-FileHash (Join-Path $presentationPreview "weftora-player.exe") -Algorithm SHA256).Hash
           if ($helloHash -ne $mediaHash) { throw "Stories must export the same player binary" }
           Write-Output "Same player SHA256 for both Story exports: $mediaHash"
+      - name: Package and validate Windows rules demo
+        shell: pwsh
+        run: |
+          $rulesPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-rules-preview"
+          .\target\debug\weftora.exe export examples/rules-demo --out $rulesPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $rulesPreview "weftora-player.exe") (Join-Path $rulesPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $rulesHash = (Get-FileHash (Join-Path $rulesPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $rulesHash) { throw "Rules demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $rulesPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and rules demo: $rulesHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-rules-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-rules-preview/
+          retention-days: 14
+      - name: Package and validate Windows commands demo
+        shell: pwsh
+        run: |
+          $commandsPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-commands-preview"
+          .\target\debug\weftora.exe export examples/commands-demo --out $commandsPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $commandsPreview "weftora-player.exe") (Join-Path $commandsPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $commandsHash = (Get-FileHash (Join-Path $commandsPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $commandsHash) { throw "Commands demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $commandsPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and commands demo: $commandsHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-commands-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-commands-preview/
+          retention-days: 14
+      - name: Package and validate Windows collections demo
+        shell: pwsh
+        run: |
+          $collectionsPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-collections-preview"
+          .\target\debug\weftora.exe export examples/collections-demo --out $collectionsPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $collectionsPreview "weftora-player.exe") (Join-Path $collectionsPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $collectionsHash = (Get-FileHash (Join-Path $collectionsPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $collectionsHash) { throw "Collections demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $collectionsPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and collections demo: $collectionsHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-collections-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-collections-preview/
+          retention-days: 14
+      - name: Package and validate Windows scripts demo
+        shell: pwsh
+        run: |
+          $scriptsPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-scripts-preview"
+          .\target\debug\weftora.exe export examples/scripts-demo --out $scriptsPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $scriptsPreview "weftora-player.exe") (Join-Path $scriptsPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $scriptsHash = (Get-FileHash (Join-Path $scriptsPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $scriptsHash) { throw "Scripts demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $scriptsPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and scripts demo: $scriptsHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-scripts-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-scripts-preview/
+          retention-days: 14
+      - name: Package and validate Windows random demo
+        shell: pwsh
+        run: |
+          $randomPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-random-preview"
+          .\target\debug\weftora.exe export examples/random-demo --out $randomPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $randomPreview "weftora-player.exe") (Join-Path $randomPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $randomHash = (Get-FileHash (Join-Path $randomPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $randomHash) { throw "Random demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $randomPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and random demo: $randomHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-random-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-random-preview/
+          retention-days: 14
+      - name: Package and validate Windows queries demo
+        shell: pwsh
+        run: |
+          $queriesPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-queries-preview"
+          .\target\debug\weftora.exe export examples/queries-demo --out $queriesPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          & (Join-Path $queriesPreview "weftora-player.exe") (Join-Path $queriesPreview "story") --validate
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $helloPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-preview"
+          $helloHash = (Get-FileHash (Join-Path $helloPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          $queriesHash = (Get-FileHash (Join-Path $queriesPreview "weftora-player.exe") -Algorithm SHA256).Hash
+          if ($helloHash -ne $queriesHash) { throw "Queries demo must use the same player binary" }
+          Copy-Item .\target\debug\weftora.exe (Join-Path $queriesPreview "weftora.exe")
+          Write-Output "Same player SHA256 for Hello Story and queries demo: $queriesHash"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-queries-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-queries-preview/
+          retention-days: 14
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
+      - name: Package custom screens and prove UI-only edits
+        shell: pwsh
+        run: |
+          $screensPreview = Join-Path $env:RUNNER_TEMP "weftora-windows-screens-preview"
+          python scripts/verify-screen-edits.py --cli target/debug/weftora.exe --player target/debug/weftora-player.exe --out $screensPreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-screens-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-screens-preview/
+          retention-days: 14
       - name: Package Story A and prove content-only edits
         shell: pwsh
         run: |
@@ -63,6 +202,19 @@ jobs:
           if-no-files-found: ignore
           name: weftora-windows-story-a-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-story-a-preview/
+          retention-days: 14
+      - name: Package Story B and prove same-player reuse
+        shell: pwsh
+        run: |
+          $lifePreview = Join-Path $env:RUNNER_TEMP "weftora-windows-life-sim-preview"
+          python scripts/verify-life-sim.py --cli target/debug/weftora.exe --player target/debug/weftora-player.exe --out $lifePreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-life-sim-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-life-sim-preview/
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
@@ -100,5 +252,5 @@ jobs:
       - name: Install pinned Rust toolchain
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
-      - run: cargo test --locked -p weftora-api -p weftora-core -p weftora-save -p weftora-story -p weftora-yarn -p weftora-yarn-compiler
+      - run: cargo test --locked -p weftora-api -p weftora-core -p weftora-flow -p weftora-save -p weftora-story -p weftora-yarn -p weftora-yarn-compiler
       - run: cargo xtask deps

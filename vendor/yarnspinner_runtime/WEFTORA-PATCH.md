@@ -36,3 +36,12 @@ Substitution output is bounded before every replacement; empty stack accesses
 fail before popping. String.Add may allocate at most 32 KiB from two bounded
 inputs before its result is checked. These guards complement the adapter's
 storage/notification limits; they do not impose a process RSS budget.
+
+`Dialogue::continue_with_function_handler` adds an optional fallible host function
+handler. `None` uses the registered implementation; an error stops the VM before
+pushing a return value or executing later instructions and clears batched events.
+Returned values must match the registered return type (or Any). Existing continue
+APIs delegate directly to their registered functions. Weftora uses this hook for
+read-only canonical collection queries, avoiding error sentinels and partial VM
+execution after a failed query. Compiler/artifact signatures remain in the adapter;
+this runtime patch knows no Story, Core or collection types.

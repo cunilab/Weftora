@@ -103,7 +103,23 @@ fn check_graph(metadata: &Value) -> Result<Vec<String>, String> {
         edges.insert(id, dependencies);
     }
     let mut problems = Vec::new();
-    for headless in HEADLESS.iter().chain(std::iter::once(&"weftora-player")) {
+    for (&id, dependencies) in &edges {
+        if members.iter().any(|member| member.as_str() == Some(id))
+            && names[id] != "weftora-script"
+            && dependencies
+                .iter()
+                .any(|next| names[next].starts_with("rhai"))
+        {
+            problems.push(format!(
+                "{}: only weftora-script may depend directly on Rhai",
+                names[id]
+            ));
+        }
+    }
+    for headless in HEADLESS
+        .iter()
+        .chain([&"weftora-player", &"weftora-script"])
+    {
         let start = names
             .iter()
             .find_map(|(&id, &name)| {
@@ -131,7 +147,9 @@ fn check_graph(metadata: &Value) -> Result<Vec<String>, String> {
                             | "antlr-rust"
                             | "yarnspinner"
                     ))
-                    || (headless != &"weftora-player" && forbidden.contains(next))
+                    || (headless != &"weftora-player"
+                        && forbidden.contains(next)
+                        && !(headless == &"weftora-script" && names[next].starts_with("rhai")))
                 {
                     let path = next_path
                         .iter()
@@ -163,14 +181,16 @@ mod tests {
     fn fixture() -> Value {
         serde_json::from_str(r#"{
             "workspace_root":"/repo",
-            "workspace_members":["api","core","story","player","save"],
+            "workspace_members":["api","core","story","player","save","flow","script"],
             "packages":[
                 {"id":"api","name":"weftora-api","manifest_path":"/repo/crates/api/Cargo.toml"},
                 {"id":"core","name":"weftora-core","manifest_path":"/repo/crates/core/Cargo.toml"},
                 {"id":"story","name":"weftora-story","manifest_path":"/repo/crates/story/Cargo.toml"},
                 {"id":"helper","name":"helper","manifest_path":"/registry/helper/Cargo.toml"},
                 {"id":"player","name":"weftora-player","manifest_path":"/repo/apps/player/Cargo.toml"},
-                {"id":"save","name":"weftora-save","manifest_path":"/repo/crates/save/Cargo.toml"}
+                {"id":"save","name":"weftora-save","manifest_path":"/repo/crates/save/Cargo.toml"},
+                {"id":"flow","name":"weftora-flow","manifest_path":"/repo/crates/flow/Cargo.toml"},
+                {"id":"script","name":"weftora-script","manifest_path":"/repo/crates/script/Cargo.toml"}
             ],
             "resolve":{"nodes":[
                 {"id":"api","deps":[]},
@@ -178,7 +198,9 @@ mod tests {
                 {"id":"story","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]},
                 {"id":"helper","deps":[]},
                 {"id":"player","deps":[]},
-                {"id":"save","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]}
+                {"id":"save","deps":[{"pkg":"api","dep_kinds":[{"kind":null}]}]},
+                {"id":"flow","deps":[{"pkg":"core","dep_kinds":[{"kind":null}]}]},
+                {"id":"script","deps":[]}
             ]}
         }"#).unwrap()
     }
@@ -203,7 +225,7 @@ mod tests {
             .unwrap()
             .push(serde_json::json!({"id":"bevy","deps":[]}));
         let problems = check_graph(&graph).unwrap();
-        assert_eq!(problems.len(), 1);
+        assert_eq!(problems.len(), 2);
         assert!(problems[0].contains("weftora-core (core) -> helper (helper) -> bevy_ecs (bevy)"));
     }
     #[test]
@@ -220,7 +242,9 @@ mod tests {
         assert!(check_graph(&graph).unwrap().is_empty());
         graph["resolve"]["nodes"][1]["deps"][0]["dep_kinds"] =
             serde_json::json!([{"kind":"dev"},{"kind":"build"}]);
-        assert_eq!(check_graph(&graph).unwrap().len(), 1);
+        let problems = check_graph(&graph).unwrap();
+        assert_eq!(problems.len(), 3);
+        assert!(problems.iter().any(|p| p.contains("only weftora-script")));
     }
     #[test]
     fn save_storage_cannot_depend_on_yarn() {
@@ -234,6 +258,50 @@ mod tests {
                 .unwrap()
                 .iter()
                 .any(|p| p.contains("weftora-save") && p.contains("yarnspinner_runtime"))
+        );
+    }
+    #[test]
+    fn flow_cannot_depend_on_adapters_or_scripts() {
+        for forbidden in ["weftora-render-bevy", "yarnspinner_runtime", "rhai"] {
+            let mut graph = fixture();
+            graph["packages"][3]["name"] = forbidden.into();
+            assert!(check_graph(&graph).unwrap().iter().any(|problem| {
+                problem.contains("weftora-flow") && problem.contains(forbidden)
+            }));
+        }
+    }
+    #[test]
+    fn only_script_adapter_can_reach_rhai_and_it_cannot_reach_yarn() {
+        let mut graph = fixture();
+        graph["resolve"]["nodes"][1]["deps"] = serde_json::json!([]);
+        graph["packages"][3]["name"] = "rhai".into();
+        graph["resolve"]["nodes"][7]["deps"] =
+            serde_json::json!([{"pkg":"helper","dep_kinds":[{"kind":null}]}]);
+        assert!(check_graph(&graph).unwrap().is_empty());
+        graph["resolve"]["nodes"][4]["deps"] =
+            serde_json::json!([{"pkg":"helper","dep_kinds":[{"kind":null}]}]);
+        assert!(
+            check_graph(&graph)
+                .unwrap()
+                .iter()
+                .any(|p| p.contains("only weftora-script"))
+        );
+        graph["resolve"]["nodes"][4]["deps"] = serde_json::json!([]);
+        graph["packages"][3]["name"] = "yarnspinner_runtime".into();
+        assert!(
+            check_graph(&graph)
+                .unwrap()
+                .iter()
+                .any(|p| p.contains("weftora-script"))
+        );
+        graph["packages"][3]["name"] = "rhai".into();
+        graph["resolve"]["nodes"][2]["deps"] =
+            serde_json::json!([{"pkg":"script","dep_kinds":[{"kind":null}]}]);
+        assert!(
+            check_graph(&graph)
+                .unwrap()
+                .iter()
+                .any(|p| p.contains("weftora-story"))
         );
     }
     #[test]

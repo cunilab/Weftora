@@ -3,6 +3,7 @@ use std::{env, path::Path, process::Command};
 const HEADLESS: &[&str] = &[
     "weftora-api",
     "weftora-core",
+    "weftora-flow",
     "weftora-story",
     "weftora-save",
 ];

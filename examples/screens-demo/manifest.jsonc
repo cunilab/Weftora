@@ -1,0 +1,24 @@
+{
+  "manifestSchema": 1,
+  "id": "dev.weftora.screens-demo",
+  "storyVersion": "0.1.0",
+  "title": "Station Desk",
+  "entrypoint": "Start",
+  "dialogue": [
+    "main.yarn"
+  ],
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": [
+      "dialogue.yarn/1",
+      "ui.screens/1"
+    ]
+  },
+  "screens": [
+    "ui/menu.jsonc",
+    "ui/activity.jsonc",
+    "ui/dialogue.jsonc",
+    "ui/pause.jsonc"
+  ],
+  "initialScreen": "menu"
+}

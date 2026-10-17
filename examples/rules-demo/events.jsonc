@@ -1,0 +1,18 @@
+{
+  "rulesSchema": 1,
+  "events": [{
+    "id": "award",
+    "trigger": "state.changed.input",
+    "condition": {
+      "op": "and",
+      "conditions": [
+        {"op": "compare", "operator": "==", "left": {"state": "input"}, "right": {"literal": true}},
+        {"op": "not", "condition": {"op": "compare", "operator": "==", "left": {"state": "awarded"}, "right": {"literal": true}}}
+      ]
+    },
+    "actions": [
+      {"do": "state.add", "key": "points", "amount": 10},
+      {"do": "state.set", "key": "awarded", "value": true}
+    ]
+  }]
+}

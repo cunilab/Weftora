@@ -1,0 +1,50 @@
+[
+  {
+    "name": "unknown-widget",
+    "file": "ui/activity.jsonc",
+    "pointer": "/root/children/1/children/0/children/0/type",
+    "value": "slider",
+    "diagnostics": [
+      "unknown variant `slider`"
+    ]
+  },
+  {
+    "name": "hidden-binding",
+    "file": "ui/pause.jsonc",
+    "pointer": "/root/children/0/children/3/bind/state",
+    "value": "missing.key",
+    "diagnostics": [
+      "/root/children/0/children/3/bind/state",
+      "does not exist"
+    ]
+  },
+  {
+    "name": "missing-screen",
+    "file": "ui/menu.jsonc",
+    "pointer": "/root/children/4/children/0/action/screen",
+    "value": "missing",
+    "diagnostics": [
+      "/root/children/4/children/0/action/screen",
+      "missing screen ID"
+    ]
+  },
+  {
+    "name": "invalid-theme",
+    "file": "ui/dialogue.jsonc",
+    "pointer": "/root/background",
+    "value": "green",
+    "diagnostics": [
+      "/root/background",
+      "#RRGGBB"
+    ]
+  },
+  {
+    "name": "wrong-state-type",
+    "file": "ui/activity.jsonc",
+    "pointer": "/root/children/1/children/0/children/4/action/value",
+    "value": "true",
+    "diagnostics": [
+      "expects bool, got string"
+    ]
+  }
+]

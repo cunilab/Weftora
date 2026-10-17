@@ -1,0 +1,43 @@
+{
+  "kind": "automated export validation and headless replay; no native rendering claim",
+  "project": "Weftora",
+  "pullRequest": 19,
+  "device": "MacBookAir",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "testedAtUtc": "2026-10-15T07:19:50.146838+00:00",
+  "sourceState": "Story rules working tree on base 8673817; final source is published in PR #19",
+  "buildsBetweenEdits": 0,
+  "playerSha256": "d3b85335f03a4b2e04b6b36bcc51ff646c60408e992cfca1c603b7ba20ab51fe",
+  "cliSha256": "9a9661fbdae95376b1cd650ff9bfb40681fdb7403562b4c93deffcfdcc522265",
+  "helloPlayerSha256": "d3b85335f03a4b2e04b6b36bcc51ff646c60408e992cfca1c603b7ba20ab51fe",
+  "variants": [
+    {
+      "name": "baseline",
+      "saveSchema": 1,
+      "playerSha256": "d3b85335f03a4b2e04b6b36bcc51ff646c60408e992cfca1c603b7ba20ab51fe",
+      "manifestSha256": "ae7b7d0c65d48ff515077a37e0ec72e1a087ab2ae57bce373e6f695eceb97832",
+      "rulesSha256": "69f5b2fa365d76e633f5c89a14cc6e8d529fc9164a4ad704b01bdc9bf94ec18b",
+      "compiledDialogueSha256": "aa281904ac9c846d2f4eda7c5b112d80927100bb2327d527b64b367eddd8e76c",
+      "validatedWithBaselinePlayer": true,
+      "headlessLines": [
+        "First points 0",
+        "After rules 10"
+      ],
+      "finalPoints": 10
+    },
+    {
+      "name": "edited",
+      "saveSchema": 2,
+      "playerSha256": "d3b85335f03a4b2e04b6b36bcc51ff646c60408e992cfca1c603b7ba20ab51fe",
+      "manifestSha256": "074a07bd51b26123ee4f8f1b62003c39ceb37b63edeb74ad017922c4d502cbc6",
+      "rulesSha256": "a850d9cba3d897bd43da1cd576ad3d806b179d605d89852ab2675b46374a3cdc",
+      "compiledDialogueSha256": "aa281904ac9c846d2f4eda7c5b112d80927100bb2327d527b64b367eddd8e76c",
+      "validatedWithBaselinePlayer": true,
+      "headlessLines": [
+        "First points 0",
+        "After rules 20"
+      ],
+      "finalPoints": 20
+    }
+  ]
+}

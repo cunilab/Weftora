@@ -175,6 +175,9 @@ fn validate_snapshot(checkpoint: &str, state: &Entries, visits: &Visits) -> Resu
             });
         }
         weftora_core::state::validate_key(key).map_err(|e| Error::Invalid(e.to_string()))?;
+        if let Some(value) = value {
+            value.validate()?;
+        }
         match value {
             Some(Value::String(s)) if s.len() > MAX_STRING_BYTES => {
                 return Err(Error::TooLarge {

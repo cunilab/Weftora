@@ -1,0 +1,166 @@
+{
+  "rulesSchema": 1,
+  "commands": [
+    {
+      "id": "visit_market",
+      "actions": [
+        {
+          "do": "state.set",
+          "key": "location",
+          "value": "Market"
+        },
+        {
+          "do": "state.add",
+          "key": "energy",
+          "amount": -1
+        },
+        {
+          "do": "state.add",
+          "key": "hour",
+          "amount": 1
+        },
+        {
+          "do": "state.set",
+          "key": "status",
+          "value": "Find a morning shift."
+        }
+      ]
+    },
+    {
+      "id": "return_home",
+      "actions": [
+        {
+          "do": "state.set",
+          "key": "location",
+          "value": "Home"
+        },
+        {
+          "do": "state.add",
+          "key": "energy",
+          "amount": -1
+        },
+        {
+          "do": "state.add",
+          "key": "hour",
+          "amount": 1
+        },
+        {
+          "do": "state.set",
+          "key": "status",
+          "value": "Back at home."
+        }
+      ]
+    },
+    {
+      "id": "refresh_schedule",
+      "script": {
+        "file": "mechanics.rhai",
+        "function": "refresh_schedule",
+        "reads": [
+          "hour",
+          "location",
+          "worked",
+          "schedule"
+        ],
+        "writes": [
+          "schedule",
+          "shift_open"
+        ]
+      }
+    },
+    {
+      "id": "work_shift",
+      "script": {
+        "file": "mechanics.rhai",
+        "function": "work_shift",
+        "reads": [
+          "location",
+          "shift_open",
+          "worked",
+          "energy",
+          "inventory",
+          "coins",
+          "hour",
+          "rng"
+        ],
+        "writes": [
+          "worked",
+          "energy",
+          "inventory",
+          "coins",
+          "hour",
+          "rng",
+          "earned",
+          "status"
+        ],
+        "random": "rng"
+      }
+    },
+    {
+      "id": "buy_snack",
+      "script": {
+        "file": "mechanics.rhai",
+        "function": "buy_snack",
+        "reads": [
+          "location",
+          "coins",
+          "inventory",
+          "hour"
+        ],
+        "writes": [
+          "coins",
+          "inventory",
+          "hour",
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "eat_snack",
+      "script": {
+        "file": "mechanics.rhai",
+        "function": "eat_snack",
+        "reads": [
+          "location",
+          "inventory",
+          "energy",
+          "hour"
+        ],
+        "writes": [
+          "inventory",
+          "energy",
+          "hour",
+          "status"
+        ]
+      }
+    },
+    {
+      "id": "rest",
+      "script": {
+        "file": "mechanics.rhai",
+        "function": "rest",
+        "reads": [
+          "energy",
+          "hour"
+        ],
+        "writes": [
+          "energy",
+          "hour",
+          "status"
+        ]
+      }
+    }
+  ],
+  "events": [
+    {
+      "id": "clock.schedule",
+      "trigger": "state.changed.hour",
+      "actions": [
+        {
+          "do": "command.call",
+          "command": "refresh_schedule"
+        }
+      ]
+    }
+  ]
+}

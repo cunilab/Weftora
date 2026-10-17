@@ -50,6 +50,12 @@ pub enum UiAction {
     Advance,
     #[serde(rename = "state.set")]
     SetState { key: String, value: Value },
+    #[serde(rename = "command.call")]
+    CallCommand {
+        command: String,
+        #[serde(default)]
+        args: Vec<Value>,
+    },
     #[serde(rename = "screen.open")]
     Open { screen: String },
     #[serde(rename = "screen.close")]
@@ -326,8 +332,8 @@ impl ScreenDefinition {
             if matches!(value, Value::String(s) if s.len() > 4096) {
                 error("/action/value", "literal text exceeds 4096 bytes".into());
             }
-            if matches!(value, Value::Float(f) if !f.is_finite()) {
-                error("/action/value", "float value must be finite".into());
+            if let Err(e) = value.validate() {
+                error("/action/value", e.to_string());
             }
         }
         if w.kind == WidgetKind::ChoiceList {
@@ -362,14 +368,21 @@ impl ScreenDefinition {
     }
     pub fn state_errors(&self, state: &State) -> Vec<Diagnostic> {
         fn check(w: &Widget, path: &str, state: &State, file: &str, out: &mut Vec<Diagnostic>) {
-            if let Some(Binding::State { state: key }) = &w.bind
-                && let Err(e) = state.get(key)
-            {
-                out.push(Diagnostic::new(
-                    file,
-                    None,
-                    format!("{path}/bind/state: {e}"),
-                ));
+            if let Some(Binding::State { state: key }) = &w.bind {
+                let problem = match state.get(key) {
+                    Err(e) => Some(e.to_string()),
+                    Ok(value) if value.is_collection() => {
+                        Some("text bindings require scalar state; expose a scalar view".into())
+                    }
+                    _ => None,
+                };
+                if let Some(problem) = problem {
+                    out.push(Diagnostic::new(
+                        file,
+                        None,
+                        format!("{path}/bind/state: {problem}"),
+                    ));
+                }
             }
             if let Some(UiAction::SetState { key, value }) = &w.action {
                 match state.get(key) {
@@ -564,6 +577,15 @@ pub(crate) fn reference_errors(story: &crate::Story) -> Vec<Diagnostic> {
                     &screen.file,
                     None,
                     format!("{path}/action: save/load requires saveSchema and save/1"),
+                ));
+            }
+            if let Some(UiAction::CallCommand { command, args }) = &widget.action
+                && let Err(error) = story.rules().validate_command(command, args)
+            {
+                errors.push(Diagnostic::new(
+                    &screen.file,
+                    None,
+                    format!("{path}/action: {error}"),
                 ));
             }
             if let Some(UiAction::Open { screen: id }) = &widget.action

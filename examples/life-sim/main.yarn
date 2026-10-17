@@ -1,0 +1,56 @@
+title: Start
+---
+<<declare $location = "Home">>
+<<declare $hour = 8>>
+<<declare $energy = 4>>
+<<declare $coins = 0>>
+<<declare $earned = 0>>
+<<declare $shift_open = false>>
+<<declare $status = "A free day.">>
+<<checkpoint day.home>>
+Morning at {$location}. Hour {$hour}, energy {$energy}, coins {$coins}. Your permit is packed.
+-> Visit the market <<if $energy >= 2>>
+    <<jump Market>>
+-> Stay home and rest
+    <<rest>>
+    <<jump Evening>>
+===
+title: Market
+---
+<<checkpoint day.market>>
+<<visit_market>>
+At {$location}. Hour {$hour}, energy {$energy}. Morning shift open {$shift_open}. Schedule listed {state_map_contains_key("schedule", "market")}.
+-> Work the morning shift <<if $shift_open and $energy >= 2 and state_list_contains("inventory", "permit")>>
+    <<jump Shift>>
+-> Return home
+    <<jump Return>>
+===
+title: Shift
+---
+<<checkpoint day.shift>>
+<<work_shift>>
+{$status} Earned {$earned} coins. Hour {$hour}, energy {$energy}, coins {$coins}. Inventory entries {state_list_len("inventory")}.
+-> Buy a snack for 2 coins <<if $coins >= 2>>
+    <<buy_snack>>
+    {$status} Coins {$coins}. Snack packed {state_list_contains("inventory", "snack")}.
+    <<jump Return>>
+-> Head home without shopping
+    <<jump Return>>
+===
+title: Return
+---
+<<checkpoint day.return>>
+<<return_home>>
+At {$location}. Hour {$hour}, energy {$energy}, coins {$coins}.
+-> Eat the snack <<if state_list_contains("inventory", "snack")>>
+    <<eat_snack>>
+    <<jump Evening>>
+-> Rest
+    <<rest>>
+    <<jump Evening>>
+===
+title: Evening
+---
+<<checkpoint day.end>>
+Day complete at {$location}. Hour {$hour}, energy {$energy}, coins {$coins}. {$status} Inventory entries {state_list_len("inventory")}.
+===

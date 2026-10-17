@@ -19,6 +19,24 @@ pub(crate) struct Capture {
     expected: Option<Entries>,
 }
 
+fn check_persistent_limits(state: &weftora_core::State) -> Result<(), String> {
+    let mut bytes = 0usize;
+    let mut entries = 0usize;
+    for (key, value) in state.scope_entries(Scope::Persistent) {
+        entries += 1;
+        bytes = bytes
+            .saturating_add(key.len() + value.map(weftora_api::Value::payload_bytes).unwrap_or(0));
+        if entries > weftora_save::MAX_ENTRIES || bytes > weftora_save::MAX_SAVE_BYTES {
+            return Err("persistent payload exceeds the save limit (4096 entries / 8 MiB)".into());
+        }
+        if matches!(value, Some(weftora_api::Value::String(text)) if text.len() > weftora_save::MAX_STRING_BYTES)
+        {
+            return Err("persistent string exceeds the 16 KiB save limit".into());
+        }
+    }
+    Ok(())
+}
+
 impl DialogueRunner {
     pub(crate) fn disarm_after_progress(&mut self) {
         if self
@@ -36,14 +54,7 @@ impl DialogueRunner {
                 .state
                 .read()
                 .map_err(|_| "state lock poisoned".to_string())?;
-            // Check growing values before cloning the snapshot.
-            for (key, value) in state.iter() {
-                if state.scope(key) == Ok(Scope::Persistent)
-                    && matches!(value,weftora_api::Value::String(text) if text.len()>weftora_save::MAX_STRING_BYTES)
-                {
-                    return Err("persistent string exceeds the 16 KiB save limit".into());
-                }
-            }
+            check_persistent_limits(&state)?;
             let snapshot = Snapshot {
                 checkpoint: id.into(),
                 state: state.snapshot_entries(Scope::Persistent),
@@ -80,8 +91,18 @@ impl DialogueRunner {
             self.capture = None;
             return;
         }
+        if capture.snapshot.is_err() {
+            capture.expected = Some(Entries::new());
+            return;
+        }
         match self.state.read() {
-            Ok(state) => capture.expected = Some(state.snapshot_entries(Scope::Persistent)),
+            Ok(state) => match check_persistent_limits(&state) {
+                Ok(()) => capture.expected = Some(state.snapshot_entries(Scope::Persistent)),
+                Err(error) => {
+                    capture.snapshot = Err(error);
+                    capture.expected = Some(Entries::new());
+                }
+            },
             Err(_) => {
                 capture.snapshot = Err("state lock poisoned".into());
                 capture.expected = Some(Entries::new());
@@ -99,6 +120,10 @@ impl DialogueRunner {
             .expected
             .as_ref()
             .ok_or(SaveRefusal::NotAtCheckpoint)?;
+        let snapshot = capture
+            .snapshot
+            .as_ref()
+            .map_err(|message| SaveRefusal::Data(message.clone()))?;
         let state = self
             .state
             .read()
@@ -106,11 +131,7 @@ impl DialogueRunner {
         if !state.matches_snapshot(Scope::Persistent, expected) {
             return Err(SaveRefusal::Changed);
         }
-        capture
-            .snapshot
-            .as_ref()
-            .cloned()
-            .map_err(|message| SaveRefusal::Data(message.clone()))
+        Ok(snapshot.clone())
     }
 
     /// Restore bookkeeping on a fresh candidate before it starts executing.

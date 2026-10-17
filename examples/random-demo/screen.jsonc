@@ -1,0 +1,17 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen", "id": "dialogue",
+    "layout": {"width": "100%", "height": "100%", "padding": 24, "gap": 10},
+    "children": [
+      {"type": "text", "text": "Seeded Random Demo"},
+      {"type": "text", "bind": {"dialogue": "text"}},
+      {"type": "text", "bind": {"state": "last"}},
+      {"type": "choiceList", "id": "choices"},
+      {"type": "button", "id": "roll", "text": "Roll again", "action": {"do": "command.call", "command": "roll"}},
+      {"type": "button", "id": "save", "text": "Save", "action": {"do": "save"}},
+      {"type": "button", "id": "load", "text": "Load", "action": {"do": "load"}},
+      {"type": "button", "id": "next", "text": "Next checkpoint", "action": {"do": "dialogue.advance"}}
+    ]
+  }
+}

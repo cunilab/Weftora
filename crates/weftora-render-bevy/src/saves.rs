@@ -63,7 +63,7 @@ impl Player {
             self.story.initial_state().map_err(|e| e.to_string())?,
         ));
         // Initialize Yarn defaults before restoring removals; never fill them again afterward.
-        let mut runner = DialogueRunner::new(&self.compiled, state.clone());
+        let mut runner = DialogueRunner::for_story(&self.compiled, state.clone(), &self.story);
         let prepared = game
             .prepare_state(
                 &context,
@@ -196,6 +196,488 @@ mod tests {
             .unwrap()
             .set(key, value)
             .unwrap();
+    }
+
+    #[test]
+    fn ui_commands_and_state_writes_settle_rules_and_require_a_new_checkpoint_for_save() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/commands-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        app.world_mut().non_send_mut::<Player>().save_store =
+            Some(Ok(Store::new(temp.path().join("data"))));
+        app.world_mut()
+            .resource_mut::<Ui>()
+            .navigate(
+                &weftora_story::ui::UiAction::Open {
+                    screen: "dialogue".into(),
+                },
+                &weftora_story::Story::load(&root).unwrap(),
+                None,
+            )
+            .unwrap();
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        let path = temp.path().join("data/save.json");
+        let good = std::fs::read(&path).unwrap();
+        let points = |app: &App| {
+            app.world()
+                .non_send::<Player>()
+                .state
+                .read()
+                .unwrap()
+                .get("points")
+                .unwrap()
+                .clone()
+        };
+        assert_eq!(points(&app), Value::Int(2));
+        // Rejected origin cannot run a command or invalidate the display's save point.
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: Some("missing".into()),
+                action: weftora_story::ui::UiAction::CallCommand {
+                    command: "award".into(),
+                    args: vec![Value::Int(99)],
+                },
+            });
+        app.update();
+        assert_eq!(points(&app), Value::Int(2));
+        assert!(
+            app.world()
+                .non_send::<Player>()
+                .presenter
+                .source()
+                .save_point()
+                .is_ok()
+        );
+        request(
+            &mut app,
+            weftora_story::ui::UiAction::CallCommand {
+                command: "award".into(),
+                args: vec![Value::Int(3)],
+            },
+        );
+        assert_eq!(points(&app), Value::Int(5));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        assert_ne!(app.world().non_send::<Player>().save_status, "Saved.");
+        assert_eq!(std::fs::read(&path).unwrap(), good);
+        request(&mut app, weftora_story::ui::UiAction::Load);
+        assert_eq!(points(&app), Value::Int(2));
+        request(
+            &mut app,
+            weftora_story::ui::UiAction::SetState {
+                key: "input".into(),
+                value: Value::Bool(true),
+            },
+        );
+        assert_eq!(points(&app), Value::Int(12));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        assert_eq!(std::fs::read(&path).unwrap(), good);
+        request(&mut app, weftora_story::ui::UiAction::Advance);
+        assert_eq!(points(&app), Value::Int(13));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
+        request(&mut app, weftora_story::ui::UiAction::Load);
+        assert_eq!(points(&app), Value::Int(13));
+        assert!(
+            matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Line { text, .. } if text == "Next points 13")
+        );
+        // User-paced inputs each receive a fresh budget; they must not exhaust the VM loop cap.
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        for _ in 0..5000 {
+            player
+                .presenter
+                .source_mut()
+                .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                    command: "award".into(),
+                    args: vec![Value::Int(1)],
+                })
+                .unwrap();
+        }
+        assert_eq!(
+            player.state.read().unwrap().get("points"),
+            Ok(&Value::Int(5013))
+        );
+    }
+
+    #[test]
+    fn collection_restore_candidate_does_not_publish_on_failure() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example = std::path::Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/collections-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        player.write_save().unwrap();
+        let path = temp.path().join("data/save.json");
+        let bytes = std::fs::read(&path).unwrap();
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::SetState {
+                key: "items".into(),
+                value: Value::List(vec![]),
+            })
+            .unwrap();
+        assert!(player.presenter.source().save_point().is_err());
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("items"),
+            Ok(&Value::List(vec![
+                Value::String("key".into()),
+                Value::String("ticket".into())
+            ]))
+        );
+        assert_eq!(
+            player.state.read().unwrap().get("items"),
+            Ok(&Value::List(vec![]))
+        );
+        let mut rules: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.join("events.jsonc")).unwrap()).unwrap();
+        rules["commands"][0]["actions"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({"do":"state.add","key":"item_count","amount":i64::MAX}));
+        std::fs::write(root.join("events.jsonc"), rules.to_string()).unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let before = player.state.read().unwrap().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("candidate activated"),
+            Err(error) => error,
+        };
+        assert!(error.contains("overflow"), "{error}");
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+
+    #[test]
+    fn script_buttons_events_and_failed_restore_use_isolated_state() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/scripts-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+            "mechanics.rhai",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        player.write_save().unwrap();
+        let path = temp.path().join("data/save.json");
+        let bytes = std::fs::read(&path).unwrap();
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "unpack".into(),
+                args: vec![],
+            })
+            .unwrap();
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "pack".into(),
+                args: vec![Value::Int(1)],
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("item_count"),
+            Ok(&Value::Int(1))
+        );
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::SetState {
+                key: "request".into(),
+                value: Value::Bool(true),
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("item_count"),
+            Ok(&Value::Int(2))
+        );
+        assert!(player.presenter.source().save_point().is_err());
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("item_count"),
+            Ok(&Value::Int(2))
+        );
+        let source = std::fs::read_to_string(root.join("mechanics.rhai")).unwrap();
+        std::fs::write(
+            root.join("mechanics.rhai"),
+            source.replace(
+                "state.emit(\"kit.packed\", true);",
+                "state.add(\"item_count\", 9223372036854775807);",
+            ),
+        )
+        .unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let before = player.state.read().unwrap().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("failed script activated"),
+            Err(e) => e,
+        };
+        assert!(error.contains("overflow"), "{error}");
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+
+    #[test]
+    fn random_load_candidates_never_advance_the_live_sequence() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/random-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+            "roll.rhai",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        player.write_save().unwrap();
+        let path = temp.path().join("data/save.json");
+        let bytes = std::fs::read(&path).unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(-7046029254386353131))
+        );
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "roll".into(),
+                args: vec![],
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(4354685564936845354))
+        );
+        assert!(player.write_save().is_err());
+        let before = player.state.read().unwrap().clone();
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(-7046029254386353131))
+        );
+        assert_eq!(*player.state.read().unwrap(), before);
+        let source = std::fs::read_to_string(root.join("roll.rhai")).unwrap();
+        std::fs::write(
+            root.join("roll.rhai"),
+            source.replace("let rolls =", "state.get(\"denied\"); let rolls ="),
+        )
+        .unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let screen = player.presenter.screen().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("failed random replay activated"),
+            Err(e) => e,
+        };
+        assert!(error.contains("roll.rhai:3"), "{error}");
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(player.presenter.screen(), &screen);
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "roll".into(),
+                args: vec![],
+            })
+            .unwrap();
+        assert_eq!(
+            player.state.read().unwrap().get("rng"),
+            Ok(&Value::Int(-2691343689449507777))
+        );
+        assert_eq!(
+            player.state.read().unwrap().get("rolls"),
+            Ok(&Value::List(vec![
+                Value::Int(2),
+                Value::Int(1),
+                Value::Int(2)
+            ]))
+        );
+    }
+
+    #[test]
+    fn collection_query_displays_read_ui_mutations_and_failed_loads_stay_isolated() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/queries-demo");
+        for file in [
+            "manifest.jsonc",
+            "main.yarn",
+            "events.jsonc",
+            "screen.jsonc",
+        ] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        player.write_save().unwrap();
+        let path = temp.path().join("data/save.json");
+        let bytes = std::fs::read(&path).unwrap();
+        player
+            .presenter
+            .source_mut()
+            .ui_action(&weftora_story::ui::UiAction::CallCommand {
+                command: "unpack".into(),
+                args: vec![],
+            })
+            .unwrap();
+        assert!(player.write_save().is_err());
+        player.presenter.advance();
+        assert!(
+            matches!(player.presenter.screen(), Screen::Line{text,..} if text=="Now 0, key false, schedule 0, morning false")
+        );
+        let candidate = player.prepare_load().unwrap();
+        assert!(
+            matches!(candidate.presenter.screen(),Screen::Line{text,..} if text=="Packed 2 items")
+        );
+        assert_eq!(
+            player.state.read().unwrap().get("items"),
+            Ok(&Value::List(vec![]))
+        );
+        let mut rules: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.join("events.jsonc")).unwrap()).unwrap();
+        rules["commands"][0]["actions"]
+            .as_array_mut()
+            .unwrap()
+            .push(serde_json::json!({"do":"state.remove","key":"items"}));
+        std::fs::write(root.join("events.jsonc"), rules.to_string()).unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let before = player.state.read().unwrap().clone();
+        let screen = player.presenter.screen().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("failed query activated"),
+            Err(e) => e,
+        };
+        assert!(
+            error.contains("main.yarn") && error.contains("state_list_len"),
+            "{error}"
+        );
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(player.presenter.screen(), &screen);
+        assert_eq!(std::fs::read(path).unwrap(), bytes);
+    }
+
+    #[test]
+    fn rule_restore_uses_a_candidate_and_failure_preserves_live_state_and_slot() {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        std::fs::create_dir(&root).unwrap();
+        let example =
+            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/rules-demo");
+        for file in ["manifest.jsonc", "main.yarn", "events.jsonc"] {
+            std::fs::copy(example.join(file), root.join(file)).unwrap();
+        }
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        let mut player = app.world_mut().non_send_mut::<Player>();
+        player.save_store = Some(Ok(Store::new(temp.path().join("data"))));
+        assert_eq!(
+            player.state.read().unwrap().get("points"),
+            Ok(&Value::Int(10))
+        );
+        player.write_save().unwrap();
+        player.write_save().unwrap();
+        let bytes = std::fs::read(temp.path().join("data/save.json")).unwrap();
+        player
+            .state
+            .write()
+            .unwrap()
+            .set("points", Value::Int(99))
+            .unwrap();
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate.state.read().unwrap().get("points"),
+            Ok(&Value::Int(10))
+        );
+        assert_eq!(
+            player.state.read().unwrap().get("points"),
+            Ok(&Value::Int(99))
+        );
+        let mut rules: serde_json::Value =
+            serde_json::from_slice(&std::fs::read(root.join("events.jsonc")).unwrap()).unwrap();
+        rules["events"][0]["actions"] = serde_json::json!([
+            {"do":"state.set","key":"points","value":20},
+            {"do":"state.add","key":"points","amount":i64::MAX}
+        ]);
+        std::fs::write(root.join("events.jsonc"), rules.to_string()).unwrap();
+        player.story = weftora_story::Story::load(&root).unwrap();
+        let before = player.state.read().unwrap().clone();
+        let error = match player.prepare_load() {
+            Ok(_) => panic!("invalid candidate activated"),
+            Err(error) => error,
+        };
+        assert!(
+            error.contains("events.jsonc") && error.contains("overflow"),
+            "{error}"
+        );
+        assert_eq!(*player.state.read().unwrap(), before);
+        assert_eq!(
+            std::fs::read(temp.path().join("data/save.json")).unwrap(),
+            bytes
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("data/save.bak")).unwrap(),
+            bytes
+        );
     }
 
     #[test]
@@ -673,5 +1155,164 @@ mod tests {
             );
             assert_eq!(audio(&app), cues, "{target}");
         }
+    }
+    #[test]
+    fn life_sim_checkpoints_restore_the_day_without_repeating_costs_or_pay() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/life-sim");
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story.clone(), compiled);
+        app.world_mut().non_send_mut::<Player>().save_store =
+            Some(Ok(Store::new(directory.path().to_path_buf())));
+        app.world_mut().resource_mut::<Ui>().reset(&story);
+        app.update();
+        for target in [
+            "day.home",
+            "day.market",
+            "day.shift",
+            "day.return",
+            "day.end",
+        ] {
+            let mut reached = false;
+            for _ in 0..40 {
+                let player = app.world().non_send::<Player>();
+                if player
+                    .presenter
+                    .source()
+                    .save_point()
+                    .is_ok_and(|point| point.checkpoint == target)
+                {
+                    reached = true;
+                    break;
+                }
+                match player.presenter.screen().clone() {
+                    Screen::Line { .. } => request(&mut app, weftora_story::ui::UiAction::Advance),
+                    Screen::Choices(_) => {
+                        app.world_mut()
+                            .resource_mut::<Intents>()
+                            .push(Intent::Select {
+                                layer: None,
+                                position: 0,
+                            });
+                        app.update();
+                    }
+                    other => panic!("did not reach {target}: {other:?}"),
+                }
+            }
+            assert!(reached, "{target}");
+            let player = app.world().non_send::<Player>();
+            let snapshot = player
+                .state
+                .read()
+                .unwrap()
+                .snapshot(weftora_core::Scope::Persistent);
+            let display = player.presenter.screen().clone();
+            request(&mut app, weftora_story::ui::UiAction::Save);
+            assert_eq!(
+                app.world().non_send::<Player>().save_status,
+                "Saved.",
+                "{target}"
+            );
+            let slot = directory.path().join("save.json");
+            let bytes = std::fs::read(&slot).unwrap();
+            if target == "day.home" {
+                request(
+                    &mut app,
+                    weftora_story::ui::UiAction::Open {
+                        screen: "journal".into(),
+                    },
+                );
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .press(KeyCode::F5);
+                app.update();
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .clear();
+                assert!(
+                    app.world()
+                        .non_send::<Player>()
+                        .save_status
+                        .contains("close overlays")
+                );
+                assert_eq!(std::fs::read(&slot).unwrap(), bytes);
+                app.world_mut()
+                    .resource_mut::<Intents>()
+                    .push(Intent::Action {
+                        layer: Some("journal".into()),
+                        action: weftora_story::ui::UiAction::Close,
+                    });
+                app.update();
+                request(&mut app, weftora_story::ui::UiAction::Save);
+                assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
+                request(
+                    &mut app,
+                    weftora_story::ui::UiAction::Open {
+                        screen: "journal".into(),
+                    },
+                );
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .press(KeyCode::F9);
+                app.update();
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .clear();
+                assert_eq!(app.world().non_send::<Player>().save_status, "Loaded.");
+                assert!(app.world().resource::<Ui>().at_initial_base(&story));
+            }
+            // Spend resources before loading, so a no-op load cannot pass the state comparison.
+            request(&mut app, weftora_story::ui::UiAction::Advance);
+            if target != "day.end" {
+                app.world_mut()
+                    .resource_mut::<Intents>()
+                    .push(Intent::Select {
+                        layer: None,
+                        position: 0,
+                    });
+                app.update();
+                assert_ne!(
+                    app.world()
+                        .non_send::<Player>()
+                        .state
+                        .read()
+                        .unwrap()
+                        .snapshot(weftora_core::Scope::Persistent),
+                    snapshot
+                );
+            }
+            for _ in 0..if target == "day.shift" { 2 } else { 1 } {
+                request(&mut app, weftora_story::ui::UiAction::Load);
+                let player = app.world().non_send::<Player>();
+                assert_eq!(player.save_status, "Loaded.", "{target}");
+                assert_eq!(player.presenter.screen(), &display);
+                assert_eq!(
+                    player
+                        .state
+                        .read()
+                        .unwrap()
+                        .snapshot(weftora_core::Scope::Persistent),
+                    snapshot
+                );
+            }
+            request(&mut app, weftora_story::ui::UiAction::Save);
+            assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
+            assert_eq!(std::fs::read(&slot).unwrap(), bytes);
+            assert_eq!(
+                std::fs::read(directory.path().join("save.bak")).unwrap(),
+                bytes
+            );
+            if target != "day.end" {
+                request(&mut app, weftora_story::ui::UiAction::Advance);
+            }
+        }
+        let player = app.world().non_send::<Player>();
+        let state = player.state.read().unwrap();
+        assert_eq!(state.get("coins"), Ok(&Value::Int(2)));
+        assert_eq!(state.get("energy"), Ok(&Value::Int(3)));
+        assert_eq!(state.get("hour"), Ok(&Value::Int(14)));
+        assert_eq!(state.get("rng"), Ok(&Value::Int(-7046029254386353131)));
     }
 }

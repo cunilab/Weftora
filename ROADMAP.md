@@ -11,6 +11,7 @@ status: proposed
 **Rules for every phase**
 
 - A phase is done only when its required checks in [success criteria](./docs/success-criteria.md) pass with evidence. Any explicit deferral must be recorded there and tracked by an issue; it is not a test pass. A ticked box alone means nothing.
+- Pending maintainer Windows verification is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) and does not block later implementation, automated CI or development-host checks. Implementation may advance while acceptance remains open; this does not waive any gate.
 - Hardening work lands in the phase that introduces the thing it protects. For example, archive security fixtures arrive when an archive format exists.
 - Windows x64 is the only release target and the only place gates are signed off. Maintainers may develop on macOS or Linux; see [platforms](./docs/platforms.md).
 - Example Stories live in `examples/`; they are content, never Cargo workspace members, and the Engine never depends on them.
@@ -83,21 +84,23 @@ Goal: a short, complete visual novel played through the prebuilt player.
 
 Goal: games define their own mechanics without Engine changes.
 
-- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling.
-- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not.
-- [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)).
-- [ ] Rhai script host: allowlisted Engine API, operation/depth/size limits, errors mapped to Story diagnostics, no file/network/OS access.
-- [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn.
-- [ ] Themed custom screens and navigation.
+**Status:** development in progress while earlier native acceptance remains queued in issue #5. Scalar conditions, deterministic events and ordered state actions are implemented in `weftora-flow`; JSONC Story files connect them to the shared dialogue runner and checkpoint candidates; typed declarative commands now run from Yarn, events and screen buttons. [Rule semantics and scope](./docs/rules.md) describe the authoring format and command/UI semantics and bounded script integration. No Phase 4 gate is claimed.
+
+- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling. Scheduler, JSONC files and dialogue-state notification bridge implemented; native evidence follows.
+- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not. Evaluator and Story file integration implemented; Windows CI evidence follows.
+- [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)). Flat scalar collections, whole-value actions and save replay are implemented with bounded decoding and automated checks; see [ADR 0009](./docs/adr/0009-flat-collection-state.md). Rhai provides bounded local entry operations; read-only Yarn length/membership helpers now provide scalar views ([ADR 0012](./docs/adr/0012-yarn-collection-queries.md)). Native demonstration remains.
+- [ ] Rhai script host: state/signal permissions, shared operation/work and depth/size limits, source diagnostics and no file/network/OS API are implemented ([ADR 0010](./docs/adr/0010-bounded-rhai-host.md)). Canonical seeded integer randomness and replay are implemented ([ADR 0011](./docs/adr/0011-canonical-seeded-randomness.md)); script-internal Engine calls and native acceptance remain.
+- [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn. Typed declarative commands and the UI notification bridge are implemented with automated replay checks; Bounded Rhai commands now share these paths; native acceptance remains.
+- [ ] Themed custom screens and navigation. The authored [screens demo](./examples/screens-demo/README.md), renderer navigation/focus tests, CLI invalid fixtures and same-player UI edit proof cover P4-06 automatically; native Windows verification remains in issue #5.
 
 ## Phase 5 — Second Story proves reuse (Story B)
 
 Goal: a meaningfully different game on the same binary.
 
-- [ ] `examples/life-sim/`: at least two locations, a time/schedule rule, a resource and an inventory-like list, a conditional activity and a custom screen.
-- [ ] Story A and Story B run on the same player binary (same SHA-256).
+- [ ] `examples/life-sim/`: at least two locations, a time/schedule rule, a resource and an inventory-like list, a conditional activity and a custom screen. [Market Day](./examples/life-sim/README.md) implements a finite day with scenario/replay checks; native acceptance remains queued in issue #5.
+- [ ] Story A and Story B run on the same player binary (same SHA-256). Automated exports, shared-runner completion and a pay-edit proof are recorded in [Phase 5 evidence](./docs/evidence/phase-5.md); native completion remains.
 - [ ] The Engine workspace builds and tests pass with both Stories deleted.
-- [ ] Negative matrix: invalid packages, missing IDs, cross-Story saves, incompatible schemas and versions, script errors. No partial activation.
+- [ ] Negative matrix: invalid packages, missing IDs, cross-Story saves, incompatible schemas and versions, script errors. No partial activation. Story A/B cross-save and Story B pay-edit schema refusals preserve slots/backups; the broader Phase 5 matrix remains.
 
 ## Phase 6 — Windows foundation release
 
