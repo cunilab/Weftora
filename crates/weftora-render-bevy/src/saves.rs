@@ -1156,4 +1156,163 @@ mod tests {
             assert_eq!(audio(&app), cues, "{target}");
         }
     }
+    #[test]
+    fn life_sim_checkpoints_restore_the_day_without_repeating_costs_or_pay() {
+        let directory = tempfile::tempdir().unwrap();
+        let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/life-sim");
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story.clone(), compiled);
+        app.world_mut().non_send_mut::<Player>().save_store =
+            Some(Ok(Store::new(directory.path().to_path_buf())));
+        app.world_mut().resource_mut::<Ui>().reset(&story);
+        app.update();
+        for target in [
+            "day.home",
+            "day.market",
+            "day.shift",
+            "day.return",
+            "day.end",
+        ] {
+            let mut reached = false;
+            for _ in 0..40 {
+                let player = app.world().non_send::<Player>();
+                if player
+                    .presenter
+                    .source()
+                    .save_point()
+                    .is_ok_and(|point| point.checkpoint == target)
+                {
+                    reached = true;
+                    break;
+                }
+                match player.presenter.screen().clone() {
+                    Screen::Line { .. } => request(&mut app, weftora_story::ui::UiAction::Advance),
+                    Screen::Choices(_) => {
+                        app.world_mut()
+                            .resource_mut::<Intents>()
+                            .push(Intent::Select {
+                                layer: None,
+                                position: 0,
+                            });
+                        app.update();
+                    }
+                    other => panic!("did not reach {target}: {other:?}"),
+                }
+            }
+            assert!(reached, "{target}");
+            let player = app.world().non_send::<Player>();
+            let snapshot = player
+                .state
+                .read()
+                .unwrap()
+                .snapshot(weftora_core::Scope::Persistent);
+            let display = player.presenter.screen().clone();
+            request(&mut app, weftora_story::ui::UiAction::Save);
+            assert_eq!(
+                app.world().non_send::<Player>().save_status,
+                "Saved.",
+                "{target}"
+            );
+            let slot = directory.path().join("save.json");
+            let bytes = std::fs::read(&slot).unwrap();
+            if target == "day.home" {
+                request(
+                    &mut app,
+                    weftora_story::ui::UiAction::Open {
+                        screen: "journal".into(),
+                    },
+                );
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .press(KeyCode::F5);
+                app.update();
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .clear();
+                assert!(
+                    app.world()
+                        .non_send::<Player>()
+                        .save_status
+                        .contains("close overlays")
+                );
+                assert_eq!(std::fs::read(&slot).unwrap(), bytes);
+                app.world_mut()
+                    .resource_mut::<Intents>()
+                    .push(Intent::Action {
+                        layer: Some("journal".into()),
+                        action: weftora_story::ui::UiAction::Close,
+                    });
+                app.update();
+                request(&mut app, weftora_story::ui::UiAction::Save);
+                assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
+                request(
+                    &mut app,
+                    weftora_story::ui::UiAction::Open {
+                        screen: "journal".into(),
+                    },
+                );
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .press(KeyCode::F9);
+                app.update();
+                app.world_mut()
+                    .resource_mut::<ButtonInput<KeyCode>>()
+                    .clear();
+                assert_eq!(app.world().non_send::<Player>().save_status, "Loaded.");
+                assert!(app.world().resource::<Ui>().at_initial_base(&story));
+            }
+            // Spend resources before loading, so a no-op load cannot pass the state comparison.
+            request(&mut app, weftora_story::ui::UiAction::Advance);
+            if target != "day.end" {
+                app.world_mut()
+                    .resource_mut::<Intents>()
+                    .push(Intent::Select {
+                        layer: None,
+                        position: 0,
+                    });
+                app.update();
+                assert_ne!(
+                    app.world()
+                        .non_send::<Player>()
+                        .state
+                        .read()
+                        .unwrap()
+                        .snapshot(weftora_core::Scope::Persistent),
+                    snapshot
+                );
+            }
+            for _ in 0..if target == "day.shift" { 2 } else { 1 } {
+                request(&mut app, weftora_story::ui::UiAction::Load);
+                let player = app.world().non_send::<Player>();
+                assert_eq!(player.save_status, "Loaded.", "{target}");
+                assert_eq!(player.presenter.screen(), &display);
+                assert_eq!(
+                    player
+                        .state
+                        .read()
+                        .unwrap()
+                        .snapshot(weftora_core::Scope::Persistent),
+                    snapshot
+                );
+            }
+            request(&mut app, weftora_story::ui::UiAction::Save);
+            assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
+            assert_eq!(std::fs::read(&slot).unwrap(), bytes);
+            assert_eq!(
+                std::fs::read(directory.path().join("save.bak")).unwrap(),
+                bytes
+            );
+            if target != "day.end" {
+                request(&mut app, weftora_story::ui::UiAction::Advance);
+            }
+        }
+        let player = app.world().non_send::<Player>();
+        let state = player.state.read().unwrap();
+        assert_eq!(state.get("coins"), Ok(&Value::Int(2)));
+        assert_eq!(state.get("energy"), Ok(&Value::Int(3)));
+        assert_eq!(state.get("hour"), Ok(&Value::Int(14)));
+        assert_eq!(state.get("rng"), Ok(&Value::Int(-7046029254386353131)));
+    }
 }

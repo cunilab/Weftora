@@ -1,0 +1,60 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "overlay",
+    "id": "journal",
+    "background": "#09121DEA",
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 48,
+      "gap": 16
+    },
+    "children": [
+      {
+        "type": "text",
+        "text": "A DAY IN TOWN",
+        "size": 30
+      },
+      {
+        "type": "text",
+        "text": "Market shifts open from 09:00 until 12:00, once per day. Work needs a permit and 2 energy. A snack costs 2 coins and restores 3 energy at home.",
+        "size": 18,
+        "color": "#A8B8C7"
+      },
+      {
+        "type": "text",
+        "text": "Travel costs 1 hour and 1 energy. Work takes 2 hours. Shopping, eating and resting each take 1 hour. Rest restores 2 energy; energy is capped at 6.",
+        "size": 18,
+        "color": "#A8B8C7"
+      },
+      {
+        "type": "text",
+        "text": "Dialogue reports inventory length and membership directly. Journal pauses progression. Close it to save at the first display of a checkpoint; F9 loads the last slot.",
+        "size": 18,
+        "color": "#A8B8C7"
+      },
+      {
+        "type": "text",
+        "bind": {
+          "state": "status"
+        },
+        "size": 22,
+        "color": "#F2DDA4"
+      },
+      {
+        "type": "button",
+        "id": "close",
+        "text": "Return to day",
+        "action": {
+          "do": "screen.close"
+        },
+        "size": 20,
+        "background": "#304B60",
+        "layout": {
+          "padding": 10
+        }
+      }
+    ]
+  }
+}

@@ -203,6 +203,19 @@ jobs:
           name: weftora-windows-story-a-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-story-a-preview/
           retention-days: 14
+      - name: Package Story B and prove same-player reuse
+        shell: pwsh
+        run: |
+          $lifePreview = Join-Path $env:RUNNER_TEMP "weftora-windows-life-sim-preview"
+          python scripts/verify-life-sim.py --cli target/debug/weftora.exe --player target/debug/weftora-player.exe --out $lifePreview
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-life-sim-preview-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-windows-life-sim-preview/
+          retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()
         with:

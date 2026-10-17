@@ -97,10 +97,10 @@ Goal: games define their own mechanics without Engine changes.
 
 Goal: a meaningfully different game on the same binary.
 
-- [ ] `examples/life-sim/`: at least two locations, a time/schedule rule, a resource and an inventory-like list, a conditional activity and a custom screen.
-- [ ] Story A and Story B run on the same player binary (same SHA-256).
+- [ ] `examples/life-sim/`: at least two locations, a time/schedule rule, a resource and an inventory-like list, a conditional activity and a custom screen. [Market Day](./examples/life-sim/README.md) implements a finite day with scenario/replay checks; native acceptance remains queued in issue #5.
+- [ ] Story A and Story B run on the same player binary (same SHA-256). Automated exports, shared-runner completion and a pay-edit proof are recorded in [Phase 5 evidence](./docs/evidence/phase-5.md); native completion remains.
 - [ ] The Engine workspace builds and tests pass with both Stories deleted.
-- [ ] Negative matrix: invalid packages, missing IDs, cross-Story saves, incompatible schemas and versions, script errors. No partial activation.
+- [ ] Negative matrix: invalid packages, missing IDs, cross-Story saves, incompatible schemas and versions, script errors. No partial activation. Story A/B cross-save and Story B pay-edit schema refusals preserve slots/backups; the broader Phase 5 matrix remains.
 
 ## Phase 6 — Windows foundation release
 

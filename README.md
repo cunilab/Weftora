@@ -84,3 +84,5 @@ The [random demo](./examples/random-demo/README.md) keeps a seeded dice stream i
 The [queries demo](./examples/queries-demo/README.md) reads collection length and membership from Yarn through scalar-only helpers.
 
 The [screens demo](./examples/screens-demo/README.md) replaces layouts, colors and navigation using existing widgets, with a repeatable same-player UI edit proof.
+
+[Market Day (Story B)](./examples/life-sim/README.md) is a short life-sim with Home/Market, scheduled work, energy/coins, inventory and replayable seeded pay on the same Engine.
