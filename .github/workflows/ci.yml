@@ -22,7 +22,8 @@ jobs:
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
-      - run: cargo test --workspace --locked
+      - run: cargo clippy --workspace --all-targets --locked --features weftora-cli/story-tests,weftora-render-bevy/story-tests -- -D warnings
+      - run: cargo test-all
       - run: cargo xtask deps
       - run: cargo tree -p weftora-player --edges normal,build --locked
       - run: cargo xtask docs
@@ -215,6 +216,24 @@ jobs:
           if-no-files-found: ignore
           name: weftora-windows-life-sim-preview-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-windows-life-sim-preview/
+          retention-days: 14
+      - name: Test source-isolation proof helpers
+        run: python -B -m unittest discover -s scripts/tests -p "test_*.py"
+      - name: Prove Engine independence from Story A and B
+        shell: pwsh
+        run: |
+          $engineProof = Join-Path $env:RUNNER_TEMP "weftora-windows-engine-independence"
+          python -B scripts/verify-engine-independence.py --out $engineProof --reuse-target
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-engine-independence-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/weftora-windows-engine-independence/*.json
+            ${{ runner.temp }}/weftora-windows-engine-independence/*.log
+            ${{ runner.temp }}/weftora-windows-engine-independence/standalone/
           retention-days: 14
       - uses: actions/upload-artifact@v4
         if: always()

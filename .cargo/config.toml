@@ -1,2 +1,3 @@
 [alias]
 xtask = "run --quiet --package xtask --"
+test-all = "test --workspace --locked --features weftora-cli/story-tests,weftora-render-bevy/story-tests"

@@ -1003,6 +1003,7 @@ mod tests {
         assert_eq!(std::fs::read(&path).unwrap(), good);
         assert!(!path.with_file_name("save.bak").exists());
     }
+    #[cfg(all(test, feature = "story-tests"))]
     #[test]
     fn story_a_every_checkpoint_reconstructs_the_same_settled_view_audio_and_state() {
         fn settle(app: &mut App) {
@@ -1156,6 +1157,7 @@ mod tests {
             assert_eq!(audio(&app), cues, "{target}");
         }
     }
+    #[cfg(all(test, feature = "story-tests"))]
     #[test]
     fn life_sim_checkpoints_restore_the_day_without_repeating_costs_or_pay() {
         let directory = tempfile::tempdir().unwrap();

@@ -16,7 +16,7 @@ This records automated implementation coverage for [Phase 5](../success-criteria
 | --- | --- | --- |
 | P5-01 | Two locations, time/schedule, resources, inventory, conditional work and custom screen; four complete scenario routes | Native walkthrough |
 | P5-02 | Same-player exports/activation validation for A/B, shared-runner completion, pay-edit proof | Completion of both Stories in the native player on the recorded binary |
-| P5-03 | Not run in this slice | Build/tests with both Story folders removed; controlled missing-Story error |
+| P5-03 | Runner implemented for isolated build/tests, missing-Story exits, mandatory test inventory and expected-failure controls; verification in progress | Completed platform report; no cold-build claim |
 | P5-04 | Existing engine negative suites plus cross-Story/schema refusal below | Dedicated broader A/B package/ID/script/version matrix and live-state preservation evidence |
 | P5-05 | A→B and B→A save refusal; pay edit requires schema 2 | Remaining ADR 0002 version rows against both Stories |
 
@@ -39,3 +39,13 @@ The [automated report](./phase-5-story-b-proof-macos.json) records Story A, Stor
 Story A finishes its repair route. Story B's baseline work/buy/eat route reaches 14/3/2 with one receipt and one seeded draw. Changing only Rhai base pay from 3 to 5, plus the required save schema 1→2, changes earned pay 4→6 and end coins 2→4. Compiled dialogue, RNG, hour, energy and inventory stay unchanged. A→B, B→A and old-schema loads refuse for their expected identity/migration reasons without candidate output or slot/backup hash changes. The script ran with Python optimization enabled; proof checks use unconditional failures.
 
 Windows CI runs `scripts/verify-life-sim.py` after the existing Story A proof and uploads `weftora-windows-life-sim-preview-<sha>` with one retained player/CLI, both Stories, edited content, traces and report. Exact native completion, route, checkpoint, Journal, resize, edit and negative-load steps remain unchecked in issue #5. No native appearance, input, performance, full compatibility matrix or Phase 5 gate is claimed.
+
+## Engine independence and test-suite boundary
+
+The default Engine suite and authored-Story scenarios are now explicit. The CLI's `story_a` and `life_sim` test targets require `story-tests`; the renderer's two authored replay tests use `cfg(all(test, feature = "story-tests"))`. No production Rust path is conditional on this feature. `cargo test-all` enables both packages' test features and remains the required complete suite in CI. Clippy runs in both configurations. Existing Story tests are retained, with no fixture-presence early returns or copied Story replicas.
+
+`scripts/verify-engine-independence.py` makes an isolated copy from Git's tracked and nonignored working-file inventory, rejecting symlinks/aliases, preserving working changes, and excluding only the two exact Story directories. It verifies copy hashes, required lock/vendor content and original source hashes after the run. The source inventory identifies the tested working snapshot; it does not pretend an uncommitted run is a clean commit build. The original Story folders are never renamed or deleted.
+
+In that copy it runs the default locked workspace build and test commands. The full Story-test listing must include all ten expected names before stripping. Explicitly enabling the suites in the stripped copy must fail all eight CLI Story tests and the two renderer Story replay tests specifically because the Story roots are absent. These are intentional negative controls; the normal Engine test command must succeed. The built player is copied out immediately after the build so later control builds cannot replace the tested binary. Explicit A/B paths and no-argument launch next to an absent `story/` each run twice, requiring exit 1, no stdout, deterministic manifest/root diagnostics and no panic/backend initialization.
+
+The proof output must be outside the checkout. `--reuse-target` openly reuses Cargo cache; the alternate target directory does not imply a cold registry/source-cache run. Generic test fixtures and small capability demos remain in the copy: P5-03 removes Story A/B, not every test asset. Windows CI uploads only report/inventory/logs and the tested standalone player, not the temporary workspace or target tree. This adds no manual Windows blocker and does not claim native rendering acceptance.

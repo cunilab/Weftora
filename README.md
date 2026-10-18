@@ -86,3 +86,15 @@ The [queries demo](./examples/queries-demo/README.md) reads collection length an
 The [screens demo](./examples/screens-demo/README.md) replaces layouts, colors and navigation using existing widgets, with a repeatable same-player UI edit proof.
 
 [Market Day (Story B)](./examples/life-sim/README.md) is a short life-sim with Home/Market, scheduled work, energy/coins, inventory and replayable seeded pay on the same Engine.
+
+## Engine and authored-Story tests
+
+`cargo test --workspace --locked` runs the default Engine suite, which can run with Story A/B removed. `cargo test-all` also enables the `story-tests` features on the CLI and renderer and runs the authored Story scenarios. Required CI runs the full suite; missing Story fixtures fail those tests rather than silently skipping them. These features guard test code only.
+
+To reproduce P5-03 without modifying this checkout:
+
+```sh
+python3 -B scripts/verify-engine-independence.py --out /tmp/weftora-engine-proof --reuse-target
+```
+
+Use `python` and a fresh output directory on Windows. The script copies nonignored working sources, omits only `examples/story-a/` and `examples/life-sim/`, builds/tests the remaining workspace, and captures missing-Story errors from the built player. `--reuse-target` reuses Cargo's cache; omit it for an isolated target directory. Neither mode claims a cold dependency build. Logs include intentional failing controls: explicitly enabling the Story suites in the stripped copy must fail on missing fixtures. [Phase 5 evidence](./docs/evidence/phase-5.md) records the suite boundary and results.

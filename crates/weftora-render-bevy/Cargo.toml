@@ -7,6 +7,10 @@ rust-version.workspace = true
 license.workspace = true
 publish.workspace = true
 
+[features]
+# Authored Story scenarios are separate from the standalone Engine suite.
+story-tests = []
+
 [dependencies]
 weftora-api.workspace = true
 weftora-core.workspace = true
