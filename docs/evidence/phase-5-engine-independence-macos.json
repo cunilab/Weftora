@@ -1,0 +1,134 @@
+{
+  "check": "P5-03",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "baseCommit": "352c4891277fc278a7213d1befdcf1848a35766d",
+  "workingTreeDirty": false,
+  "removedStories": [
+    "examples/story-a",
+    "examples/life-sim"
+  ],
+  "sourceFileCount": 314,
+  "sourceInventorySha256": "c604a8d873ed8db6646e10846924b057787ae69b1e31b946da440cc10a3256ac",
+  "cargoCacheReused": true,
+  "workspaceArtifactsReset": true,
+  "sharedWorkspaceArtifactsReleased": true,
+  "playerSha256": "3c08fd9414ebb13497c1baeb50f732062f1d9c7f3cd74fe7886fc134da701b6a",
+  "mandatoryStoryTestsListed": 10,
+  "defaultEngineReportedTestPasses": 362,
+  "commands": [
+    {
+      "name": "story-test-inventory",
+      "command": [
+        "cargo",
+        "test-all",
+        "--",
+        "--list"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "workspace-cache-reset",
+      "command": [
+        "cargo",
+        "clean",
+        "--workspace",
+        "--profile",
+        "dev",
+        "--locked"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "stripped-build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--locked"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "stripped-tests",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "--",
+        "--test-threads=1"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "missing-story-cli-control",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "weftora-cli",
+        "--features",
+        "story-tests",
+        "--no-fail-fast",
+        "--test",
+        "story_a",
+        "--test",
+        "life_sim",
+        "--",
+        "--test-threads=1"
+      ],
+      "exitCode": 101
+    },
+    {
+      "name": "missing-story-render-control",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "weftora-render-bevy",
+        "--features",
+        "story-tests",
+        "--lib",
+        "--",
+        "--test-threads=1"
+      ],
+      "exitCode": 101
+    },
+    {
+      "name": "workspace-cache-release",
+      "command": [
+        "cargo",
+        "clean",
+        "--workspace",
+        "--profile",
+        "dev",
+        "--locked"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "missingStoryFailures": [
+    {
+      "case": "story-a",
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "deterministic": true
+    },
+    {
+      "case": "story-b",
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "deterministic": true
+    },
+    {
+      "case": "default",
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "deterministic": true
+    }
+  ],
+  "originalSourceUnchanged": true,
+  "scope": "Default Engine suite passes without A/B. Authored suites are listed separately and must fail when explicitly enabled without fixtures. Workspace artifacts are reset before build; only dependency cache may be reused. No native rendering acceptance or cold-build claim."
+}
