@@ -9,6 +9,7 @@ import platform
 import re
 import shutil
 import subprocess
+import sys
 
 STORIES = ("examples/story-a", "examples/life-sim")
 CLI_TESTS = (
@@ -126,63 +127,76 @@ def main():
     listed = cargo("story-test-inventory", repository, ["test-all", "--", "--list"])
     for name in CLI_TESTS + RENDER_TESTS:
         require(name + ": test" in listed.splitlines(), f"mandatory Story test missing: {name}")
-    absent()
-    executable = "weftora-player.exe" if os.name == "nt" else "weftora-player"
-    built_player = target / "debug" / executable
-    require(not built_player.is_symlink(), "refusing a symlink Cargo player output")
-    if built_player.exists():
-        built_player.unlink()
-    cargo("stripped-build", workspace, ["build", "--workspace", "--locked"])
-    require(built_player.is_file(), "stripped build did not recreate the player output")
-    standalone = output / "standalone"
-    standalone.mkdir()
-    player = standalone / executable
-    shutil.copy2(built_player, player)
-    player_hash = digest(player)
-    absent()
-    engine_tests = cargo("stripped-tests", workspace, ["test", "--workspace", "--locked", "--", "--test-threads=1"])
-    require(all(name not in engine_tests for name in CLI_TESTS + RENDER_TESTS),
-            "Story tests leaked into the default Engine suite")
-    absent()
-    # Enabling the authored suites must fail on absent content, rather than quietly skip it.
-    cli_control = cargo("missing-story-cli-control", workspace,
-                        ["test", "--locked", "-p", "weftora-cli", "--features", "story-tests", "--no-fail-fast",
-                         "--test", "story_a", "--test", "life_sim", "--", "--test-threads=1"], expected=101)
-    render_control = cargo("missing-story-render-control", workspace,
-                           ["test", "--locked", "-p", "weftora-render-bevy", "--features", "story-tests", "--lib",
-                            "--", "--test-threads=1"], expected=101)
-    check_control(cli_control, CLI_TESTS)
-    check_control(render_control, RENDER_TESTS)
-    failures = []
-    for name, arguments, missing in [
-        ("story-a", [str(workspace / STORIES[0])], str(workspace / STORIES[0])),
-        ("story-b", [str(workspace / STORIES[1])], str(workspace / STORIES[1])),
-        ("default", [], str(standalone / "story")),
-    ]:
-        previous = None
-        for _ in range(2):
-            result = subprocess.run([str(player)] + arguments, cwd=standalone,
-                                    capture_output=True, timeout=30)
-            message = result.stderr.decode("utf-8", errors="replace")
-            require(result.returncode == 1 and not result.stdout, f"missing {name}: expected exit 1 and no stdout")
-            require("manifest.jsonc" in message and "cannot access Story root" in message and message_has_path(message, missing),
-                    f"missing {name}: wrong diagnostic: {message}")
-            require(not any(token in message.lower() for token in ["panicked at", "wgpu", "bevy_render"]),
-                    f"missing {name}: unexpected panic/backend initialization")
-            require(previous is None or previous == result.stderr, f"missing {name}: nondeterministic diagnostic")
-            previous = result.stderr
-        (output / ("missing-" + name + ".log")).write_bytes(previous)
-        failures.append({"case": name, "exitCode": 1, "stdoutEmpty": True, "deterministic": True})
-    absent()
-    require(digest(player) == player_hash, "tested standalone player changed")
+    try:
+        absent()
+        # Shared targets can retain env!(CARGO_MANIFEST_DIR) from another source tree.
+        # Reuse dependency artifacts only; workspace packages must rebuild from this copy.
+        cargo("workspace-cache-reset", workspace, ["clean", "--workspace", "--profile", "dev", "--locked"])
+        executable = "weftora-player.exe" if os.name == "nt" else "weftora-player"
+        built_player = target / "debug" / executable
+        require(not built_player.is_symlink(), "refusing a symlink Cargo player output")
+        if built_player.exists():
+            built_player.unlink()
+        cargo("stripped-build", workspace, ["build", "--workspace", "--locked"])
+        require(built_player.is_file(), "stripped build did not recreate the player output")
+        standalone = output / "standalone"
+        standalone.mkdir()
+        player = standalone / executable
+        shutil.copy2(built_player, player)
+        player_hash = digest(player)
+        absent()
+        engine_tests = cargo("stripped-tests", workspace, ["test", "--workspace", "--locked", "--", "--test-threads=1"])
+        require(all(name not in engine_tests for name in CLI_TESTS + RENDER_TESTS),
+                "Story tests leaked into the default Engine suite")
+        absent()
+        # Enabling the authored suites must fail on absent content, rather than quietly skip it.
+        cli_control = cargo("missing-story-cli-control", workspace,
+                            ["test", "--locked", "-p", "weftora-cli", "--features", "story-tests", "--no-fail-fast",
+                             "--test", "story_a", "--test", "life_sim", "--", "--test-threads=1"], expected=101)
+        check_control(cli_control, CLI_TESTS)
+        render_control = cargo("missing-story-render-control", workspace,
+                               ["test", "--locked", "-p", "weftora-render-bevy", "--features", "story-tests", "--lib",
+                                "--", "--test-threads=1"], expected=101)
+        check_control(render_control, RENDER_TESTS)
+        failures = []
+        for name, arguments, missing in [
+            ("story-a", [str(workspace / STORIES[0])], str(workspace / STORIES[0])),
+            ("story-b", [str(workspace / STORIES[1])], str(workspace / STORIES[1])),
+            ("default", [], str(standalone / "story")),
+        ]:
+            previous = None
+            for _ in range(2):
+                result = subprocess.run([str(player)] + arguments, cwd=standalone,
+                                        capture_output=True, timeout=30)
+                message = result.stderr.decode("utf-8", errors="replace")
+                require(result.returncode == 1 and not result.stdout, f"missing {name}: expected exit 1 and no stdout")
+                require("manifest.jsonc" in message and "cannot access Story root" in message and message_has_path(message, missing),
+                        f"missing {name}: wrong diagnostic: {message}")
+                require(not any(token in message.lower() for token in ["panicked at", "wgpu", "bevy_render"]),
+                        f"missing {name}: unexpected panic/backend initialization")
+                require(previous is None or previous == result.stderr, f"missing {name}: nondeterministic diagnostic")
+                previous = result.stderr
+            (output / ("missing-" + name + ".log")).write_bytes(previous)
+            failures.append({"case": name, "exitCode": 1, "stdoutEmpty": True, "deterministic": True})
+        absent()
+        require(digest(player) == player_hash, "tested standalone player changed")
+    finally:
+        if args.reuse_target:
+            handling_failure = sys.exc_info()[0] is not None
+            try:
+                cargo("workspace-cache-release", workspace, ["clean", "--workspace", "--profile", "dev", "--locked"])
+            except (Exception, SystemExit):
+                if not handling_failure:
+                    raise
+                print("Workspace cache cleanup also failed; preserving the original proof failure.", flush=True)
     require(inventory(repository) == records, "original checkout source changed during proof")
     report = {"check": "P5-03", "platform": platform.platform(), "baseCommit": head, "workingTreeDirty": dirty, "removedStories": list(STORIES),
               "sourceFileCount": len(copied), "sourceInventorySha256": digest(output / "source-inventory.json"),
-              "cargoCacheReused": args.reuse_target, "playerSha256": player_hash,
+              "cargoCacheReused": args.reuse_target, "workspaceArtifactsReset": True, "sharedWorkspaceArtifactsReleased": args.reuse_target, "playerSha256": player_hash,
               "mandatoryStoryTestsListed": len(CLI_TESTS) + len(RENDER_TESTS),
               "defaultEngineReportedTestPasses": sum(map(int, re.findall(r"test result: ok\. (\d+) passed", engine_tests))),
               "commands": commands, "missingStoryFailures": failures, "originalSourceUnchanged": True,
-              "scope": "Default Engine suite passes without A/B. Authored suites are listed separately and must fail when explicitly enabled without fixtures. No native rendering acceptance or cold-build claim."}
+              "scope": "Default Engine suite passes without A/B. Authored suites are listed separately and must fail when explicitly enabled without fixtures. Workspace artifacts are reset before build; only dependency cache may be reused. No native rendering acceptance or cold-build claim."}
     (output / "engine-independence-proof.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"P5-03 passed; logs/report/player: {output}", flush=True)
 

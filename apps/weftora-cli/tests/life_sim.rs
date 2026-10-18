@@ -29,6 +29,12 @@ fn events(out: Output) -> Vec<Value> {
         .collect()
 }
 fn copy_story(root: &Path) {
+    let source = story();
+    assert!(
+        source.is_dir(),
+        "cannot access Story root {}: required Story B fixture is missing",
+        source.display()
+    );
     fs::create_dir_all(root.join("ui")).unwrap();
     for file in [
         "manifest.jsonc",
@@ -38,7 +44,7 @@ fn copy_story(root: &Path) {
         "ui/dashboard.jsonc",
         "ui/journal.jsonc",
     ] {
-        fs::copy(story().join(file), root.join(file)).unwrap();
+        fs::copy(source.join(file), root.join(file)).unwrap();
     }
 }
 #[test]
