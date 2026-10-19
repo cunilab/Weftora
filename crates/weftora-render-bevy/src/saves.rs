@@ -109,6 +109,11 @@ impl Player {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[cfg(feature = "story-tests")]
+    mod story_matrix {
+        use super::*;
+        include!("story_matrix.rs");
+    }
     use crate::{
         declarative::{Intent, Intents, Ui},
         media::Presentation,

@@ -20,6 +20,11 @@ name = "life_sim"
 path = "tests/life_sim.rs"
 required-features = ["story-tests"]
 
+[[test]]
+name = "story_matrix"
+path = "tests/story_matrix.rs"
+required-features = ["story-tests"]
+
 [features]
 # Authored Story scenarios are separate from the standalone Engine suite.
 story-tests = []

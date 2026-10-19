@@ -21,10 +21,12 @@ CLI_TESTS = (
     "story_a_and_b_reject_each_others_saves_without_output_or_file_changes",
     "loaded_days_can_take_an_alternate_branch_and_skip_work",
     "pay_edit_with_schema_bump_refuses_old_save_and_preserves_both_files",
+    "story_matrix_rejects_invalid_packages_and_loads_without_publishing_or_replacing_files",
 )
 RENDER_TESTS = (
     "saves::tests::story_a_every_checkpoint_reconstructs_the_same_settled_view_audio_and_state",
     "saves::tests::life_sim_checkpoints_restore_the_day_without_repeating_costs_or_pay",
+    "saves::tests::story_matrix::story_matrix_failed_loads_preserve_live_state_dialogue_ui_audio_and_files",
 )
 
 
@@ -152,7 +154,7 @@ def main():
         # Enabling the authored suites must fail on absent content, rather than quietly skip it.
         cli_control = cargo("missing-story-cli-control", workspace,
                             ["test", "--locked", "-p", "weftora-cli", "--features", "story-tests", "--no-fail-fast",
-                             "--test", "story_a", "--test", "life_sim", "--", "--test-threads=1"], expected=101)
+                             "--test", "story_a", "--test", "life_sim", "--test", "story_matrix", "--", "--test-threads=1"], expected=101)
         check_control(cli_control, CLI_TESTS)
         render_control = cargo("missing-story-render-control", workspace,
                                ["test", "--locked", "-p", "weftora-render-bevy", "--features", "story-tests", "--lib",

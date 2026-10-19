@@ -21,9 +21,24 @@ jobs:
         run: rustup toolchain install
       - uses: Swatinem/rust-cache@v2
       - run: cargo fmt --all -- --check
+      - run: rustfmt --edition 2024 --check tests/support/story_matrix.rs crates/weftora-render-bevy/src/story_matrix.rs
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo clippy --workspace --all-targets --locked --features weftora-cli/story-tests,weftora-render-bevy/story-tests -- -D warnings
       - run: cargo test-all
+      - name: Record Story A/B failure matrix
+        shell: pwsh
+        run: |
+          cargo test --locked -p weftora-cli --features story-tests --test story_matrix -- --nocapture 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "story-matrix-cli.log")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          cargo test --locked -p weftora-render-bevy --features story-tests --lib story_matrix -- --nocapture 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "story-matrix-player.log")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-story-matrix-${{ github.sha }}
+          path: ${{ runner.temp }}/story-matrix-*.log
+          retention-days: 14
       - run: cargo xtask deps
       - run: cargo tree -p weftora-player --edges normal,build --locked
       - run: cargo xtask docs
