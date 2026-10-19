@@ -17,7 +17,7 @@ This records automated implementation coverage for [Phase 5](../success-criteria
 | P5-01 | Two locations, time/schedule, resources, inventory, conditional work and custom screen; four complete scenario routes | Native walkthrough |
 | P5-02 | Same-player exports/activation validation for A/B, shared-runner completion, pay-edit proof | Completion of both Stories in the native player on the recorded binary |
 | P5-03 | Isolated macOS build and 362 default Engine test passes; ten expected fixture failures; required Windows CI passed | No cold-build or native rendering claim |
-| P5-04 | Existing engine negative suites plus cross-Story/schema refusal below | Dedicated broader A/B package/ID/script/version matrix and live-state preservation evidence |
+| P5-04 | 34 CLI and 16 renderer-model matrix rows pass for both real Stories; failed loads preserve live state/media/navigation and save-directory bytes | Optional native observation in issue #5; P5-05 compatibility rows remain separate |
 | P5-05 | A→B and B→A save refusal; pay edit requires schema 2 | Remaining ADR 0002 version rows against both Stories |
 
 ## Scenarios and checkpoints
@@ -76,3 +76,7 @@ cargo test --locked -p weftora-render-bevy --features story-tests --lib story_ma
 ```
 
 Required Windows CI runs the complete suite and captures these focused row logs in `weftora-windows-story-matrix-<sha>`. The focused MacBookAir run passed all 34 CLI rows and 16 player-model rows; full-suite and platform evidence is recorded separately below.
+
+The [MacBookAir report](./phase-5-story-matrix-macos.json) records source commit `541b1bd05d87eb0eadef5a5e28366cc2e1f6a89d`: the complete locked suite passed **374 reported tests**, both Clippy configurations and locked workspace build passed, and formatting (including included fixture files), dependency direction, documentation and cargo deny passed. All twelve authored tests are present in the full inventory and absent from the default Engine inventory. Six proof-helper tests passed. [Focused row excerpts](./phase-5-story-matrix-macos.log) record the 34 CLI and 16 player rows. Tools-disabled Claude Opus 5.5 medium reviewed the fixture and restore assertions; later display/media failures, existing-file traversal, complete save-directory comparisons and successful retries were hardened. [Windows CI](https://github.com/cunilab/Weftora/actions/runs/39194118874) runs the same matrix and updated twelve-test isolation controls; platform results are reported by that run rather than inferred from the Mac run.
+
+The Windows full-suite and focused matrix steps also passed on this source head: [50 Windows row excerpts](./phase-5-story-matrix-windows.log) were verified against the downloaded CI artifact (34 CLI, 16 player-model). The overall run, including the updated source-isolation proof, is tracked separately by GitHub; these automated results do not imply native hardware acceptance.

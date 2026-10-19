@@ -1,0 +1,52 @@
+Focused MacBookAir PASS-row excerpts; raw CI logs are uploaded separately.
+
+PASS story-a/package/malformed-manifest: check, run and export refused before output
+PASS story-a/package/manifest-schema: check, run and export refused before output
+PASS story-a/package/api-range: check, run and export refused before output
+PASS story-a/package/capability: check, run and export refused before output
+PASS story-a/package/missing-dialogue: check, run and export refused before output
+PASS story-a/package/path-traversal: check, run and export refused before output
+PASS story-a/package/missing-entrypoint: check, run and export refused before output
+PASS story-a/package/missing-screen: check, run and export refused before output
+PASS story-a/package/missing-binding: check, run and export refused before output
+PASS story-a/package/unknown-command: check, run and export refused before output
+PASS story-a/package/script-syntax: check, run and export refused before output
+PASS story-a/load/corrupt-save: no output; slot and backup unchanged
+PASS story-a/load/save-format: no output; slot and backup unchanged
+PASS story-a/load/cross-story: no output; slot and backup unchanged
+PASS story-a/load/save-schema: no output; slot and backup unchanged
+PASS story-a/load/removed-checkpoint: no output; slot and backup unchanged
+PASS story-a/load/script-runtime: no output; slot and backup unchanged
+PASS life-sim/package/malformed-manifest: check, run and export refused before output
+PASS life-sim/package/manifest-schema: check, run and export refused before output
+PASS life-sim/package/api-range: check, run and export refused before output
+PASS life-sim/package/capability: check, run and export refused before output
+PASS life-sim/package/missing-dialogue: check, run and export refused before output
+PASS life-sim/package/path-traversal: check, run and export refused before output
+PASS life-sim/package/missing-entrypoint: check, run and export refused before output
+PASS life-sim/package/missing-screen: check, run and export refused before output
+PASS life-sim/package/missing-binding: check, run and export refused before output
+PASS life-sim/package/unknown-command: check, run and export refused before output
+PASS life-sim/package/script-syntax: check, run and export refused before output
+PASS life-sim/load/corrupt-save: no output; slot and backup unchanged
+PASS life-sim/load/save-format: no output; slot and backup unchanged
+PASS life-sim/load/cross-story: no output; slot and backup unchanged
+PASS life-sim/load/save-schema: no output; slot and backup unchanged
+PASS life-sim/load/removed-checkpoint: no output; slot and backup unchanged
+PASS life-sim/load/script-runtime: no output; slot and backup unchanged
+PASS story-a/player/corrupt-save: state, dialogue, overlay, media tokens and save files unchanged
+PASS story-a/player/save-format: state, dialogue, overlay, media tokens and save files unchanged
+PASS story-a/player/cross-story: state, dialogue, overlay, media tokens and save files unchanged
+PASS story-a/player/save-schema: state, dialogue, overlay, media tokens and save files unchanged
+PASS story-a/player/removed-checkpoint: state, dialogue, overlay, media tokens and save files unchanged
+PASS story-a/player/script-runtime: state, dialogue, overlay, media tokens and save files unchanged
+PASS story-a/player/display-validation: state, dialogue, overlay, media tokens and save files unchanged
+PASS story-a/player/media-restore: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/corrupt-save: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/save-format: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/cross-story: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/save-schema: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/removed-checkpoint: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/script-runtime: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/display-validation: state, dialogue, overlay, media tokens and save files unchanged
+PASS life-sim/player/media-restore: state, dialogue, overlay, media tokens and save files unchanged
