@@ -121,7 +121,7 @@ Goal: a stranger can make and ship a game on Windows.
 - [ ] Licence, dependency licence and advisory audit.
 - [ ] Meet the approved performance budgets on the reference Windows machine.
 - [ ] Clean-machine walkthrough by someone who does not know Rust.
-- [ ] Verify ADR 0002 Phase 6 downgrade and mismatched export-tool release fixtures for both Stories.
+- [ ] Verify ADR 0002 Phase 6 downgrade and mismatched export-tool release fixtures for both Stories. Current-reader API/schema refusal, compatible release rollback and build-pair checks have [automated fixtures](./docs/evidence/phase-6.md); release-profile and historical/native acceptance remain separate.
 - [ ] Publish the compatibility table; tag the release. Pre-1.0 versions are fine.
 
 ## Phase 7 — Ports, one at a time (locked until Phase 6 passes)

@@ -57,11 +57,12 @@ def main():
         require(metadata["cli"]["sha256"] == cli_hash and metadata["player"]["sha256"] == player_hash,
                 "export tool hash metadata mismatch")
 
+    def inventory(source):
+        return {p.relative_to(source).as_posix(): None if p.is_dir() else digest(p) for p in sorted(source.rglob("*"))}
+
     wrong_tools = []
     for name, source in [("story-a", repository / "examples/story-a"), ("story-b", repository / "examples/life-sim")]:
-        def inventory():
-            return {p.relative_to(source).as_posix(): None if p.is_dir() else digest(p) for p in sorted(source.rglob("*"))}
-        before = inventory()
+        before = inventory(source)
         for existing in [False, True]:
             destination = output / f"{name}-wrong-tool-{existing}"
             if existing:
@@ -73,7 +74,7 @@ def main():
                     f"{name}: wrong executable role was not refused")
             require((destination.is_dir() and not any(destination.iterdir())) if existing else not destination.exists(),
                     "wrong-tool refusal changed output")
-            require(inventory() == before, "wrong-tool refusal changed source")
+            require(inventory(source) == before, "wrong-tool refusal changed source")
             (output / f"{name}-wrong-tool-{existing}.log").write_text(result.stderr, encoding="utf-8")
             wrong_tools.append({"story":name, "existingEmptyOutput":existing, "exitCode":1, "stdoutEmpty":True,
                                 "sourceAndOutputUnchanged":True, "actualTool":"weftora", "expectedTool":"weftora-player"})
@@ -138,6 +139,7 @@ def main():
         require(before == {file: digest(saves / file) for file in before}, f"{name} changed a save file")
         refusals.append({"case": name, "refusedWithoutOutputOrFileChanges": True})
     compatible = []
+    downgrade_checks = []
     future_formats = []
     retained_player = output / "story-a" / executable
     for name, checkpoint, remaining, text in [
@@ -189,6 +191,44 @@ def main():
         require(events[-1]["event"] == "end" and events[-1]["state"] == dict(baseline, matrix_added=23),
                 f"{name}: compatible load changed mechanics or dropped new defaults")
         require(before == {path.name: digest(path) for path in saves.iterdir()}, f"{name}: compatible load rewrote save directory")
+        # Construct valid checksummed writer metadata; no historical Engine is executed.
+        package_before = inventory(destination / "story")
+        baseline_save = json.loads((saves / "save.json").read_text(encoding="utf-8"))
+        require(baseline_save["body"]["writerEngineApi"] == "0.1.0", "review newer-writer API fixture")
+        for case, patch, expected_error in [
+            ("engine-api-downgrade", {"writerEngineApi":"0.1.1"}, "save was written by newer Engine API 0.1.1"),
+            ("story-schema-downgrade", {"saveSchema":2, "storyVersion":"0.2.0"}, "save schema downgrade from 2 to 1 is unsupported"),
+            ("compatible-release-rollback", {"storyVersion":"99.0.0", "writerEngineRelease":"99.0.0"}, None),
+        ]:
+            case_saves = output / f"{name}-{case}-saves"
+            shutil.copytree(saves, case_saves)
+            envelope = json.loads((case_saves / "save.json").read_text(encoding="utf-8"))
+            envelope["body"].update(patch)
+            body = json.dumps(envelope["body"], ensure_ascii=False, separators=(",", ":"), allow_nan=False)
+            body_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
+            encoded = '{"saveFormat":1,"bodySha256":"' + body_hash + '","body":' + body + '}\n'
+            (case_saves / "save.json").write_text(encoded, encoding="utf-8")
+            case_before = inventory(case_saves)
+            command = [cli, "run", destination / "story", "--headless", "--load", "--save-dir", case_saves]
+            if remaining:
+                command += ["--choices", remaining]
+            result = invoke(*command)
+            if expected_error:
+                require(result.returncode == 1 and not result.stdout and expected_error in result.stderr,
+                        f"{name}/{case}: wrong downgrade refusal: {result.stderr}")
+                (output / f"{name}-{case}.log").write_text(result.stderr, encoding="utf-8")
+            else:
+                require(result.returncode == 0, result.stderr)
+                loaded = [json.loads(line) for line in result.stdout.splitlines()]
+                require(loaded[-1]["event"] == "end" and loaded[-1]["state"] == dict(baseline, matrix_added=23),
+                        f"{name}: compatible release rollback changed mechanics")
+                (output / f"{name}-{case}.jsonl").write_text(result.stdout, encoding="utf-8")
+            require(inventory(case_saves) == case_before and inventory(destination / "story") == package_before,
+                    f"{name}/{case}: load changed saves or package")
+            downgrade_checks.append({"story":name, "case":case, "writerMetadataPatch":patch,
+                                     "writerMetadataModeled":True, "readerEngineApi":"0.1.0",
+                                     "exitCode":result.returncode, "sourceAndSaveDirectoryUnchanged":True,
+                                     "saveBodySha256":body_hash, "checkpoint":checkpoint})
         compiled = destination / "compiled/dialogue.json"
         compiled_hash = digest(compiled)
         require(compiled_hash != digest(output / name / "compiled/dialogue.json"), "text patch did not change dialogue artifact")
@@ -214,6 +254,7 @@ def main():
     report = {"checks": ["P5-01", "P5-02 automated package/headless coverage", "P5-05 cross-Story and compatible revisions"],
               "platform": platform.platform(), "cliSha256": digest(cli), "playerSha256": player_hash,
               "cliIdentity":cli_identity, "playerIdentity":player_identity, "wrongToolRefusals":wrong_tools,
+              "downgradeCompatibility":downgrade_checks,
               "variants": records, "saveRefusals": refusals, "compatibleRevisions":compatible, "futureDialogueFormatRefusals":future_formats,
               "scope": "Package validation and shared-runner completion; no Rust build between exports. Native player completion pending issue #5. Phase 5 gate not claimed."}
     (output / "same-player-proof.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

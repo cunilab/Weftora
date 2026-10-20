@@ -33,10 +33,10 @@ Documentation and internal crate versions are unrelated to all of the above.
 
 1. **Story activation:** supported `manifestSchema` → `engineApi` in range → every required capability supported → references valid → compiled dialogue format supported → activate atomically. Any failure rejects before gameplay with the names and versions involved.
 2. **Authoring vs. shipping:** `check` and `run` compile Yarn from source; `export` packages compiled dialogue and records the CLI, compiler and player build identities. Exporting with a player the CLI was not released with is refused.
-3. **Loading a save** requires: matching `storyId`, a supported `saveFormat`, the Story's current `saveSchema` (or a registered migration from the save's schema) and a known or mapped checkpoint ID. `storyVersion` and the writer's Engine version are recorded for diagnostics only.
+3. **Loading a save** requires: matching `storyId`, a supported `saveFormat`, a writer `writerEngineApi` no newer than the reader's Engine API, the Story's current `saveSchema` (or a registered migration from the save's schema) and a known or mapped checkpoint ID. `storyVersion` and `writerEngineRelease` remain diagnostic; changing either release number alone does not reject a save.
 4. **Story patches:** changing text, translations, images or audio while keeping `saveSchema` and checkpoint IDs keeps old saves loadable. Adding a saved field with a default may keep the same schema.
 5. **Breaking Story changes:** removing or renaming saved fields or checkpoints, or changing what a checkpoint means, requires a `saveSchema` bump plus a migration, or a clear refusal. A version bump alone migrates nothing. A refused save is never deleted or overwritten, and a new game is never started silently.
-6. **Downgrades** are unsupported by default and rejected with a clear message.
+6. **Compatibility downgrades** are unsupported by default. A save from a newer Engine API refuses with both APIs and guidance to use that API or newer. A higher saved Story `saveSchema` refuses with guidance to restore the Story revision that wrote it. Compatible Story content rollbacks and Engine patch rollbacks with unchanged contracts remain eligible to load; release ordering is not a compatibility contract.
 
 ## Compiled dialogue format 1
 
@@ -70,6 +70,14 @@ These self-reported values prevent accidental tool mixing. They do not authentic
 
 [ADR 0007](./0007-safe-checkpoint-saves.md) defines the bounded/checksummed container and checkpoint replay contract. Stable checkpoint IDs are separate from Yarn node names and instruction offsets. Persistent removals are explicit null entries; compatible new fields keep current defaults. Session resets, current Settings are retained, and runtime visiting counters are restored separately. Until migrations exist, any save-schema mismatch refuses safely without modifying the live game or file. Format/storage implementation does not by itself prove player safe-point or view restoration.
 
+## Downgrade policy clarification (Phase 6)
+
+The earlier blanket downgrade rule conflicted with the separate rule that Story and Engine release numbers do not decide save compatibility. The boundary is now explicit: `writerEngineApi` is a conservative forward-read guard, while Story/Engine **release** numbers remain diagnostic. This may reject a newer-API save whose current fields could otherwise be read; an older reader is not permitted to assume compatibility with future API writers. Use the matching or newer Engine, rather than bypassing the guard. No migration or override is introduced.
+
+API ordering uses SemVer precedence, including prerelease ordering, and ignores build metadata. Equal/older writer APIs remain eligible subject to all existing format, Story ID, schema, checkpoint and state validation. Newer writer API and higher Story schema refusals run before candidate state/replay preparation. Save format 1 and its bytes are unchanged; no new fields are needed. Older implementations did not have this conservative API guard, so this is current-reader enforcement, not a claim that every historical binary refuses a future save.
+
+The current API is `0.1.0`, save format `1`, manifest schemas `0`/`1`, dialogue format `1` and compiler contract `yarnspinner-rust 0.9.0`; Engine release `0.0.1` is separate. Story release and save schema are author-owned. [Phase 6 evidence](../evidence/phase-6.md#downgrade-compatibility-p6-09-automated-slice) maps modeled writer fixtures and real current-reader behavior to the checks below. Historical/release-profile and native acceptance remain separate.
+
 ## Required fixtures
 
 | Scenario | Expected | Phase |
@@ -84,12 +92,14 @@ These self-reported values prevent accidental tool mixing. They do not authentic
 | Removed checkpoint or `saveSchema` bump | Migrates or is refused; original save preserved | 3 |
 | Save from Story A loaded in Story B | Rejected | 5 |
 | Corrupt save, failed migration, unknown `saveFormat` | Rejected; live state and save file unchanged | 3 |
-| Downgrade to an older Engine or Story | Rejected with guidance | 6 |
+| Newer writer Engine API → older reader API | Refused with both APIs and newer-reader guidance; save/live state unchanged | 6 |
+| Newer Story save schema → older Story schema | Refused with original-Story guidance; save/live state unchanged | 6 |
+| Higher Story/Engine release numbers, same API/schema/checkpoints | Compatible release rollback loads; release numbers alone do not reject | 6 |
 | Export with mismatched CLI/compiler/player | Refused | 6 |
 
 ## Phase 5 fixture scope
 
-[Phase 5 evidence](../evidence/phase-5.md#compatible-revisions-and-version-fixtures-p5-05) maps every fixture introduced through Phase 5 onto both Stories. Engine/API version inputs in policy tests are modeled explicitly; the export proof retains one actual player SHA-256. Rows introduced in Phase 6 remain release requirements, including downgrade guidance and mismatched export-tool builds. This does not claim historical-binary compatibility or native rendering acceptance.
+[Phase 5 evidence](../evidence/phase-5.md#compatible-revisions-and-version-fixtures-p5-05) maps every fixture introduced through Phase 5 onto both Stories. Engine/API version inputs in policy tests are modeled explicitly; the export proof retains one actual player SHA-256. Rows introduced in Phase 6 have current-code automated evidence in [Phase 6](../evidence/phase-6.md), including downgrade guidance and mismatched export-tool builds; release-profile and native requirements remain open. This does not claim historical-binary compatibility or native rendering acceptance.
 
 ## Consequences
 

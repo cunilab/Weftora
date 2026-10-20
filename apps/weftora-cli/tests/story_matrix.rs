@@ -116,6 +116,21 @@ fn story_matrix_rejects_invalid_packages_and_loads_without_publishing_or_replaci
                     save(&source, &source_saves, other.1);
                     fs::copy(source_saves.join("save.json"), &slot).unwrap();
                 }
+                "engine-api-downgrade" | "story-schema-downgrade" => {
+                    let story = weftora_story::Story::load(&root).unwrap();
+                    let compiled =
+                        weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+                    let context = weftora_yarn::save_context(&story, &compiled).unwrap();
+                    let saved =
+                        weftora_save::SavedGame::from_bytes(&fs::read(&slot).unwrap(), &context)
+                            .unwrap();
+                    let point = weftora_save::Snapshot {
+                        checkpoint: saved.checkpoint().into(),
+                        state: saved.state().clone(),
+                        visits: saved.visits().clone(),
+                    };
+                    fs::write(&slot, fixture::downgrade_save(context, point, case)).unwrap();
+                }
                 "save-schema" => fixture::manifest(&root, |m| m["saveSchema"] = 2.into()),
                 "removed-checkpoint" => fixture::replace_yarn(
                     &root,
@@ -274,6 +289,31 @@ fn story_matrix_compatible_revisions_keep_old_saves_and_enforce_version_boundari
         );
         eprintln!(
             "PASS {name}/compatibility/writer-version: earlier Engine release diagnostics do not reject same-API save"
+        );
+        let mut rollback = weftora_yarn::save_context(&patched, &patched_compiled).unwrap();
+        rollback.story_version = "99.0.0".into();
+        rollback.writer_engine_release = "99.0.0".into();
+        let bytes = weftora_save::SavedGame::new(
+            &rollback,
+            weftora_save::Snapshot {
+                checkpoint: game.checkpoint().into(),
+                state: game.state().clone(),
+                visits: game.visits().clone(),
+            },
+        )
+        .unwrap()
+        .to_bytes()
+        .unwrap();
+        for file in ["save.json", "save.bak"] {
+            fs::write(saves.join(file), &bytes).unwrap();
+        }
+        let files = fixture::save_files(&saves);
+        let loaded = success(cli("run", &root, &flags));
+        assert_eq!(loaded.last().unwrap()["event"], "end");
+        assert_eq!(loaded.last().unwrap()["state"], expected);
+        assert_eq!(fixture::save_files(&saves), files);
+        eprintln!(
+            "PASS {name}/compatibility/release-rollback: higher Story/Engine release metadata with unchanged API/schema loads; save directory unchanged"
         );
     }
 }

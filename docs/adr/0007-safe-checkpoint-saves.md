@@ -33,7 +33,7 @@ Limits: 8 MiB encoded read/write, 4096 state entries, 512-byte state keys, 16 Ki
 
 Prefix state changes follow the normal notification boundary. Observers that affect checkpoint outcomes must operate on the candidate during validation; side effects must not escape before activation. Headless built-in presentation commands are validated once during priming, then their buffered trace is published without executing them twice.
 
-Unknown/removed saved keys, wrong scopes/types and incompatible schemas are refused. Story and writer version strings are diagnostics, not save-compatibility gates. New Persistent fields keep current defaults. No migration registry or Rhai host is introduced in this slice; incompatible schemas refuse explicitly. Failure preserves the live game and saved file; loading never silently starts a new game or falls back to a backup.
+Unknown/removed saved keys, wrong scopes/types and incompatible schemas are refused. Story and Engine release numbers remain diagnostic. Phase 6 adds a conservative forward-read guard: a newer saved `writerEngineApi` refuses on an older reader; a higher saved Story schema gets explicit downgrade recovery guidance. See [ADR 0002](./0002-versioning-compatibility.md#downgrade-policy-clarification-phase-6). New Persistent fields keep current defaults. No migration registry or Rhai host is introduced in this slice; incompatible schemas refuse explicitly. Failure preserves the live game and saved file; loading never silently starts a new game or falls back to a backup.
 
 ## Storage
 

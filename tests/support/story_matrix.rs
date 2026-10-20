@@ -2,11 +2,19 @@ use serde_json::{Value, json};
 use std::{fs, path::Path};
 
 pub const STORIES: [(&str, &str); 2] = [("story-a", "scene.menu"), ("life-sim", "day.home")];
-pub const SAVE_CASES: [(&str, &str); 6] = [
+pub const SAVE_CASES: [(&str, &str); 8] = [
     ("corrupt-save", "corrupt save"),
     ("save-format", "unsupported saveFormat 999"),
     ("cross-story", "save belongs to another Story"),
     ("save-schema", "no save migration from schema 1 to 2"),
+    (
+        "engine-api-downgrade",
+        "save was written by newer Engine API 0.1.1",
+    ),
+    (
+        "story-schema-downgrade",
+        "save schema downgrade from 2 to 1 is unsupported",
+    ),
     ("removed-checkpoint", "save checkpoint '"),
     ("script-runtime", "matrix runtime failure"),
 ];
@@ -147,4 +155,24 @@ pub fn compatible_patch(root: &Path, name: &str) {
         root.join("matrix.png"),
     )
     .unwrap();
+}
+
+/// Model newer writer contracts using a real Story checkpoint; no alternate Engine binary is claimed.
+pub fn downgrade_save(
+    mut context: weftora_save::Context,
+    point: weftora_save::Snapshot,
+    case: &str,
+) -> Vec<u8> {
+    match case {
+        "engine-api-downgrade" => context.writer_engine_api = "0.1.1".into(),
+        "story-schema-downgrade" => {
+            context.save_schema += 1;
+            context.story_version = "0.2.0".into();
+        }
+        _ => unreachable!(),
+    }
+    weftora_save::SavedGame::new(&context, point)
+        .unwrap()
+        .to_bytes()
+        .unwrap()
 }

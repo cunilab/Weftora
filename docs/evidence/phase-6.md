@@ -62,6 +62,18 @@ Source `88c49359411d3d03b53a0ff9b3fd74fc7d0cb6c7`, MacBookAir development host. 
 
 Native acceptance remains separate. Sol independently reviewed fingerprinting, identity parsing/timeout, refusal ordering and copied-player hash verification without editing or building; no actionable production defect was found. Claude Opus 5.5 medium supplied a tools-disabled design challenge; host-target scope, build configuration inputs, source filtering and protocol limits are documented explicitly.
 
+## Downgrade compatibility (P6-09 automated slice)
+
+[ADR 0002](../adr/0002-versioning-compatibility.md#downgrade-policy-clarification-phase-6) now distinguishes compatibility downgrades from compatible release rollbacks. The current reader refuses a valid save with a newer `writerEngineApi` by SemVer precedence, ignoring build metadata. A higher saved `saveSchema` has a dedicated refusal with Story-recovery guidance. Story/Engine release numbers alone still do not reject saves. The API guard is deliberately conservative: it does not claim that every newer-API payload would be structurally unreadable. Wire format 1 is unchanged.
+
+The default save suite covers patch/minor/major API differences, prereleases, ignored build metadata, unchanged files/live state and compatible release-number rollback. The existing schema-downgrade test now uses the actual Store load path and checks slot/backup preservation instead of skipping those assertions.
+
+A/B shared fixtures add newer writer API and newer Story schema rows to both the CLI and player-model failure matrices. Saves have valid checksums and real Story checkpoint snapshots; writer versions/contracts are modeled inputs, not historical executables. CLI failure publishes no stdout and preserves the whole save directory. Player-model F9 refusal preserves state identity/content, dialogue revision/screen, overlay, view/audio tokens and files after deliberately advancing the live game. Positive A/B fixtures load higher Story/Engine release metadata with equal API/schema and restore expected mechanics, without changing saves.
+
+The existing same-player proof now constructs checksummed future-API/schema saves and a compatible release-rollback control for both Stories, exercises the current CLI loader and retains logs/save fixtures in Windows life-sim artifacts. Source and whole save-directory hashes must remain unchanged; the positive control must finish with the expected state. Player-model tests establish renderer integration; CLI traces do not claim native player save loading.
+
+Validation results will be recorded after the full checks finish. Historical alternate binaries, release-profile reruns and native acceptance remain open.
+
 ## Remaining acceptance
 
 Headless execution and exported `--validate` do not establish a rendered window, native input, clean-machine operation, release-profile behavior or executable authenticity. Windows native starter preview is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5). P6-02 onward and the Phase 6 release gate remain open; see the [success criteria](../success-criteria.md#phase-6--windows-foundation-release).

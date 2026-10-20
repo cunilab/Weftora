@@ -93,7 +93,7 @@ fn deterministic_roundtrip_preserves_removal_resets_session_and_keeps_settings()
 }
 
 #[test]
-fn diagnostic_versions_do_not_reject_compatible_story_patches() {
+fn older_writer_api_and_release_numbers_allow_compatible_story_patches() {
     let mut ctx = context();
     let bytes = game(&ctx, true).to_bytes().unwrap();
     ctx.story_version = "0.2.0".into();
@@ -119,11 +119,20 @@ fn identity_schema_and_checkpoint_failures_leave_the_existing_file_and_live_stat
             "downgrade" => {
                 let mut newer = context();
                 newer.save_schema = 2;
-                let data = game(&newer, true).to_bytes().unwrap();
+                store.write(&game(&newer, true)).unwrap();
+                let files: Vec<_> = ["save.json", "save.bak"]
+                    .map(|name| fs::read(root.path().join(name)).unwrap())
+                    .into();
                 assert!(matches!(
-                    SavedGame::from_bytes(&data, &ctx),
-                    Err(Error::NoMigration { from: 2, to: 1 })
+                    store.load(&ctx),
+                    Err(Error::StoryDowngrade { from: 2, to: 1 })
                 ));
+                assert_eq!(
+                    files,
+                    ["save.json", "save.bak"].map(|name| fs::read(root.path().join(name)).unwrap())
+                );
+                assert_eq!(live, live_before);
+                store.write(&game(&ctx, true)).unwrap();
                 continue;
             }
             "checkpoint" => other.checkpoints = ["scene.other".into()].into(),
@@ -508,4 +517,66 @@ fn collection_saves_are_deterministic_preserve_types_bits_and_removal() {
         visits: BTreeMap::new(),
     };
     assert!(SavedGame::new(&ctx, invalid).is_err());
+}
+
+#[test]
+fn newer_engine_api_refuses_by_semver_precedence_and_preserves_files_and_live_state() {
+    for (writer, reader, accepts) in [
+        ("0.1.1", "0.1.0", false),
+        ("0.2.0", "0.1.0", false),
+        ("1.0.0", "0.1.0", false),
+        ("0.1.0", "0.1.1", true),
+        ("0.1.0+writer", "0.1.0+reader", true),
+        ("0.1.0-beta.2", "0.1.0-beta.1", false),
+        ("0.1.0-beta.1", "0.1.0-beta.2", true),
+        ("0.1.0", "0.1.0-rc.1", false),
+        ("0.1.0-rc.1", "0.1.0", true),
+    ] {
+        let root = tempfile::tempdir().unwrap();
+        let store = Store::new(root.path().into());
+        let mut producer = context();
+        producer.writer_engine_api = writer.into();
+        let game = game(&producer, true);
+        store.write(&game).unwrap();
+        store.write(&game).unwrap();
+        let before: Vec<_> = ["save.json", "save.bak"]
+            .map(|name| fs::read(root.path().join(name)).unwrap())
+            .into();
+        let mut consumer = context();
+        consumer.writer_engine_api = reader.into();
+        let live = template();
+        let old_live = live.clone();
+        if accepts {
+            assert!(store.load(&consumer).is_ok(), "{writer} -> {reader}");
+        } else {
+            let error = store.load(&consumer).unwrap_err();
+            assert!(matches!(error, Error::NewerEngineApi { .. }));
+            let message = error.to_string();
+            assert!(
+                message.contains(writer)
+                    && message.contains(reader)
+                    && message.contains("or newer")
+            );
+            assert!(game.prepare_state(&consumer, &template(), &live).is_err());
+        }
+        assert_eq!(live, old_live);
+        assert_eq!(
+            before,
+            ["save.json", "save.bak"].map(|name| fs::read(root.path().join(name)).unwrap())
+        );
+    }
+}
+
+#[test]
+fn compatible_release_number_rollbacks_do_not_reject_saves() {
+    let mut writer = context();
+    writer.story_version = "99.0.0".into();
+    writer.writer_engine_release = "99.0.0".into();
+    let game = game(&writer, true);
+    let reader = context();
+    assert!(SavedGame::from_bytes(&game.to_bytes().unwrap(), &reader).is_ok());
+    assert!(
+        game.prepare_state(&reader, &template(), &template())
+            .is_ok()
+    );
 }

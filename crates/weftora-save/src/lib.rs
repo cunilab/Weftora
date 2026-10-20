@@ -21,6 +21,14 @@ pub enum Error {
     UnsupportedFormat(u32),
     #[error("save belongs to another Story")]
     OtherStory,
+    #[error(
+        "save was written by newer Engine API {writer}; current reader is {reader}; use Engine API {writer} or newer to load it"
+    )]
+    NewerEngineApi { writer: String, reader: String },
+    #[error(
+        "save schema downgrade from {from} to {to} is unsupported; restore the Story revision with saveSchema {from} that wrote this save"
+    )]
+    StoryDowngrade { from: u32, to: u32 },
     #[error("no save migration from schema {from} to {to}")]
     NoMigration { from: u32, to: u32 },
     #[error("save checkpoint '{0}' is not available")]
@@ -51,7 +59,7 @@ pub enum Error {
 pub type Entries = BTreeMap<String, Option<Value>>;
 pub type Visits = BTreeMap<String, u32>;
 
-/// Current package identity, writer diagnostics and the artifact's declared checkpoint IDs.
+/// Current reader/writer API, package identity, release diagnostics and declared checkpoints.
 pub struct Context {
     pub story_id: String,
     pub story_version: String,
@@ -115,11 +123,11 @@ struct EnvelopeRef<'a> {
     body: &'a RawValue,
 }
 
-fn version(field: &str, value: &str) -> Result<(), Error> {
-    if value.len() > 64 || semver::Version::parse(value).is_err() {
+fn version(field: &str, value: &str) -> Result<semver::Version, Error> {
+    if value.len() > 64 {
         return Err(Error::Invalid(format!("invalid {field}")));
     }
-    Ok(())
+    semver::Version::parse(value).map_err(|_| Error::Invalid(format!("invalid {field}")))
 }
 
 impl Context {
@@ -241,12 +249,26 @@ impl SavedGame {
         &self.body.dialogue.visits
     }
 
-    /// Story/writer versions are diagnostic; schema and stable checkpoint IDs decide compatibility.
+    /// Release numbers are diagnostic; refuse newer writer APIs and unsupported save contracts.
     pub fn check(&self, context: &Context) -> Result<(), Error> {
         context.validate()?;
         self.validate()?;
         if self.body.story_id != context.story_id {
             return Err(Error::OtherStory);
+        }
+        let writer = version("writerEngineApi", &self.body.writer_engine_api)?;
+        let reader = version("writerEngineApi", &context.writer_engine_api)?;
+        if writer.cmp_precedence(&reader).is_gt() {
+            return Err(Error::NewerEngineApi {
+                writer: self.body.writer_engine_api.clone(),
+                reader: context.writer_engine_api.clone(),
+            });
+        }
+        if self.body.save_schema > context.save_schema {
+            return Err(Error::StoryDowngrade {
+                from: self.body.save_schema,
+                to: context.save_schema,
+            });
         }
         if self.body.save_schema != context.save_schema {
             return Err(Error::NoMigration {

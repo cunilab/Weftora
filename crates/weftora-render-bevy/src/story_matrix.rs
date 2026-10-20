@@ -147,6 +147,36 @@ fn story_matrix_compatible_patch_restores_old_checkpoint_with_new_text_image_and
         eprintln!(
             "PASS {name}/compatibility/player-patch: old noninitial checkpoint restores patched text, newly decoded image pixels, new-field default and once-only mechanics; files unchanged"
         );
+        let player = app.world().non_send::<Player>();
+        let mut context = weftora_yarn::save_context(&player.story, &player.compiled).unwrap();
+        context.story_version = "99.0.0".into();
+        context.writer_engine_release = "99.0.0".into();
+        let bytes = SavedGame::new(&context, player.presenter.source().save_point().unwrap())
+            .unwrap()
+            .to_bytes()
+            .unwrap();
+        for file in ["save.json", "save.bak"] {
+            fs::write(data.join(file), &bytes).unwrap();
+        }
+        let files = fixture::save_files(&data);
+        let old_live = player.state.clone();
+        set(&app, "matrix_probe", Value::Int(77));
+        request(&mut app, UiAction::Load);
+        let player = app.world().non_send::<Player>();
+        assert_eq!(player.save_status, "Loaded.");
+        assert!(!Arc::ptr_eq(&old_live, &player.state));
+        assert_eq!(
+            player
+                .state
+                .read()
+                .unwrap()
+                .snapshot(weftora_core::Scope::Persistent),
+            expected
+        );
+        assert_eq!(fixture::save_files(&data), files);
+        eprintln!(
+            "PASS {name}/compatibility/player-release-rollback: higher Story/Engine release metadata with unchanged API/schema restores actual checkpoint; files unchanged"
+        );
     }
 }
 
@@ -215,6 +245,13 @@ fn story_matrix_failed_loads_preserve_live_state_dialogue_ui_audio_and_files() {
                         SavedGame::new(&context, player.presenter.source().save_point().unwrap())
                             .unwrap();
                     fs::write(&slot, game.to_bytes().unwrap()).unwrap();
+                }
+                "engine-api-downgrade" | "story-schema-downgrade" => {
+                    let player = app.world().non_send::<Player>();
+                    let context =
+                        weftora_yarn::save_context(&player.story, &player.compiled).unwrap();
+                    let point = player.presenter.source().save_point().unwrap();
+                    fs::write(&slot, fixture::downgrade_save(context, point, case)).unwrap();
                 }
                 "save-schema" => fixture::manifest(&root, |m| m["saveSchema"] = 2.into()),
                 "removed-checkpoint" => fixture::replace_yarn(
