@@ -37,6 +37,7 @@ docs/       architecture, decisions, criteria
 
 - [Product requirements](./PRD.md): what Weftora must do and what it won't do.
 - [Roadmap](./ROADMAP.md): phases, starting with a playable skeleton.
+- [Release workflow](./docs/releasing.md): trunk-based development, version tags and GitHub Releases.
 - [Architecture](./docs/architecture.md): crates, boundaries and the Story package format.
 - [Success criteria](./docs/success-criteria.md): pass/fail checks for each phase.
 - [Decisions (ADRs)](./docs/adr/): why Rust, how versioning works, and the rules language.

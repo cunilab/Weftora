@@ -88,7 +88,13 @@ Source `f2f33ccb202e05dbd1d688caa432bab9e023e3cc`, MacBookAir development host. 
 
 Astra advised the explicit compatibility-domain policy; Sol independently reviewed save checks, SemVer behavior and A/B state/file preservation. Proof review caught a missing checksum domain prefix; the fixture encoder was corrected to hash `weftora-save-format-1` plus a NUL byte and the exact UTF-8 body before accepting results. Specific refusal diagnostics and the successful compatible control prevent corrupt data from counting as downgrade evidence.
 
-[Source CI](https://github.com/cunilab/Weftora/actions/runs/39398030840) has passed required Windows Rust tests/matrices and the upgraded starter/A/B packaged proofs; final Engine-independence/job completion was still pending when recorded. The current compatibility table/automated fixture checklist is complete. Release-profile reruns (P6-03), native integration (P6-04) and historical-binary guarantees are separate; none is inferred from modeled version metadata.
+[Source CI](https://github.com/cunilab/Weftora/actions/runs/39398030840) subsequently passed all jobs, including required Windows Rust matrices, the upgraded starter/A/B packaged proofs and Engine independence. The current compatibility table/automated fixture checklist is complete. Release-profile reruns (P6-03), native integration (P6-04) and historical-binary guarantees are separate; none is inferred from modeled version metadata.
+
+## Folder packaging and release workflow (P6-05 decision)
+
+[ADR 0013](../adr/0013-folder-release-packages.md) records folders as the runtime container. No Engine archive reader is introduced. ZIP transport for GitHub assets has explicit path/link/bounds and extracted-inventory requirements; its packager and rejection tests remain pending. The P6-05 decision checkbox records this format choice, not a working transport packager or a release acceptance result.
+
+The [release guide](../releasing.md) follows the maintainer's chosen trunk-based flow: reviewed changes into `main`, an exact verified commit, annotated version tag, draft GitHub Release and approved promotion of tested bytes. Current CI has no tag-driven release pipeline. This documentation-only change does not build, tag or publish a release and does not rerun the historical Rust suite. Header/link and diff checks validate the docs; P6-03/release automation and native acceptance remain open.
 
 ## Remaining acceptance
 

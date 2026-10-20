@@ -258,7 +258,7 @@ Passing compilation never proves author-visible behaviour; the [success criteria
 
 1. ~~Authoring file format~~ — decided: JSONC ([ADR 0004](./adr/0004-story-authoring-format.md)).
 2. **UI implementation.** The Bevy UI choice is recorded in [ADR 0005](./adr/0005-declarative-ui-renderer.md); widget/binding/focus behavior still needs Phase 2 Windows evidence.
-3. **Release package container.** Folder vs. archive (Phase 6).
+3. ~~Release package container~~ — folder runtime packages ([ADR 0013](./adr/0013-folder-release-packages.md)); transport ZIP verification and release automation remain in the [release checklist](./releasing.md#release-checklist).
 4. **Yarn ↔ state mapping details**, including list/map values (Phases 2 and 4).
 5. **Licence**, after the dependency licence audit (Phase 6).
 6. **Exact dependency versions.** Phase 0 builds against Bevy 0.20.0 and `yarnspinner` 0.9.0 (crates.io, October 2026; `yarnspinner` has Bevy off by default). They are confirmed or replaced by the Phase 0 spikes and pinned in Phase 2 (P2-07).
