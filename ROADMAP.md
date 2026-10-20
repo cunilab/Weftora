@@ -113,9 +113,9 @@ Goal: a stranger can make and ship a game on Windows.
 
 **Status:** implementation may advance; release acceptance is open. The starter CLI is implemented; automated workflow results are tracked in [Phase 6 evidence](./docs/evidence/phase-6.md). Existing check/run/export and debug-package proofs do not satisfy clean-machine, release-profile or tool-identity requirements by themselves.
 
-- [x] `weftora new | check | run | export` implemented with actionable errors and non-zero exit codes. [P6-01 CLI integration and starter proof](./docs/evidence/phase-6.md) pass on macOS; required Windows CI is pending. Native preview and the independent clean-machine walkthrough remain queued in issue #5.
+- [x] `weftora new | check | run | export` implemented with actionable errors and non-zero exit codes. [P6-01 CLI integration and starter proof](./docs/evidence/phase-6.md) pass on macOS and [required Windows CI](https://github.com/cunilab/Weftora/actions/runs/39370423376). Native preview and the independent clean-machine walkthrough remain queued in issue #5.
 - [ ] Decide the release package container (folder or archive). If archive: traversal and decompression-bomb protection and fixtures.
-- [ ] Export: prebuilt player + validated Story + compiled dialogue + release metadata (player SHA-256, CLI/compiler identity, content hashes).
+- [ ] Export: prebuilt player + validated Story + compiled dialogue + release metadata (player SHA-256, CLI/compiler identity, content hashes). Host-target tool identity checks and copied-player hash verification are implemented; [P6-02 automated evidence](./docs/evidence/phase-6.md#export-tool-identity-p6-02-automated-slice) is separate from pending clean-Windows-VM and release-build acceptance.
 - [ ] Debug tools: state inspector, command runner, signal and event trace, start any Yarn node.
 - [ ] Localisation pipeline.
 - [ ] Licence, dependency licence and advisory audit.

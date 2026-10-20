@@ -23,5 +23,8 @@ thiserror.workspace = true
 # Only for the `HashMap` type that yarnspinner's `VariableStorage` trait names; keep in step with yarnspinner.
 bevy_platform = { version = "0.19", default-features = false, features = ["alloc"] }
 
+[build-dependencies]
+sha2 = "0.10"
+
 [lints]
 workspace = true

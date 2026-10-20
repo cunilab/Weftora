@@ -48,6 +48,8 @@ Start with `weftora new my-story`, then `weftora check my-story` and `weftora ru
 
 `weftora check <story-dir>` compiles sources and validates the artifact. Use `weftora run <story-dir>` for previews: it compiles into a temporary folder, launches the player, and removes the artifact after the player exits. Editing dialogue still needs no player rebuild.
 
+`weftora export` requires a CLI/player pair from the same build; `--tool-identity` reports their source/configuration and compiler contract. Export refuses mismatches before creating output.
+
 `weftora export <story-dir> --out <empty-dir>` writes `story/`, `compiled/dialogue.json`, the player and `weftora-export.json`. The player loads the artifact without a compiler. Run an exported player without arguments; for validation without a window, use `weftora-player <export-dir>/story --validate`. A direct source-folder launch requires `--dialogue <artifact>`; otherwise use the CLI preview. Modified exported Yarn sources are rejected as stale until exported again.
 
 ## Checkpoint saves (Phase 3)

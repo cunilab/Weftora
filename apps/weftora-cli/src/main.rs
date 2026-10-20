@@ -2,6 +2,7 @@
 
 mod headless;
 mod scaffold;
+mod tool_identity;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -20,6 +21,7 @@ const EXPORT_FORMAT: u32 = 1;
 
 const USAGE: &str = "usage:
   weftora --version
+  weftora --tool-identity
   weftora new <story-dir>
   weftora check <story-dir>
   weftora run <story-dir>
@@ -35,6 +37,14 @@ fn main() -> ExitCode {
         .as_slice()
     {
         ["--version"] | ["-V"] => version(),
+        ["--tool-identity"] => {
+            println!(
+                "{}",
+                serde_json::to_string(&weftora_yarn::ToolIdentity::current("weftora"))
+                    .expect("tool identity serializes")
+            );
+            Ok(ExitCode::SUCCESS)
+        }
         ["new", dir] if !dir.starts_with('-') => scaffold::create(Path::new(dir)),
         ["check", dir] => check_command(Path::new(dir)),
         ["run", dir] => run_command(Path::new(dir)),
@@ -226,6 +236,8 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
         }
         Err(e) => return Err(io_err("reading output directory", e)),
     };
+    let player_hash = sha256_file(&player).map_err(|e| io_err("hashing player", e))?;
+    let player_identity = tool_identity::verify_player(&player)?;
     let mut missing_directories = Vec::new();
     if !out_preexisted {
         let mut missing = out;
@@ -252,7 +264,15 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
             }
         }
         let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
-        fs::copy(&player, out.join(&player_name)).map_err(|e| io_err("copying player", e))?;
+        let copied_player = out.join(&player_name);
+        fs::copy(&player, &copied_player).map_err(|e| io_err("copying player", e))?;
+        if sha256_file(&copied_player).map_err(|e| io_err("hashing copied player", e))?
+            != player_hash
+        {
+            return Err(Failure::one(
+                "error: player changed during export; install matching tools and retry",
+            ));
+        }
 
         let story_out = out.join("story");
         let mut copied = BTreeMap::new();
@@ -288,11 +308,13 @@ fn export_command(dir: &Path, out: &Path) -> CliResult {
             "exportFormat": EXPORT_FORMAT,
             "cli": {
                 "version": VERSION,
+                "identity": weftora_yarn::ToolIdentity::current("weftora"),
                 "sha256": sha256_file(&exe).map_err(|e| io_err("hashing weftora", e))?,
             },
             "player": {
                 "file": player_name,
-                "sha256": sha256_file(&player).map_err(|e| io_err("hashing player", e))?,
+                "identity": player_identity,
+                "sha256": player_hash,
             },
             "story": { "id": manifest.id, "storyVersion": manifest.story_version },
             "dialogue": {

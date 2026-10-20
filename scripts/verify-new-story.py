@@ -51,6 +51,10 @@ def main():
         require(result.returncode == 0, result.stderr or result.stdout or f"failed: {command}")
         return result.stdout
 
+    cli_identity = json.loads(run(cli, "--tool-identity"))
+    player_identity = json.loads(run(player, "--tool-identity"))
+    expected = dict(cli_identity, tool="weftora-player")
+    require(player_identity == expected, "CLI/player identities differ")
     story = output / "New Story ü"
     (output / "new.log").write_text(run(cli, "new", story), encoding="utf-8")
     before = inventory(story)
@@ -70,6 +74,11 @@ def main():
     (output / "existing-project.log").write_text(refused.stderr, encoding="utf-8")
     game = output / "game"
     (output / "export.log").write_text(run(cli, "export", story, "--out", game), encoding="utf-8")
+    metadata = json.loads((game / "weftora-export.json").read_text(encoding="utf-8"))
+    require(metadata["cli"]["identity"] == cli_identity and metadata["player"]["identity"] == player_identity,
+            "export identity metadata mismatch")
+    require(metadata["cli"]["sha256"] == cli_hash and metadata["player"]["sha256"] == player_hash,
+            "export tool hash metadata mismatch")
     executable = game / ("weftora-player.exe" if os.name == "nt" else "weftora-player")
     require(digest(executable) == player_hash, "export changed the player")
     (output / "validate.log").write_text(run(executable, game / "story", "--validate"), encoding="utf-8")
@@ -78,7 +87,7 @@ def main():
     shutil.copy2(cli, output / cli.name)
     require(digest(output / cli.name) == cli_hash, "retained CLI changed")
     report = {"check":"P6-01 automated starter workflow", "platform":platform.platform(),
-              "cliSha256":cli_hash, "playerSha256":player_hash, "generatedFiles":before,
+              "cliSha256":cli_hash, "playerSha256":player_hash, "cliIdentity":cli_identity, "playerIdentity":player_identity, "generatedFiles":before,
               "branches":branches, "existingProjectRefusedWithoutWrites":True,
               "sourceUnchanged":True, "exportedStoryMatchesSource":True, "standaloneValidationPassed":True,
               "scope":"Existing debug tools; no Rust build during the proof. Export plumbing and preactivation validation, not native preview or clean-machine/release/tool-identity acceptance."}

@@ -11,6 +11,14 @@ use weftora_story::Story;
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     match args.as_slice() {
+        [flag] if flag == "--tool-identity" => {
+            println!(
+                "{}",
+                serde_json::to_string(&weftora_yarn::ToolIdentity::current("weftora-player"))
+                    .expect("tool identity serializes")
+            );
+            ExitCode::SUCCESS
+        }
         [flag] if flag == "--version" => match version_line() {
             Ok(line) => {
                 println!("{line}");
@@ -32,7 +40,7 @@ fn main() -> ExitCode {
         }
         _ => {
             eprintln!(
-                "usage: weftora-player [--version | <story-dir> [--dialogue <artifact>] [--validate]]"
+                "usage: weftora-player [--version | --tool-identity | <story-dir> [--dialogue <artifact>] [--validate]]"
             );
             ExitCode::from(2)
         }

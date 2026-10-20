@@ -1,3 +1,5 @@
+mod support;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -127,8 +129,7 @@ fn export_skips_unreferenced_hidden_content_and_keeps_references() {
     fs::write(story.join(".notes"), "private notes").unwrap();
     fs::create_dir(story.join(".cache")).unwrap();
     fs::write(story.join(".cache/file"), "cached content").unwrap();
-    let player = tmp.path().join("fake-player");
-    fs::write(&player, "player").unwrap();
+    let player = support::player(tmp.path());
     let export = tmp.path().join("export");
     let out = weftora()
         .env("WEFTORA_PLAYER", &player)
@@ -325,8 +326,7 @@ fn export_refuses_symlinked_output_without_touching_target() {
 #[test]
 fn export_copies_player_and_story() {
     let tmp = tempfile::tempdir().unwrap();
-    let fake_player = tmp.path().join("fake-player");
-    fs::write(&fake_player, b"not a real player").unwrap();
+    let fake_player = support::player(tmp.path());
     let out_dir = tmp.path().join("missing/nested/export");
 
     let out = weftora()
@@ -342,7 +342,7 @@ fn export_copies_player_and_story() {
     let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
     assert_eq!(
         fs::read(out_dir.join(player_name)).unwrap(),
-        b"not a real player"
+        fs::read(&fake_player).unwrap()
     );
     assert!(out_dir.join("story/manifest.jsonc").is_file());
     assert!(out_dir.join("story/dialogue/intro.yarn").is_file());
@@ -351,6 +351,14 @@ fn export_copies_player_and_story() {
     let report: serde_json::Value =
         serde_json::from_slice(&fs::read(out_dir.join("weftora-export.json")).unwrap()).unwrap();
     assert_eq!(report["exportFormat"], 1);
+    assert_eq!(
+        report["player"]["identity"],
+        serde_json::to_value(weftora_yarn::ToolIdentity::current("weftora-player")).unwrap()
+    );
+    assert_eq!(
+        report["cli"]["identity"],
+        serde_json::to_value(weftora_yarn::ToolIdentity::current("weftora")).unwrap()
+    );
     let artifact = out_dir.join(weftora_yarn::ARTIFACT_FILE);
     let bytes = fs::read(&artifact).unwrap();
     let mut compiled = weftora_yarn::CompiledDialogue::from_artifact_bytes(&bytes).unwrap();
@@ -799,8 +807,7 @@ fn media_demo_replays_identically_and_exported_artifact_validates() {
         }
     }
     let tmp = tempfile::tempdir().unwrap();
-    let player = tmp.path().join("player");
-    fs::write(&player, b"export fixture only").unwrap();
+    let player = support::player(tmp.path());
     let export = tmp.path().join("export");
     let output = weftora()
         .env("WEFTORA_PLAYER", player)

@@ -1,3 +1,5 @@
+mod support;
+
 use serde_json::Value;
 use std::{
     fs,
@@ -52,8 +54,7 @@ fn new_story_checks_runs_both_branches_and_exports_without_example_dependencies(
         assert_eq!(trace.last().unwrap()["state"]["ready"], ready);
     }
     // Export plumbing only; the real-player validator runs in the generated-Story proof.
-    let player = temp.path().join("fake-player");
-    fs::write(&player, b"export fixture").unwrap();
+    let player = support::player(temp.path());
     let exported = temp.path().join("game");
     success(
         cli()

@@ -18,6 +18,8 @@ use yarnspinner_core::prelude::{Program, YarnValue};
 use yarnspinner_runtime::prelude::{Dialogue, OptionId, StringTableTextProvider};
 
 mod artifact;
+mod tool_identity;
+pub use tool_identity::ToolIdentity;
 mod checkpoint;
 mod queries;
 #[doc(hidden)]

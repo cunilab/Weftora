@@ -46,6 +46,38 @@ def main():
         require(result.returncode == 0, result.stderr or result.stdout or f"failed: {command}")
         return result.stdout
 
+    cli_identity = json.loads(run(cli, "--tool-identity"))
+    player_identity = json.loads(run(player, "--tool-identity"))
+    require(player_identity == dict(cli_identity, tool="weftora-player"), "CLI/player identity mismatch")
+
+    def verify_metadata(destination):
+        metadata = json.loads((destination / "weftora-export.json").read_text(encoding="utf-8"))
+        require(metadata["cli"]["identity"] == cli_identity and metadata["player"]["identity"] == player_identity,
+                "export identity metadata mismatch")
+        require(metadata["cli"]["sha256"] == cli_hash and metadata["player"]["sha256"] == player_hash,
+                "export tool hash metadata mismatch")
+
+    wrong_tools = []
+    for name, source in [("story-a", repository / "examples/story-a"), ("story-b", repository / "examples/life-sim")]:
+        def inventory():
+            return {p.relative_to(source).as_posix(): None if p.is_dir() else digest(p) for p in sorted(source.rglob("*"))}
+        before = inventory()
+        for existing in [False, True]:
+            destination = output / f"{name}-wrong-tool-{existing}"
+            if existing:
+                destination.mkdir()
+            result = subprocess.run([str(cli), "export", str(source), "--out", str(destination)],
+                                    env=dict(environment, WEFTORA_PLAYER=str(cli)), capture_output=True,
+                                    encoding="utf-8", timeout=30)
+            require(result.returncode == 1 and not result.stdout and "mismatched CLI/compiler/player" in result.stderr,
+                    f"{name}: wrong executable role was not refused")
+            require((destination.is_dir() and not any(destination.iterdir())) if existing else not destination.exists(),
+                    "wrong-tool refusal changed output")
+            require(inventory() == before, "wrong-tool refusal changed source")
+            (output / f"{name}-wrong-tool-{existing}.log").write_text(result.stderr, encoding="utf-8")
+            wrong_tools.append({"story":name, "existingEmptyOutput":existing, "exitCode":1, "stdoutEmpty":True,
+                                "sourceAndOutputUnchanged":True, "actualTool":"weftora", "expectedTool":"weftora-player"})
+
     work = output / "working-edit-pay"
     shutil.copytree(repository / "examples" / "life-sim", work)
     records = []
@@ -62,6 +94,7 @@ def main():
             path.write_text(manifest.replace('"saveSchema": 1,', '"saveSchema": 2,'), encoding="utf-8")
         destination = output / name
         run(cli, "export", source, "--out", destination)
+        verify_metadata(destination)
         run(destination / executable, destination / "story", "--validate")
         require(digest(destination / executable) == player_hash == digest(player), "player changed during exports")
         # One retained player validates all three packages; gameplay runs in the shared headless runner.
@@ -138,6 +171,7 @@ def main():
             shutil.copy2(revision / "assets/day.png", revision / "assets/night.png")
         destination = output / ("compatible-" + name)
         run(cli, "export", revision, "--out", destination)
+        verify_metadata(destination)
         if asset_changed:
             require(digest(destination / "story/assets/night.png") == digest(revision / "assets/day.png"),
                     "export did not include edited image bytes")
@@ -179,6 +213,7 @@ def main():
     shutil.copy2(repository / "examples" / "life-sim" / "README.md", output / "README.md")
     report = {"checks": ["P5-01", "P5-02 automated package/headless coverage", "P5-05 cross-Story and compatible revisions"],
               "platform": platform.platform(), "cliSha256": digest(cli), "playerSha256": player_hash,
+              "cliIdentity":cli_identity, "playerIdentity":player_identity, "wrongToolRefusals":wrong_tools,
               "variants": records, "saveRefusals": refusals, "compatibleRevisions":compatible, "futureDialogueFormatRefusals":future_formats,
               "scope": "Package validation and shared-runner completion; no Rust build between exports. Native player completion pending issue #5. Phase 5 gate not claimed."}
     (output / "same-player-proof.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")

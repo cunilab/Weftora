@@ -6052,6 +6052,7 @@ dependencies = [
 name = "weftora-player"
 version = "0.0.1"
 dependencies = [
+ "serde_json",
  "sha2",
  "tempfile",
  "weftora-api",
