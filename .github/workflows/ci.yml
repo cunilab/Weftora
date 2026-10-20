@@ -25,7 +25,7 @@ jobs:
       - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - run: cargo clippy --workspace --all-targets --locked --features weftora-cli/story-tests,weftora-render-bevy/story-tests -- -D warnings
       - run: cargo test-all
-      - name: Record Story A/B failure matrix
+      - name: Record Story A/B negative and compatibility matrices
         shell: pwsh
         run: |
           cargo test --locked -p weftora-cli --features story-tests --test story_matrix -- --nocapture 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "story-matrix-cli.log")

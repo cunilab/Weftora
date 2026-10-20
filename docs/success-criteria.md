@@ -100,6 +100,8 @@ P0-10 is explicitly deferred at the maintainer's request on 2026-10-14: retain t
 | P5-04 | Negative matrix across both Stories: invalid packages, missing IDs, script errors, incompatible schemas or versions; no partial activation | Fixture matrix with unchanged prior state |
 | P5-05 | A Story A save is rejected by Story B; the version rows of ADR 0002 hold for both Stories | Cross-Story and version fixtures |
 
+For P5-05, ADR 0002's Phase column defines when each row is due: fixtures introduced through Phase 5 run against both Stories here; Phase 6 rows remain foundation-release checks. P5-02 native player completion remains separate.
+
 ## Phase 6 — Windows foundation release
 
 | ID | Check | Evidence |

@@ -6,6 +6,151 @@ mod fixture {
 }
 
 #[test]
+fn story_matrix_compatible_patch_restores_old_checkpoint_with_new_text_image_and_defaults() {
+    use std::fs;
+    use weftora_story::ui::UiAction;
+    for (name, checkpoint) in fixture::COMPAT_STORIES {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        let data = temp.path().join("data");
+        fixture::copy_story(name, &root);
+        fixture::compatible_base(&root, name);
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story.clone(), compiled.clone());
+        app.world_mut().non_send_mut::<Player>().save_store = Some(Ok(Store::new(data.clone())));
+        app.world_mut().resource_mut::<Ui>().reset(&story);
+        app.update();
+        for _ in 0..40 {
+            let player = app.world().non_send::<Player>();
+            if player
+                .presenter
+                .source()
+                .save_point()
+                .is_ok_and(|point| point.checkpoint == checkpoint)
+            {
+                break;
+            }
+            match player.presenter.screen() {
+                Screen::Line { .. } => request(&mut app, UiAction::Advance),
+                Screen::Choices(_) => {
+                    app.world_mut()
+                        .resource_mut::<Intents>()
+                        .push(Intent::Select {
+                            layer: None,
+                            position: 0,
+                        });
+                    app.update();
+                }
+                other => panic!("did not reach {checkpoint}: {other:?}"),
+            }
+        }
+        assert_eq!(
+            app.world()
+                .non_send::<Player>()
+                .presenter
+                .source()
+                .save_point()
+                .unwrap()
+                .checkpoint,
+            checkpoint
+        );
+        app.world_mut().resource_mut::<Presentation>().now += Duration::from_secs(2);
+        app.update();
+        for _ in 0..2 {
+            request(&mut app, UiAction::Save);
+            assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
+        }
+        let mut expected = app
+            .world()
+            .non_send::<Player>()
+            .state
+            .read()
+            .unwrap()
+            .snapshot(weftora_core::Scope::Persistent);
+        let old_pixels = crate::decode_image(
+            "matrix.image",
+            "png",
+            &fs::read(root.join("matrix.png")).unwrap(),
+        )
+        .unwrap()
+        .data;
+        let files = fixture::save_files(&data);
+        drop(app);
+        fixture::compatible_patch(&root, name);
+        let revised = weftora_story::Story::load(&root).unwrap();
+        assert_eq!(revised.manifest().save_schema, story.manifest().save_schema);
+        assert_eq!(revised.manifest().story_version, "0.1.1");
+        let new_compiled =
+            weftora_yarn_compiler::compile(&revised.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&revised, &new_compiled).is_empty());
+        assert_eq!(new_compiled.checkpoints(), compiled.checkpoints());
+        let new_pixels = crate::decode_image(
+            "matrix.image",
+            "png",
+            &fs::read(root.join("matrix.png")).unwrap(),
+        )
+        .unwrap()
+        .data;
+        assert_ne!(new_pixels, old_pixels);
+        // A fresh session has no old-revision media cache; runtime hot reload is not the contract.
+        let mut app = crate::tests::app_for(revised.clone(), new_compiled);
+        app.world_mut().non_send_mut::<Player>().save_store = Some(Ok(Store::new(data.clone())));
+        app.world_mut().resource_mut::<Ui>().reset(&revised);
+        app.update();
+        set(&app, "matrix_probe", Value::Int(77));
+        let old_state = app.world().non_send::<Player>().state.clone();
+        let images_before: Vec<_> = app
+            .world()
+            .resource::<Assets<Image>>()
+            .iter()
+            .map(|(id, _)| id)
+            .collect();
+        request(&mut app, UiAction::Load);
+        assert_eq!(app.world().non_send::<Player>().save_status, "Loaded.");
+        app.world_mut().resource_mut::<Presentation>().now += Duration::from_secs(2);
+        app.update();
+        let player = app.world().non_send::<Player>();
+        assert!(!Arc::ptr_eq(&old_state, &player.state));
+        expected.insert("matrix_added".into(), Value::Int(23));
+        assert_eq!(
+            player
+                .state
+                .read()
+                .unwrap()
+                .snapshot(weftora_core::Scope::Persistent),
+            expected
+        );
+        assert_eq!(
+            player.presenter.source().save_point().unwrap().checkpoint,
+            checkpoint
+        );
+        assert!(
+            matches!(player.presenter.screen(), Screen::Line {text,..} if text.contains("Compatibility patch is active."))
+        );
+        let media = app.world().resource::<Presentation>();
+        assert!(
+            media
+                .views
+                .samples(media.now)
+                .iter()
+                .any(|view| view.asset == "matrix.image")
+        );
+        assert!(
+            app.world()
+                .resource::<Assets<Image>>()
+                .iter()
+                .any(|(id, image)| !images_before.contains(&id) && image.data == new_pixels)
+        );
+        assert_eq!(fixture::save_files(&data), files);
+        eprintln!(
+            "PASS {name}/compatibility/player-patch: old noninitial checkpoint restores patched text, newly decoded image pixels, new-field default and once-only mechanics; files unchanged"
+        );
+    }
+}
+
+#[test]
 fn story_matrix_failed_loads_preserve_live_state_dialogue_ui_audio_and_files() {
     use std::fs;
     use weftora_story::ui::UiAction;

@@ -22,11 +22,13 @@ CLI_TESTS = (
     "loaded_days_can_take_an_alternate_branch_and_skip_work",
     "pay_edit_with_schema_bump_refuses_old_save_and_preserves_both_files",
     "story_matrix_rejects_invalid_packages_and_loads_without_publishing_or_replacing_files",
+    "story_matrix_compatible_revisions_keep_old_saves_and_enforce_version_boundaries",
 )
 RENDER_TESTS = (
     "saves::tests::story_a_every_checkpoint_reconstructs_the_same_settled_view_audio_and_state",
     "saves::tests::life_sim_checkpoints_restore_the_day_without_repeating_costs_or_pay",
     "saves::tests::story_matrix::story_matrix_failed_loads_preserve_live_state_dialogue_ui_audio_and_files",
+    "saves::tests::story_matrix::story_matrix_compatible_patch_restores_old_checkpoint_with_new_text_image_and_defaults",
 )
 
 

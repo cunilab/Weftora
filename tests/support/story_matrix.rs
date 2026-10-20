@@ -93,3 +93,58 @@ pub fn script(root: &Path, checkpoint: &str, syntax_error: bool) {
     let tag = format!("<<checkpoint {checkpoint}>>");
     replace_yarn(root, &tag, &format!("{tag}\n<<matrix_fail>>"));
 }
+
+pub const COMPAT_STORIES: [(&str, &str); 2] =
+    [("story-a", "scene.repair"), ("life-sim", "day.shift")];
+
+pub fn compatible_base(root: &Path, name: &str) {
+    manifest(root, |m| {
+        let caps = m["requires"]["capabilities"].as_array_mut().unwrap();
+        if !caps.contains(&json!("presentation.media/1")) {
+            caps.push(json!("presentation.media/1"));
+        }
+        m["assets"]["matrix.image"] = "matrix.png".into();
+    });
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/presentation-demo/assets/day.png"),
+        root.join("matrix.png"),
+    )
+    .unwrap();
+    if name == "story-a" {
+        replace_yarn(
+            root,
+            "<<background bg.night>>\n<<show left actor.alice 500>>\n<<show right actor.bob 500>>",
+            "<<background matrix.image>>\n<<show left actor.alice 500>>\n<<show right actor.bob 500>>",
+        );
+    } else {
+        replace_yarn(
+            root,
+            "<<checkpoint day.shift>>\n<<work_shift>>",
+            "<<checkpoint day.shift>>\n<<background matrix.image>>\n<<work_shift>>",
+        );
+    }
+}
+
+pub fn compatible_patch(root: &Path, name: &str) {
+    manifest(root, |m| {
+        m["storyVersion"] = "0.1.1".into();
+        m["state"]["matrix_added"] = json!({"default":23});
+    });
+    let before = if name == "story-a" {
+        "Hold these two wires together. I will tell you when to let go."
+    } else {
+        "{$status} Earned {$earned} coins."
+    };
+    replace_yarn(
+        root,
+        before,
+        &format!("Compatibility patch is active. {before}"),
+    );
+    fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR"))
+            .join("../../examples/presentation-demo/assets/night.png"),
+        root.join("matrix.png"),
+    )
+    .unwrap();
+}

@@ -150,6 +150,134 @@ fn story_matrix_rejects_invalid_packages_and_loads_without_publishing_or_replaci
     }
 }
 
+#[test]
+fn story_matrix_compatible_revisions_keep_old_saves_and_enforce_version_boundaries() {
+    use weftora_story::compatibility::{self, CAPABILITIES};
+    for (name, checkpoint) in fixture::COMPAT_STORIES {
+        let temp = tempfile::tempdir().unwrap();
+        let root = temp.path().join("story");
+        let saves = temp.path().join("data");
+        fixture::copy_story(name, &root);
+        fixture::compatible_base(&root, name);
+        let story = weftora_story::Story::load(&root).unwrap();
+        let requirements = story.manifest().requires.as_ref().unwrap();
+        for api in ["0.1.0", "0.1.1"] {
+            compatibility::check(requirements, api, CAPABILITIES).unwrap();
+        }
+        for api in ["0.2.0", "0.1.1-beta.1"] {
+            let errors = compatibility::check(requirements, api, CAPABILITIES)
+                .unwrap_err()
+                .join("\n");
+            assert!(errors.contains(api) && errors.contains(&requirements.engine_api));
+            assert!(errors.contains("prerelease comparator"));
+        }
+        let mut prerelease = requirements.clone();
+        prerelease.engine_api = ">=0.1.1-beta.1 <0.2.0".into();
+        compatibility::check(&prerelease, "0.1.1-beta.2", CAPABILITIES).unwrap();
+        eprintln!(
+            "PASS {name}/compatibility/api-policy: unchanged requirements accept compatible API; outside range and unnamed prerelease refuse"
+        );
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        let bytes = compiled.to_artifact_bytes().unwrap();
+        assert!(weftora_yarn::CompiledDialogue::from_artifact_bytes(&bytes).is_ok());
+        let mut artifact: Value = serde_json::from_slice(&bytes).unwrap();
+        artifact["dialogueArtifactFormat"] = 999.into();
+        let error = match weftora_yarn::CompiledDialogue::from_artifact_bytes(
+            artifact.to_string().as_bytes(),
+        ) {
+            Ok(_) => panic!("future dialogue format accepted"),
+            Err(error) => error,
+        };
+        assert!(
+            error.contains("unsupported dialogueArtifactFormat 999"),
+            "{error}"
+        );
+        eprintln!(
+            "PASS {name}/compatibility/dialogue-format: valid artifact accepts; future format refuses specifically"
+        );
+        let full_choices = if name == "story-a" { "0,0" } else { "0,0,0,0" };
+        let baseline = success(cli(
+            "run",
+            &root,
+            &["--headless", "--choices", full_choices],
+        ));
+        for _ in 0..2 {
+            success(cli(
+                "run",
+                &root,
+                &[
+                    "--headless",
+                    "--choices",
+                    "0,0",
+                    "--save-at",
+                    checkpoint,
+                    "--save-dir",
+                    saves.to_str().unwrap(),
+                ],
+            ));
+        }
+        let slot = saves.join("save.json");
+        let mut context = weftora_yarn::save_context(&story, &compiled).unwrap();
+        let game =
+            weftora_save::SavedGame::from_bytes(&fs::read(&slot).unwrap(), &context).unwrap();
+        // Model an earlier Engine patch with the same API, without pretending to run another binary.
+        context.writer_engine_release = "0.0.0".into();
+        let snapshot = weftora_save::Snapshot {
+            checkpoint: game.checkpoint().into(),
+            state: game.state().clone(),
+            visits: game.visits().clone(),
+        };
+        let older = weftora_save::SavedGame::new(&context, snapshot)
+            .unwrap()
+            .to_bytes()
+            .unwrap();
+        for file in ["save.json", "save.bak"] {
+            fs::write(saves.join(file), &older).unwrap();
+            let recorded: Value =
+                serde_json::from_slice(&fs::read(saves.join(file)).unwrap()).unwrap();
+            assert_eq!(recorded["body"]["writerEngineRelease"], "0.0.0");
+            assert_eq!(recorded["body"]["writerEngineApi"], "0.1.0");
+        }
+        let files = fixture::save_files(&saves);
+        let old_image = fs::read(root.join("matrix.png")).unwrap();
+        fixture::compatible_patch(&root, name);
+        assert_ne!(fs::read(root.join("matrix.png")).unwrap(), old_image);
+        let patched = weftora_story::Story::load(&root).unwrap();
+        assert_eq!(patched.manifest().save_schema, story.manifest().save_schema);
+        let patched_compiled =
+            weftora_yarn_compiler::compile(&patched.dialogue_sources().unwrap()).unwrap();
+        assert_eq!(patched_compiled.checkpoints(), compiled.checkpoints());
+        assert_ne!(patched_compiled.to_artifact_bytes().unwrap(), bytes);
+        let mut flags = vec![
+            "--headless",
+            "--load",
+            "--save-dir",
+            saves.to_str().unwrap(),
+        ];
+        if name == "life-sim" {
+            flags.extend(["--choices", "0,0"]);
+        }
+        let loaded = success(cli("run", &root, &flags));
+        assert!(loaded.iter().any(|event| {
+            event["event"] == "line"
+                && event["text"]
+                    .as_str()
+                    .is_some_and(|text| text.contains("Compatibility patch is active."))
+        }));
+        let mut expected = baseline.last().unwrap()["state"].clone();
+        expected["matrix_added"] = 23.into();
+        assert_eq!(loaded.last().unwrap()["event"], "end");
+        assert_eq!(loaded.last().unwrap()["state"], expected);
+        assert_eq!(fixture::save_files(&saves), files);
+        eprintln!(
+            "PASS {name}/compatibility/text-asset-patch: old checkpoint completes with patched text, changed image bytes and new-field default; saves unchanged"
+        );
+        eprintln!(
+            "PASS {name}/compatibility/writer-version: earlier Engine release diagnostics do not reject same-API save"
+        );
+    }
+}
+
 const PACKAGE_CASES: [(&str, &str); 11] = [
     ("malformed-manifest", "EOF"),
     ("manifest-schema", "unsupported manifestSchema 999"),

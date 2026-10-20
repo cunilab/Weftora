@@ -35,6 +35,7 @@ def main():
     environment = dict(os.environ, WEFTORA_PLAYER=str(player))
     executable = "weftora-player.exe" if os.name == "nt" else "weftora-player"
     player_hash = digest(player)
+    cli_hash = digest(cli)
 
     def invoke(*command):
         return subprocess.run([str(part) for part in command], env=environment,
@@ -103,11 +104,82 @@ def main():
         require(expected in failed.stderr, f"{name} refused for the wrong reason: {failed.stderr}")
         require(before == {file: digest(saves / file) for file in before}, f"{name} changed a save file")
         refusals.append({"case": name, "refusedWithoutOutputOrFileChanges": True})
+    compatible = []
+    future_formats = []
+    retained_player = output / "story-a" / executable
+    for name, checkpoint, remaining, text in [
+        ("story-a", "scene.repair", None, "Hold these two wires together. I will tell you when to let go."),
+        ("story-b", "day.shift", "0,0", "{$status} Earned {$earned} coins."),
+    ]:
+        source = output / name / "story"
+        saves = output / (name + "-compatible-saves")
+        save_command = [cli, "run", source, "--headless", "--choices", "0,0", "--save-at", checkpoint, "--save-dir", saves]
+        for _ in range(2):
+            saved = [json.loads(line) for line in run(*save_command).splitlines()]
+            require(saved[-1]["event"] == "saved", f"{name}: baseline checkpoint was not saved")
+        before = {path.name: digest(path) for path in saves.iterdir()}
+        revision = output / ("working-compatible-" + name)
+        shutil.copytree(source, revision)
+        path = revision / "manifest.jsonc"
+        manifest = path.read_text(encoding="utf-8")
+        require(manifest.count('"storyVersion": "0.1.0"') == 1 and manifest.count('"state": {') == 1,
+                f"{name}: review compatible manifest fixture")
+        manifest = manifest.replace('"storyVersion": "0.1.0"', '"storyVersion": "0.1.1"')
+        manifest = manifest.replace('"state": {', '"state": {\n    "matrix_added": {"default": 23},')
+        path.write_text(manifest, encoding="utf-8")
+        path = revision / "main.yarn"
+        dialogue = path.read_text(encoding="utf-8")
+        require(dialogue.count(text) == 1, f"{name}: ambiguous text patch")
+        path.write_text(dialogue.replace(text, "Compatibility patch is active. " + text), encoding="utf-8")
+        # Story B has no authored media; its image-patch boundary is covered by the renderer fixture.
+        asset_changed = name == "story-a"
+        if asset_changed:
+            require(digest(revision / "assets/night.png") != digest(revision / "assets/day.png"), "image patch needs different bytes")
+            shutil.copy2(revision / "assets/day.png", revision / "assets/night.png")
+        destination = output / ("compatible-" + name)
+        run(cli, "export", revision, "--out", destination)
+        if asset_changed:
+            require(digest(destination / "story/assets/night.png") == digest(revision / "assets/day.png"),
+                    "export did not include edited image bytes")
+        require(digest(destination / executable) == player_hash == digest(retained_player) == digest(player), "compatible export rebuilt/replaced player")
+        run(retained_player, destination / "story", "--validate")
+        command = [cli, "run", destination / "story", "--headless", "--load", "--save-dir", saves]
+        if remaining:
+            command += ["--choices", remaining]
+        trace = run(*command)
+        (output / (name + "-compatible-events.jsonl")).write_text(trace, encoding="utf-8")
+        events = [json.loads(line) for line in trace.splitlines()]
+        require(any(event["event"] == "line" and "Compatibility patch is active." in event["text"] for event in events),
+                f"{name}: restored dialogue did not use patched text")
+        baseline = next(record["finalState"] for record in records if record["variant"] == name)
+        require(events[-1]["event"] == "end" and events[-1]["state"] == dict(baseline, matrix_added=23),
+                f"{name}: compatible load changed mechanics or dropped new defaults")
+        require(before == {path.name: digest(path) for path in saves.iterdir()}, f"{name}: compatible load rewrote save directory")
+        compiled = destination / "compiled/dialogue.json"
+        compiled_hash = digest(compiled)
+        require(compiled_hash != digest(output / name / "compiled/dialogue.json"), "text patch did not change dialogue artifact")
+        future = json.loads(compiled.read_text(encoding="utf-8"))
+        future["dialogueArtifactFormat"] = 999
+        future_path = output / (name + "-unsupported-dialogue.json")
+        future_path.write_text(json.dumps(future), encoding="utf-8")
+        failed = invoke(retained_player, destination / "story", "--dialogue", future_path, "--validate")
+        require(failed.returncode == 1 and not failed.stdout and "unsupported dialogueArtifactFormat 999" in failed.stderr,
+                f"{name}: future dialogue format was not refused specifically: {failed.stderr}")
+        (output / (name + "-future-format.log")).write_text(failed.stderr, encoding="utf-8")
+        require(digest(compiled) == compiled_hash, "negative artifact validation changed the good artifact")
+        compatible.append({"story":name, "checkpoint":checkpoint, "storyVersion":"0.1.1", "saveSchemaUnchanged":True,
+                           "playerSha256":player_hash, "authoredAssetPatched":asset_changed,
+                           "assetVerification":"exported edited bytes; pixel use tested separately by renderer fixture" if asset_changed else "no authored media; renderer image-patch fixture only",
+                           "oldSaveCompletedWithPatchedTextAndNewDefault":True, "saveDirectoryUnchanged":True,
+                           "compiledDialogueSha256":compiled_hash, "finalState":events[-1]["state"]})
+        future_formats.append({"story":name, "exitCode":1, "stdoutEmpty":True, "goodArtifactUnchanged":True})
+        (destination / executable).unlink()
+    require(digest(cli) == cli_hash and digest(player) == player_hash, "proof input tools changed")
     shutil.copy2(cli, output / "story-a" / cli.name)
     shutil.copy2(repository / "examples" / "life-sim" / "README.md", output / "README.md")
-    report = {"checks": ["P5-01", "P5-02 automated package/headless coverage", "P5-05 cross-Story refusal"],
+    report = {"checks": ["P5-01", "P5-02 automated package/headless coverage", "P5-05 cross-Story and compatible revisions"],
               "platform": platform.platform(), "cliSha256": digest(cli), "playerSha256": player_hash,
-              "variants": records, "saveRefusals": refusals,
+              "variants": records, "saveRefusals": refusals, "compatibleRevisions":compatible, "futureDialogueFormatRefusals":future_formats,
               "scope": "Package validation and shared-runner completion; no Rust build between exports. Native player completion pending issue #5. Phase 5 gate not claimed."}
     (output / "same-player-proof.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Story A, Story B and edited pay validated; unchanged player SHA-256: {player_hash}")

@@ -75,6 +75,10 @@ Node-file provenance stays in memory: compiler debug information supplies it dur
 | Downgrade to an older Engine or Story | Rejected with guidance | 6 |
 | Export with mismatched CLI/compiler/player | Refused | 6 |
 
+## Phase 5 fixture scope
+
+[Phase 5 evidence](../evidence/phase-5.md#compatible-revisions-and-version-fixtures-p5-05) maps every fixture introduced through Phase 5 onto both Stories. Engine/API version inputs in policy tests are modeled explicitly; the export proof retains one actual player SHA-256. Rows introduced in Phase 6 remain release requirements, including downgrade guidance and mismatched export-tool builds. This does not claim historical-binary compatibility or native rendering acceptance.
+
 ## Consequences
 
 - More fields than a single version number, but each one prevents a specific class of broken save or broken package.
