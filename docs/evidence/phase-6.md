@@ -1,10 +1,10 @@
 ---
 id: WFT-EVID-011
-title: Phase 6 authoring CLI evidence
+title: Phase 6 authoring and export evidence
 status: proposed
 ---
 
-# Phase 6 authoring CLI evidence
+# Phase 6 authoring and export evidence
 
 ## Starter workflow (P6-01)
 
@@ -42,7 +42,25 @@ Three default Engine integration tests cover machine-readable CLI identity/versi
 
 The starter and Story A/B proof scripts now read actual CLI/player identities and compare them to metadata/tool hashes on every export. The A/B proof additionally selects the actual CLI as a player and requires an executable-role mismatch on both Stories, for both absent and existing-empty destinations. Existing Windows CI starter and life-sim artifacts retain the upgraded proof reports and diagnostics.
 
-Validation and actual changed-source build-pair results will be recorded after checks finish. Windows CI and native acceptance are reported separately.
+The [actual changed-source proof](./phase-6-tool-drift-macos.json) retains a real debug player, appends one recorded comment to Engine CLI source and rebuilds only the CLI. Both tools remain release `0.0.1`, but their build IDs differ. A/B exports each refuse for absent and existing-empty destinations: four cases, no stdout, source/output unchanged. The source bytes are then restored and both tools rebuilt; identities return to the baseline. This is a real current-code build mismatch, not a historical-release or downgrade fixture. The report records the controlled append, source hashes and identities so the experiment can be reproduced.
+
+### Paired-tool validation
+
+Source `88c49359411d3d03b53a0ff9b3fd74fc7d0cb6c7`, MacBookAir development host. The [paired-tool report](./phase-6-tool-pair-macos.json) records frozen identities/hashes, commands, the starter branches and four A/B wrong-role refusals. The starter, A, B, pay edit and both compatible revisions export and validate with the same actual player; their metadata matches the queried identities and frozen hashes. No Rust build occurs between these exports.
+
+| Check | Result |
+| --- | --- |
+| `cargo test-all -- --test-threads=1` | 385 passed, zero failed/ignored |
+| Clippy, default and Story features, all targets | Passed with warnings denied |
+| Workspace fmt, shared matrix rustfmt | Passed |
+| Python helper tests | Six passed |
+| `cargo xtask deps`, `cargo deny --all-features check`, `cargo xtask docs` | Passed |
+| Player normal/build dependency tree | No authoring compiler |
+| Workspace build, optimized-Python starter and A/B proofs | Passed |
+| Actual changed-source CLI with retained player | Four A/B fresh/empty-output refusals; original source and baseline identities restored |
+| [Source CI](https://github.com/cunilab/Weftora/actions/runs/39382990097) | All jobs passed, including required Windows, upgraded starter/A/B proofs and Engine independence |
+
+Native acceptance remains separate. Sol independently reviewed fingerprinting, identity parsing/timeout, refusal ordering and copied-player hash verification without editing or building; no actionable production defect was found. Claude Opus 5.5 medium supplied a tools-disabled design challenge; host-target scope, build configuration inputs, source filtering and protocol limits are documented explicitly.
 
 ## Remaining acceptance
 
