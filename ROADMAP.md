@@ -111,7 +111,7 @@ Goal: a meaningfully different game on the same binary.
 
 Goal: a stranger can make and ship a game on Windows.
 
-**Status:** implementation may advance; release acceptance is open. `weftora new` is the next authoring CLI gap. Existing check/run/export and debug-package proofs do not satisfy clean-machine, release-profile or tool-identity requirements by themselves.
+**Status:** implementation may advance; release acceptance is open. The starter CLI is implemented; automated workflow results are tracked in [Phase 6 evidence](./docs/evidence/phase-6.md). Existing check/run/export and debug-package proofs do not satisfy clean-machine, release-profile or tool-identity requirements by themselves.
 
 - [ ] `weftora new | check | run | export` complete with actionable errors and non-zero exit codes.
 - [ ] Decide the release package container (folder or archive). If archive: traversal and decompression-bomb protection and fixtures.

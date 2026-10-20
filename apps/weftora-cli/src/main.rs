@@ -1,6 +1,7 @@
-//! The `weftora` command-line tool: check, run and export Story folders.
+//! The `weftora` command-line tool: create, check, run and export Story folders.
 
 mod headless;
+mod scaffold;
 
 use std::collections::BTreeMap;
 use std::fs;
@@ -19,6 +20,7 @@ const EXPORT_FORMAT: u32 = 1;
 
 const USAGE: &str = "usage:
   weftora --version
+  weftora new <story-dir>
   weftora check <story-dir>
   weftora run <story-dir>
   weftora run <story-dir> --headless [--choices <id,id,...>] [--save-at <checkpoint>] [--load] [--save-dir <dir>]
@@ -33,6 +35,7 @@ fn main() -> ExitCode {
         .as_slice()
     {
         ["--version"] | ["-V"] => version(),
+        ["new", dir] if !dir.starts_with('-') => scaffold::create(Path::new(dir)),
         ["check", dir] => check_command(Path::new(dir)),
         ["run", dir] => run_command(Path::new(dir)),
         ["run", dir, "--headless", flags @ ..] => headless::parse_options(flags)

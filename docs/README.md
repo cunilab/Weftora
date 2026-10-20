@@ -12,6 +12,8 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | --- | --- | --- |
 | [Product Requirements](../PRD.md) | WFT-PRD-001 | Scope, users, requirements, non-goals |
 | [Roadmap](../ROADMAP.md) | WFT-ROADMAP-001 | Phase order and tasks |
+| [Getting started](./getting-started.md) | WFT-START-001 | Create, edit, check, preview and export a starter with prebuilt tools |
+| [Phase 6 authoring evidence](./evidence/phase-6.md) | WFT-EVID-011 | Starter CLI checks and remaining foundation-release acceptance |
 | [Architecture](./architecture.md) | WFT-ARCH-001 | Crates, boundaries, Story package, runtime semantics |
 | [Success Criteria](./success-criteria.md) | WFT-ACCEPT-001 | Pass/fail checks per phase and evidence rules |
 | [Platform Plan](./platforms.md) | WFT-PLAT-001 | Release target, development hosts, future ports |
