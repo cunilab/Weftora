@@ -111,7 +111,7 @@ Goal: a meaningfully different game on the same binary.
 
 Goal: a stranger can make and ship a game on Windows.
 
-**Status:** implementation may advance; release acceptance is open. The starter CLI is implemented; automated workflow results are tracked in [Phase 6 evidence](./docs/evidence/phase-6.md). Existing check/run/export and debug-package proofs do not satisfy clean-machine, release-profile or tool-identity requirements by themselves.
+**Status:** implementation may advance; release acceptance is open. The starter CLI is implemented; automated workflow results are tracked in [Phase 6 evidence](./docs/evidence/phase-6.md). Existing check/run/export and debug-package proofs do not satisfy clean-machine, release-profile or tool-identity requirements by themselves. [Release-profile CI automation](./docs/evidence/phase-6.md#release-profile-automation-p6-03-partial) is implemented; its execution evidence and remaining earlier proof recipes are still pending.
 
 - [x] `weftora new | check | run | export` implemented with actionable errors and non-zero exit codes. [P6-01 CLI integration and starter proof](./docs/evidence/phase-6.md) pass on macOS and [required Windows CI](https://github.com/cunilab/Weftora/actions/runs/39370423376). Native preview and the independent clean-machine walkthrough remain queued in issue #5.
 - [x] Decide the runtime release package container: folders ([ADR 0013](./docs/adr/0013-folder-release-packages.md)). The Engine does not extract archives; GitHub download ZIP transport still requires staging/path/link/bounds and round-trip hash checks before publishing. [Trunk-based release checklist](./docs/releasing.md#release-checklist) tracks that pending automation.

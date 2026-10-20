@@ -93,11 +93,28 @@ def message_has_path(message, path):
     return path in message
 
 
+def cargo_arguments(arguments, profile, target):
+    # Cargo options belong before the test-harness separator, including for aliases.
+    split = arguments.index("--") if "--" in arguments else len(arguments)
+    options = ["--profile", profile]
+    if target:
+        options += ["--target", target]
+    return arguments[:split] + options + arguments[split:]
+
+
+def player_output(target_directory, profile, target, executable):
+    directory = target_directory / target if target else target_directory
+    return directory / ("debug" if profile == "dev" else "release") / executable
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--out", required=True, type=Path)
     parser.add_argument("--reuse-target", action="store_true", help="Reuse repository Cargo cache; no cold-build claim")
+    parser.add_argument("--profile", choices=("dev", "release"), default="dev")
+    parser.add_argument("--target", help="Host-compatible Rust target triple; cross-compiled players must run on this host")
     args = parser.parse_args()
+    require(not args.target or re.fullmatch(r"[A-Za-z0-9_-]+", args.target), "expected a Rust target triple")
     repository = Path(__file__).resolve().parents[1]
     output = args.out.resolve()
     require(not output.is_relative_to(repository), "proof output must be outside the checkout")
@@ -118,6 +135,7 @@ def main():
         require(all(not (workspace / story).exists() for story in STORIES), "a removed Story reappeared")
 
     def cargo(name, directory, arguments, expected=0):
+        arguments = cargo_arguments(arguments, args.profile, args.target)
         print(f"{name}: running", flush=True)
         result = subprocess.run(["cargo"] + arguments, cwd=directory, env=environment,
                                 stdout=subprocess.PIPE, stderr=subprocess.STDOUT, timeout=3600)
@@ -135,9 +153,9 @@ def main():
         absent()
         # Shared targets can retain env!(CARGO_MANIFEST_DIR) from another source tree.
         # Reuse dependency artifacts only; workspace packages must rebuild from this copy.
-        cargo("workspace-cache-reset", workspace, ["clean", "--workspace", "--profile", "dev", "--locked"])
+        cargo("workspace-cache-reset", workspace, ["clean", "--workspace", "--locked"])
         executable = "weftora-player.exe" if os.name == "nt" else "weftora-player"
-        built_player = target / "debug" / executable
+        built_player = player_output(target, args.profile, args.target, executable)
         require(not built_player.is_symlink(), "refusing a symlink Cargo player output")
         if built_player.exists():
             built_player.unlink()
@@ -188,7 +206,7 @@ def main():
         if args.reuse_target:
             handling_failure = sys.exc_info()[0] is not None
             try:
-                cargo("workspace-cache-release", workspace, ["clean", "--workspace", "--profile", "dev", "--locked"])
+                cargo("workspace-cache-release", workspace, ["clean", "--workspace", "--locked"])
             except (Exception, SystemExit):
                 if not handling_failure:
                     raise
@@ -196,6 +214,7 @@ def main():
     require(inventory(repository) == records, "original checkout source changed during proof")
     report = {"check": "P5-03", "platform": platform.platform(), "baseCommit": head, "workingTreeDirty": dirty, "removedStories": list(STORIES),
               "sourceFileCount": len(copied), "sourceInventorySha256": digest(output / "source-inventory.json"),
+              "cargoProfile": args.profile, "cargoTarget": args.target,
               "cargoCacheReused": args.reuse_target, "workspaceArtifactsReset": True, "sharedWorkspaceArtifactsReleased": args.reuse_target, "playerSha256": player_hash,
               "mandatoryStoryTestsListed": len(CLI_TESTS) + len(RENDER_TESTS),
               "defaultEngineReportedTestPasses": sum(map(int, re.findall(r"test result: ok\. (\d+) passed", engine_tests))),

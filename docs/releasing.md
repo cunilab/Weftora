@@ -16,9 +16,9 @@ The existing long-running PR #19 remains open for maintainer review; this policy
 
 ## Current implementation boundary
 
-This document records the intended release process. Current CI runs on PRs and pushes to `main`; no tag-triggered release builder or publisher is implemented yet. Pushing a tag currently does not build or publish release assets. The current debug previews are development evidence, not foundation release artifacts.
+This document records the intended release process. Current CI runs on PRs and pushes to `main`; no tag-triggered release builder or publisher is implemented yet. Pushing a tag currently does not build or publish release assets. Debug previews and release-verification artifacts are development evidence, not approved foundation release assets.
 
-The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The remaining automation work is a Windows release-profile builder, folder staging/ZIP transport validation, evidence collection and a draft-release publishing workflow with an explicit promotion step.
+The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile and collects the maintained starter, Story edit, A/B and Engine-independence proofs. Folder staging/ZIP transport validation, the remaining evidence recipes and a draft-release publishing workflow with explicit promotion are still pending.
 
 ## Prepare a candidate
 
@@ -34,7 +34,7 @@ cargo build --workspace --release --locked --target x86_64-pc-windows-msvc
 cargo test-all --release --target x86_64-pc-windows-msvc -- --test-threads=1
 ```
 
-Both tools then come from `target/x86_64-pc-windows-msvc/release/`. Run proofs with these explicit `--cli` and `--player` paths and fresh `--out` directories. Never combine a debug CLI with a release player. The existing starter, Story A edit, screen edit and A/B same-player scripts accept explicit tool paths. The Engine-independence runner currently builds the dev profile; it must be extended before it can supply release-profile evidence. Earlier hash/fixture proof recipes must also be rerun or ported to maintained release automation; these two Cargo commands alone do not satisfy P6-03.
+Both tools then come from `target/x86_64-pc-windows-msvc/release/`. Run proofs with these explicit `--cli` and `--player` paths and fresh `--out` directories. Never combine a debug CLI with a release player. The existing starter, Story A edit, screen edit and A/B same-player scripts accept explicit tool paths. Run Engine independence with `python -B -O scripts/verify-engine-independence.py --profile release --target x86_64-pc-windows-msvc --reuse-target --out <fresh-directory-outside-checkout>`. It applies the selected profile/target to inventory, build, tests, missing-fixture controls and workspace cache cleanup, and records them in the report. The default remains `--profile dev` with the host target. This proof rebuilds workspace artifacts; run it after retaining the frozen tool/export proofs. Earlier hash/fixture proof recipes must also be rerun or ported to maintained release automation; these two Cargo commands alone do not satisfy P6-03.
 
 ## Release checklist
 

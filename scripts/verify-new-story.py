@@ -90,7 +90,7 @@ def main():
               "cliSha256":cli_hash, "playerSha256":player_hash, "cliIdentity":cli_identity, "playerIdentity":player_identity, "generatedFiles":before,
               "branches":branches, "existingProjectRefusedWithoutWrites":True,
               "sourceUnchanged":True, "exportedStoryMatchesSource":True, "standaloneValidationPassed":True,
-              "scope":"Existing debug tools; no Rust build during the proof. Export plumbing and preactivation validation, not native preview or clean-machine/release/tool-identity acceptance."}
+              "scope":"Explicit matching tools (profile/target in identities); no Rust build during the proof. Export plumbing and preactivation validation, not native preview, clean-machine operation or full release acceptance."}
     (output / "new-story-proof.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     print(f"Starter created, checked, both branches completed and exported; player SHA-256: {player_hash}")
     print(f"Report and generated game: {output}")

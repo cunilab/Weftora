@@ -63,6 +63,35 @@ class CopyTests(unittest.TestCase):
             proof.inventory(self.root)
 
 
+class CargoProfileTests(unittest.TestCase):
+    def test_profile_and_target_reach_every_cargo_operation_before_harness_options(self):
+        operations = [
+            ["test-all", "--", "--list"],
+            ["clean", "--workspace", "--locked"],
+            ["build", "--workspace", "--locked"],
+            ["test", "--workspace", "--locked", "--", "--test-threads=1"],
+            ["test", "--locked", "-p", "weftora-cli", "--features", "story-tests",
+             "--test", "story_a", "--", "--test-threads=1"],
+        ]
+        for operation in operations:
+            with self.subTest(operation=operation):
+                command = proof.cargo_arguments(operation, "release", "x86_64-pc-windows-msvc")
+                cargo_options = command[:command.index("--")] if "--" in command else command
+                self.assertEqual(cargo_options[-4:], ["--profile", "release", "--target", "x86_64-pc-windows-msvc"])
+                if "--" in operation:
+                    self.assertEqual(command[command.index("--"):], operation[operation.index("--"):])
+                self.assertEqual(operation[0], command[0])
+
+    def test_default_and_explicit_target_outputs_cannot_select_debug_for_release(self):
+        root = Path("target")
+        for profile, directory in [("dev", "debug"), ("release", "release")]:
+            self.assertEqual(proof.player_output(root, profile, None, "weftora-player"), root / directory / "weftora-player")
+            self.assertEqual(proof.player_output(root, profile, "x86_64-pc-windows-msvc", "weftora-player.exe"),
+                             root / "x86_64-pc-windows-msvc" / directory / "weftora-player.exe")
+        self.assertEqual(proof.cargo_arguments(["build", "--locked"], "dev", None),
+                         ["build", "--locked", "--profile", "dev"])
+
+
 class ProofGuardTests(unittest.TestCase):
     def test_unrelated_failure_cannot_hide_behind_another_missing_fixture(self):
         text = "test first ... FAILED\ntest second ... FAILED\n\n---- first stdout ----\ncannot access Story root\n\n---- second stdout ----\nunrelated arithmetic failure\n"

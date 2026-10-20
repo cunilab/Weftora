@@ -278,6 +278,61 @@ jobs:
           path: ${{ runner.temp }}/weftora-windows-preview/
           retention-days: 14
 
+  windows-release:
+    name: Windows release verification
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install pinned Rust toolchain
+        run: rustup toolchain install
+      - uses: Swatinem/rust-cache@v2
+        with:
+          shared-key: windows-release
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Run full release fixture suite
+        shell: pwsh
+        run: |
+          cargo test-all --release --target x86_64-pc-windows-msvc -- --test-threads=1 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "weftora-release-tests.log")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Build matching Windows release tools
+        run: cargo build --workspace --release --locked --target x86_64-pc-windows-msvc
+      - name: Prove release starter and Story edits with matching frozen tools
+        shell: pwsh
+        run: |
+          $cli = "target/x86_64-pc-windows-msvc/release/weftora.exe"
+          $player = "target/x86_64-pc-windows-msvc/release/weftora-player.exe"
+          foreach ($proof in @("new-story", "story-a-edits", "screen-edits", "life-sim")) {
+            $output = Join-Path $env:RUNNER_TEMP "weftora-release-$proof"
+            python -B -O "scripts/verify-$proof.py" --cli $cli --player $player --out $output
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+      - name: Test Engine-independence proof helpers
+        run: python -B -m unittest discover -s scripts/tests
+      - name: Prove release Engine independence without Story A/B
+        shell: pwsh
+        run: |
+          $output = Join-Path $env:RUNNER_TEMP "weftora-release-engine-independence"
+          python -B -O scripts/verify-engine-independence.py --profile release --target x86_64-pc-windows-msvc --reuse-target --out $output
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-release-evidence-${{ github.sha }}
+          path: |
+            ${{ runner.temp }}/weftora-release-tests.log
+            ${{ runner.temp }}/weftora-release-new-story/
+            ${{ runner.temp }}/weftora-release-story-a-edits/
+            ${{ runner.temp }}/weftora-release-screen-edits/
+            ${{ runner.temp }}/weftora-release-life-sim/
+            ${{ runner.temp }}/weftora-release-engine-independence/*.json
+            ${{ runner.temp }}/weftora-release-engine-independence/*.log
+            ${{ runner.temp }}/weftora-release-engine-independence/standalone/
+          retention-days: 14
+
   deny:
     name: Dependencies (required)
     runs-on: ubuntu-latest

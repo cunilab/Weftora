@@ -96,6 +96,15 @@ Astra advised the explicit compatibility-domain policy; Sol independently review
 
 The [release guide](../releasing.md) follows the maintainer's chosen trunk-based flow: reviewed changes into `main`, an exact verified commit, annotated version tag, draft GitHub Release and approved promotion of tested bytes. Current CI has no tag-driven release pipeline. This documentation-only change does not build, tag or publish a release and does not rerun the historical Rust suite. Header/link and diff checks validate the docs; P6-03/release automation and native acceptance remain open.
 
+## Release-profile automation (P6-03 partial)
+
+The `Windows release verification` CI job now runs the full fixture suite with `--release --target x86_64-pc-windows-msvc`, then builds a matching CLI/player pair and runs the maintained starter, Story A edit, screen edit and A/B same-player proofs. Engine independence runs last with `--profile release --target x86_64-pc-windows-msvc --reuse-target`; all Cargo operations and the retained standalone player use that profile/target. Staging remains outside Cargo `target/`. Logs, JSON reports and exported examples are retained in `weftora-windows-release-evidence-<SHA>` for 14 days. The stripped source/target trees are excluded from upload.
+
+Local MacBookAir validation: eight Python helper tests pass, including Cargo-option placement before test-harness arguments and release/default/explicit-target player paths. Documentation headers/links and diff checks pass. The Windows job is newly added and its first run is pending; no local release build or native Windows run is claimed. These helpers do not substitute for executing the full release proof.
+
+P6-03 stays open: earlier hash/fixture recipes beyond the maintained scripts still need release-specific evidence. ZIP transport, clean-machine/native acceptance and tag/draft publishing automation remain pending. This job has read-only repository permissions and creates no tag or GitHub Release.
+
+
 ## Remaining acceptance
 
 Headless execution and exported `--validate` do not establish a rendered window, native input, clean-machine operation, release-profile behavior or executable authenticity. Windows native starter preview is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5). Clean-machine export, release-profile reruns, native integration and the remaining Phase 6 release checks remain open; see the [success criteria](../success-criteria.md#phase-6--windows-foundation-release).
