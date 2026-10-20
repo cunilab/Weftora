@@ -54,48 +54,52 @@ Goal: replace spike code with the real, tested core.
 
 Goal: full Yarn integration and the presentation primitives a visual novel needs.
 
-**Status:** in progress. Compiled dialogue, typed catalogs, declarative UI and presentation media primitives are implemented with automated checks; see [Phase 2 implementation evidence](./docs/evidence/phase-2.md). Native rendering/audio/input/font/performance results remain maintainer-owned under issue #5. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 is resolved by the merged runtime fixes. No Phase 2 gate is claimed.
+**Status:** Windows views, audio and UI verification is recorded in the [agent results](./docs/evidence/phase-2-windows-agent.md#results) and [completed maintainer records](./docs/evidence/phase-2-windows.md#completed-maintainer-records), with the corresponding issue #5 items checked. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 is resolved. [ADR 0006](./docs/adr/0006-performance-baseline.md) explicitly leaves input-to-feedback p95 unmeasured, so the performance item and full Phase 2 gate remain open.
 
 - [x] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
 - [x] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats. [Automated P2-03 evidence](./docs/evidence/phase-2.md#verified-revision).
-- [ ] Views and layers: background, characters, CG, overlay; position, scale, opacity, fade, move, crossfade.
-- [ ] Audio channels: music, effects, ambience, voice; fades, user volume.
+- [x] Views and layers: background, characters, CG, overlay; position, scale, opacity, fade, move, crossfade. [Windows scripted observations](./docs/evidence/phase-2-windows-agent.md#results), confirmed in issue #5.
+- [x] Audio channels: music, effects, ambience, voice; fades, user volume. [Maintainer device/listening record](./docs/evidence/phase-2-windows.md#p2-05--musiceffectsvoice-fades-and-user-volume).
 - [x] Choose the declarative UI renderer (Bevy UI or alternative) by ADR.
-- [ ] Declarative UI v1: screen, panel, text, image, button, list, choice list, overlay; state bindings; keyboard/mouse focus.
-- [x] Asset catalogs for images, audio and fonts; native font/rendering checks remain in issue #5.
+- [x] Declarative UI v1: screen, panel, text, image, button, list, choice list, overlay; state bindings; keyboard/mouse focus. [Windows interaction and real-input records](./docs/evidence/phase-2-windows.md#ui-interaction-battery--overlay-blocking-focus-return-shifttab-resize), including the subsequent Volume/click-through record.
+- [x] Asset catalogs for images, audio and fonts; native font/media and validation results are in the [completed Windows records](./docs/evidence/phase-2-windows.md#completed-maintainer-records).
 - [x] Pin Bevy and Yarn versions; record a dependency licence inventory.
-- [ ] Measure a Windows performance baseline; confirm or revise the budgets in [PRD R15](./PRD.md#5-requirements) by ADR.
+- [ ] Finish Windows performance evidence against [PRD R15](./PRD.md#5-requirements): startup, idle memory and check time are measured; input-to-feedback p95 remains open under [ADR 0006](./docs/adr/0006-performance-baseline.md#decision-confirm-the-measured-budgets-leave-input-p95-open).
 
 ## Phase 3 — First playable visual novel (Story A) and saves
 
 Goal: a short, complete visual novel played through the prebuilt player.
 
-**Status:** implementation complete. [ADR 0007](./docs/adr/0007-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, runtime checkpoints, headless save/load, candidate player restoration, Story A, its automated content-only edit proof, author tutorial and Windows test package are implemented. Native Windows testing and the independent tutorial walkthrough remain maintainer-owned in issue #5; no Phase 3 gate is claimed.
+**Status:** implementation complete. [ADR 0007](./docs/adr/0007-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, runtime checkpoints, headless save/load, candidate player restoration, Story A, its automated content-only edit proof, author tutorial and Windows test package are implemented. Issue #5 marks P3-01 through P3-06 complete; their detailed Windows records are in [open PR #21](https://github.com/cunilab/Weftora/pull/21), awaiting evidence review/integration. The independent tutorial walkthrough P3-07 remains unchecked. Phase 3 acceptance remains open pending evidence review and the independent walkthrough.
 
 - [x] Add `examples/story-a/`, preserving Hello Story golden fixtures: menu, two branches, characters, CG, music, transitions, themed choice UI.
 - [x] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.
 - [x] Load pipeline: bounded read → compatibility check → isolated candidate → validate → atomically activate; unsupported migrations refuse safely.
-- [ ] Keyboard and mouse navigation, window resizing and readable scaled UI.
-- [ ] Prove that editing Story A's dialogue, screens and assets does not change the player binary.
-- [x] Author tutorial: how to change Story A without touching Rust; independent Windows walkthrough remains in issue #5.
+- [ ] Keyboard and mouse navigation, window resizing and readable scaled UI. Windows results are recorded in [PR #21](https://github.com/cunilab/Weftora/pull/21); evidence review/integration remains.
+- [ ] Prove that editing Story A's dialogue, screens and assets does not change the player binary. Automated proof is recorded; native edit observations are in [PR #21](https://github.com/cunilab/Weftora/pull/21), awaiting evidence review/integration.
+- [x] Publish the author tutorial: how to change Story A without touching Rust.
+- [ ] P3-07: someone other than the tutorial author completes the independent prebuilt-tools walkthrough; remains in issue #5.
 - [ ] Optional: tag a Windows **developer alpha**. This is not the foundation release.
 
 ## Phase 4 — Story-defined rules
 
 Goal: games define their own mechanics without Engine changes.
 
-**Status:** development in progress while earlier native acceptance remains queued in issue #5. Scalar conditions, deterministic events and ordered state actions are implemented in `weftora-flow`; JSONC Story files connect them to the shared dialogue runner and checkpoint candidates; typed declarative commands now run from Yarn, events and screen buttons. [Rule semantics and scope](./docs/rules.md) describe the authoring format and command/UI semantics and bounded script integration. No Phase 4 gate is claimed.
+**Status:** P4-01, P4-02, P4-04 and P4-07 have the automated evidence required by their success criteria, including passing Windows CI. [Phase 4 evidence](./docs/evidence/phase-4.md#checklist-reconciliation) maps these results. Commands/custom screens have automated implementation coverage but their native demonstrations remain in issue #5; the Rhai host still defers script-internal Engine command calls. Phase 4 is not fully accepted, and these remaining items do not block subsequent implementation.
 
-- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling. Scheduler, JSONC files and dialogue-state notification bridge implemented; native evidence follows.
-- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not. Evaluator and Story file integration implemented; Windows CI evidence follows.
-- [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)). Flat scalar collections, whole-value actions and save replay are implemented with bounded decoding and automated checks; see [ADR 0009](./docs/adr/0009-flat-collection-state.md). Rhai provides bounded local entry operations; read-only Yarn length/membership helpers now provide scalar views ([ADR 0012](./docs/adr/0012-yarn-collection-queries.md)). Native demonstration remains.
-- [ ] Rhai script host: state/signal permissions, shared operation/work and depth/size limits, source diagnostics and no file/network/OS API are implemented ([ADR 0010](./docs/adr/0010-bounded-rhai-host.md)). Canonical seeded integer randomness and replay are implemented ([ADR 0011](./docs/adr/0011-canonical-seeded-randomness.md)); script-internal Engine calls and native acceptance remain.
-- [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn. Typed declarative commands and the UI notification bridge are implemented with automated replay checks; Bounded Rhai commands now share these paths; native acceptance remains.
-- [ ] Themed custom screens and navigation. The authored [screens demo](./examples/screens-demo/README.md), renderer navigation/focus tests, CLI invalid fixtures and same-player UI edit proof cover P4-06 automatically; native Windows verification remains in issue #5.
+- [x] P4-01: typed condition operators `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not; valid-type and invalid-operand table tests.
+- [x] P4-02: declarative events, conditions and ordered actions by priority/declaration order; deterministic traces and bounded cycle failures.
+- [ ] P4-03: declarative and Rhai Story commands on the unchanged player. Shared Yarn/event/UI paths, partial-write error semantics and automated replay/package proofs are implemented; native unchanged-player demonstration remains in issue #5.
+- [x] P4-04: flat list/map state serialises deterministically and survives save/load; Yarn scalar length/membership views work without exposing collections as Yarn variables. See [ADR 0009](./docs/adr/0009-flat-collection-state.md) and [ADR 0012](./docs/adr/0012-yarn-collection-queries.md).
+- [ ] P4-05: full Rhai host contract. State/signal permissions, shared budgets, depth/data limits, hostile-script fixtures and source diagnostics are implemented; script-internal Engine calls remain deferred under [ADR 0010](./docs/adr/0010-bounded-rhai-host.md), and native acceptance stays queued.
+- [ ] P4-06: themed custom screens and navigation. The [screens demo](./examples/screens-demo/README.md), renderer navigation/focus tests, invalid fixtures and same-player edit proof provide automated coverage; native verification remains in issue #5.
+- [x] P4-07: Rhai syntax diagnostics name file/line; canonical seeded randomness resumes identically after save/load. See [ADR 0011](./docs/adr/0011-canonical-seeded-randomness.md) and the negative/replay fixtures.
 
 ## Phase 5 — Second Story proves reuse (Story B)
 
 Goal: a meaningfully different game on the same binary.
+
+**Status:** P5-03 through P5-05 have automated evidence; P5-01/P5-02 native Story B and same-player completion remain queued in issue #5. Phase 6 implementation may proceed while that acceptance is open.
 
 - [ ] `examples/life-sim/`: at least two locations, a time/schedule rule, a resource and an inventory-like list, a conditional activity and a custom screen. [Market Day](./examples/life-sim/README.md) implements a finite day with scenario/replay checks; native acceptance remains queued in issue #5.
 - [ ] Story A and Story B run on the same player binary (same SHA-256). Automated exports, shared-runner completion and a pay-edit proof are recorded in [Phase 5 evidence](./docs/evidence/phase-5.md); native completion remains.
@@ -106,6 +110,8 @@ Goal: a meaningfully different game on the same binary.
 ## Phase 6 — Windows foundation release
 
 Goal: a stranger can make and ship a game on Windows.
+
+**Status:** implementation may advance; release acceptance is open. `weftora new` is the next authoring CLI gap. Existing check/run/export and debug-package proofs do not satisfy clean-machine, release-profile or tool-identity requirements by themselves.
 
 - [ ] `weftora new | check | run | export` complete with actionable errors and non-zero exit codes.
 - [ ] Decide the release package container (folder or archive). If archive: traversal and decompression-bomb protection and fixtures.
