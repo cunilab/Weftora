@@ -76,7 +76,22 @@ The earlier blanket downgrade rule conflicted with the separate rule that Story 
 
 API ordering uses SemVer precedence, including prerelease ordering, and ignores build metadata. Equal/older writer APIs remain eligible subject to all existing format, Story ID, schema, checkpoint and state validation. Newer writer API and higher Story schema refusals run before candidate state/replay preparation. Save format 1 and its bytes are unchanged; no new fields are needed. Older implementations did not have this conservative API guard, so this is current-reader enforcement, not a claim that every historical binary refuses a future save.
 
-The current API is `0.1.0`, save format `1`, manifest schemas `0`/`1`, dialogue format `1` and compiler contract `yarnspinner-rust 0.9.0`; Engine release `0.0.1` is separate. Story release and save schema are author-owned. [Phase 6 evidence](../evidence/phase-6.md#downgrade-compatibility-p6-09-automated-slice) maps modeled writer fixtures and real current-reader behavior to the checks below. Historical/release-profile and native acceptance remain separate.
+### Current compatibility table
+
+These are current development-build contracts, not a tagged foundation release. Story release and save schema remain author-owned.
+
+| Domain | Current supported value |
+| --- | --- |
+| Engine release | `0.0.1`; exact source/configuration build identity and executable SHA-256 are separate |
+| Engine API / saved writer API guard | `0.1.0`; newer saved API refuses by SemVer precedence |
+| Manifest structure | `manifestSchema` `0` (legacy) and `1` |
+| Save container | `saveFormat` `1`; Story `saveSchema` must match until migrations exist |
+| Compiled dialogue | `dialogueArtifactFormat` `1` |
+| Compiler contract | `yarnspinner-rust` `0.9.0` |
+| Tool identity / export metadata | `identityFormat` `1` / `exportFormat` `1` with additive CLI/player identities |
+| Capabilities | `dialogue.yarn/1`, `dialogue.collections/1`, `assets.catalog/1`, `ui.screens/1`, `presentation.media/1`, `save/1`, `rules.events/1`, `rules.commands/1`, `state.collections/1`, `rules.rhai/1`, `rules.random/1` |
+
+[Phase 6 evidence](../evidence/phase-6.md#downgrade-compatibility-p6-09-automated-slice) maps modeled writer fixtures and real current-reader behavior to the checks below. Historical-binary guarantees, release-profile reruns and native acceptance are separate; constructed version metadata does not establish an alternate executable's behavior.
 
 ## Required fixtures
 

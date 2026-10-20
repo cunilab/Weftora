@@ -72,8 +72,24 @@ A/B shared fixtures add newer writer API and newer Story schema rows to both the
 
 The existing same-player proof now constructs checksummed future-API/schema saves and a compatible release-rollback control for both Stories, exercises the current CLI loader and retains logs/save fixtures in Windows life-sim artifacts. Source and whole save-directory hashes must remain unchanged; the positive control must finish with the expected state. Player-model tests establish renderer integration; CLI traces do not claim native player save loading.
 
-Validation results will be recorded after the full checks finish. Historical alternate binaries, release-profile reruns and native acceptance remain open.
+### Validation
+
+Source `f2f33ccb202e05dbd1d688caa432bab9e023e3cc`, MacBookAir development host. The [machine-readable report](./phase-6-downgrade-macos.json) records the eight new CLI/player-model refusal rows, four compatible-release matrix controls and six retained actual-CLI save-load cases, together with tool identities/hashes and commands.
+
+| Check | Result |
+| --- | --- |
+| `cargo test-all -- --test-threads=1 --nocapture` | 387 passed, zero failed/ignored |
+| New A/B downgrade rows | Four CLI and four player-model refusals passed |
+| A/B compatible release rollback | Two CLI and two player-model controls passed |
+| Retained same-player proof under Python `-O` | Four modeled API/schema refusals and two compatible-load controls passed; source/save directories unchanged |
+| Both Clippy configurations, fmt/shared rustfmt | Passed with warnings denied |
+| Six Python helper tests, dependency boundaries, cargo-deny, docs | Passed |
+| Matching workspace tools and starter proof | Passed |
+
+Astra advised the explicit compatibility-domain policy; Sol independently reviewed save checks, SemVer behavior and A/B state/file preservation. Proof review caught a missing checksum domain prefix; the fixture encoder was corrected to hash `weftora-save-format-1` plus a NUL byte and the exact UTF-8 body before accepting results. Specific refusal diagnostics and the successful compatible control prevent corrupt data from counting as downgrade evidence.
+
+[Source CI](https://github.com/cunilab/Weftora/actions/runs/39398030840) has passed required Windows Rust tests/matrices and the upgraded starter/A/B packaged proofs; final Engine-independence/job completion was still pending when recorded. The current compatibility table/automated fixture checklist is complete. Release-profile reruns (P6-03), native integration (P6-04) and historical-binary guarantees are separate; none is inferred from modeled version metadata.
 
 ## Remaining acceptance
 
-Headless execution and exported `--validate` do not establish a rendered window, native input, clean-machine operation, release-profile behavior or executable authenticity. Windows native starter preview is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5). P6-02 onward and the Phase 6 release gate remain open; see the [success criteria](../success-criteria.md#phase-6--windows-foundation-release).
+Headless execution and exported `--validate` do not establish a rendered window, native input, clean-machine operation, release-profile behavior or executable authenticity. Windows native starter preview is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5). Clean-machine export, release-profile reruns, native integration and the remaining Phase 6 release checks remain open; see the [success criteria](../success-criteria.md#phase-6--windows-foundation-release).
