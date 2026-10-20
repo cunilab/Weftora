@@ -205,7 +205,7 @@ def main():
             envelope = json.loads((case_saves / "save.json").read_text(encoding="utf-8"))
             envelope["body"].update(patch)
             body = json.dumps(envelope["body"], ensure_ascii=False, separators=(",", ":"), allow_nan=False)
-            body_hash = hashlib.sha256(body.encode("utf-8")).hexdigest()
+            body_hash = hashlib.sha256(b"weftora-save-format-1\0" + body.encode("utf-8")).hexdigest()
             encoded = '{"saveFormat":1,"bodySha256":"' + body_hash + '","body":' + body + '}\n'
             (case_saves / "save.json").write_text(encoded, encoding="utf-8")
             case_before = inventory(case_saves)
