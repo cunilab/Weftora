@@ -5,6 +5,16 @@ import unittest
 
 
 class UpstreamNoticeDataTests(unittest.TestCase):
+    def test_embedded_default_font_retains_its_own_notice(self):
+        root = Path(__file__).resolve().parents[2] / "third-party/notices"
+        index = json.loads((root / "index.json").read_text(encoding="utf-8"))
+        package = next(p for p in index["packages"] if p["name"] == "bevy_text" and p["version"] == "0.20.0")
+        font = next(f for f in package["files"] if f["path"].endswith("/assets/fonts/FiraMono-LICENSE"))
+        text = (root / font["path"]).read_text(encoding="utf-8")
+        self.assertIn("SIL OPEN FONT LICENSE Version 1.1", text)
+        self.assertIn("The Mozilla Foundation and Telefonica S.A.", text)
+        self.assertEqual(font["kind"], "embedded-asset-notice")
+
     def test_checked_in_texts_match_pinned_provenance_and_have_no_orphan_files(self):
         root = Path(__file__).resolve().parents[2] / "third-party/notices"
         index = json.loads((root / "index.json").read_text(encoding="utf-8"))
@@ -25,7 +35,7 @@ class UpstreamNoticeDataTests(unittest.TestCase):
                     self.assertTrue((root / path).resolve().is_relative_to(root.resolve()))
                     self.assertRegex(file["url"], r"^https://(raw\.githubusercontent\.com|gitlab\.com)/")
                     self.assertIn("/" + package["upstreamCommit"] + "/", file["url"])
-                    self.assertIn(file["kind"], ("licence-text", "licensing-policy"))
+                    self.assertIn(file["kind"], ("licence-text", "licensing-policy", "embedded-asset-notice"))
                     self.assertEqual(hashlib.sha256((root / path).read_bytes()).hexdigest(), file["sha256"])
                     files.add(path.as_posix())
         actual = {path.relative_to(root).as_posix() for path in root.rglob("*")

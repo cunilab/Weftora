@@ -205,6 +205,35 @@
       ]
     },
     {
+      "name": "bevy_text",
+      "version": "0.20.0",
+      "declaredLicense": "MIT OR Apache-2.0",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/bevyengine/bevy",
+      "upstreamCommit": "b3bdd75becaffe9a16677cf5bae5bd6d198f052b",
+      "cratePath": "crates/bevy_text",
+      "files": [
+        {
+          "path": "bevyengine-bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/LICENSE-APACHE",
+          "url": "https://raw.githubusercontent.com/bevyengine/bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/LICENSE-APACHE",
+          "sha256": "a6cba85bc92e0cff7a450b1d873c0eaa2e9fc96bf472df0247a26bec77bf3ff9",
+          "kind": "licence-text"
+        },
+        {
+          "path": "bevyengine-bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/LICENSE-MIT",
+          "url": "https://raw.githubusercontent.com/bevyengine/bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/LICENSE-MIT",
+          "sha256": "508a77d2e7b51d98adeed32648ad124b7b30241a8e70b2e72c99f92d8e5874d1",
+          "kind": "licence-text"
+        },
+        {
+          "path": "bevyengine-bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/assets/fonts/FiraMono-LICENSE",
+          "url": "https://raw.githubusercontent.com/bevyengine/bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/assets/fonts/FiraMono-LICENSE",
+          "sha256": "587dd9548304fd421cd254f7550bd101c1250ffc95417f2f7f92d55b44ecbe53",
+          "kind": "embedded-asset-notice"
+        }
+      ]
+    },
+    {
       "name": "block2",
       "version": "0.5.1",
       "declaredLicense": "MIT",

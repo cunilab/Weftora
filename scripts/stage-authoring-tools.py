@@ -88,7 +88,7 @@ def upstream_notice_files(package, root, notice_root, index):
         require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(notice_root.resolve()),
                 "upstream notice escapes checked-in collection")
         require(digest(path) == file["sha256"], f"upstream notice hash changed: {file['path']}")
-        require(file.get("kind") in ("licence-text", "licensing-policy"), "unknown upstream notice kind")
+        require(file.get("kind") in ("licence-text", "licensing-policy", "embedded-asset-notice"), "unknown upstream notice kind")
         result.append((path, "upstream/" + relative.as_posix(),
                        {"url": file["url"], "commit": entry["upstreamCommit"], "kind": file["kind"]}))
     return result

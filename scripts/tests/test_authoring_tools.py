@@ -135,11 +135,20 @@ class AuthoringTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "revision changed"):
             authoring.upstream_notice_files(package, self.package, root, {"packages": [entry]})
 
-    def test_nested_notice_or_upstream_policy_does_not_resolve_missing_crate_licence(self):
-        self.fallback_fixture(kind="licensing-policy")
+    def test_nested_notice_policy_or_embedded_asset_does_not_resolve_missing_crate_licence(self):
+        root, entry = self.fallback_fixture()
         (self.package / "LICENSE-MIT").unlink()
-        records = authoring.collect_notices(self.metadata, self.repository, self.output)
-        self.assertTrue(next(row for row in records if row["name"] == "dependency")["missingTextOrMetadata"])
+        for kind in ("licensing-policy", "embedded-asset-notice"):
+            with self.subTest(kind=kind):
+                entry["files"][0]["kind"] = kind
+                (root / "index.json").write_text(json.dumps({"format": 1, "packages": [entry]}))
+                output = self.root / kind
+                records = authoring.collect_notices(self.metadata, self.repository, output)
+                record = next(row for row in records if row["name"] == "dependency")
+                self.assertTrue(record["missingTextOrMetadata"])
+                copied = next(file for file in record["files"] if "upstream" in file)
+                self.assertEqual(copied["upstream"]["kind"], kind)
+                self.assertTrue((output / copied["path"]).is_file())
 
     def test_mismatched_tools_refuse_before_creating_output(self):
         cli, player = self.root / "weftora", self.root / "weftora-player"

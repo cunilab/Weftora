@@ -1,0 +1,53 @@
+{
+  "sourceCommit": "136fa53b6dadccec630a5bcb613857765753fb79",
+  "workingTreeDirty": true,
+  "host": "Andress-MacBook-Air",
+  "target": "x86_64-pc-windows-msvc",
+  "scope": "Local target-filtered metadata and source/text audit; no Windows executable build, linkage claim, native execution or licence approval.",
+  "auditApproved": false,
+  "cargoLockSha256": "d727a7872b4d3b5c4d5c09e928b095e69445303a3dac0d070336cd9d86e0d33e",
+  "packageCount": 445,
+  "collectedFileCount": 862,
+  "missingTextOrMetadata": [
+    "constgebra 0.1.4"
+  ],
+  "embeddedFont": {
+    "package": "bevy_text 0.20.0",
+    "upstreamCommit": "b3bdd75becaffe9a16677cf5bae5bd6d198f052b",
+    "feature": "default_font",
+    "fontPathInCrate": "src/FiraMono-subset.ttf",
+    "fontSha256": "45131c5e913a5c7b4311101303e3c320a97b93a27a64b7262b533ee0d31ae03c",
+    "fontMatchesPinnedSource": true,
+    "fontFamily": "Fira Mono Medium",
+    "fontNameTableLicense": "Licensed under the Open Font License, version 1.1 or later",
+    "stagedNotice": {
+      "path": "licenses/bevy_text-0.20.0/upstream/bevyengine-bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/assets/fonts/FiraMono-LICENSE",
+      "sha256": "587dd9548304fd421cd254f7550bd101c1250ffc95417f2f7f92d55b44ecbe53",
+      "upstream": {
+        "url": "https://raw.githubusercontent.com/bevyengine/bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/assets/fonts/FiraMono-LICENSE",
+        "commit": "b3bdd75becaffe9a16677cf5bae5bd6d198f052b",
+        "kind": "embedded-asset-notice"
+      }
+    }
+  },
+  "packagesDeclaringLinks": [],
+  "remainingAudit": [
+    "constgebra missing pinned text/attribution",
+    "exact Windows candidate static imports and dynamically loaded components",
+    "native runtime/SDK redistribution and any bundled DLL terms",
+    "other embedded resources and Story assets",
+    "advisory exceptions and final licence/obligation review"
+  ],
+  "localGameNoticeIntegration": {
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "packageCount": 457,
+    "missingTextCount": 17,
+    "cliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
+    "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+    "gameNoticeFontSha256": "587dd9548304fd421cd254f7550bd101c1250ffc95417f2f7f92d55b44ecbe53",
+    "embeddedFontBytesFoundInPlayer": true,
+    "compilerFreeValidate": true,
+    "auditApproved": false
+  }
+}
