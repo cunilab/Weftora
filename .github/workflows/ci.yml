@@ -324,16 +324,38 @@ jobs:
           $proof = Join-Path $env:RUNNER_TEMP "weftora-toolkit-starter"
           python -B -O scripts/verify-new-story.py --cli (Join-Path $extracted "weftora.exe") --player (Join-Path $extracted "weftora-player.exe") --out $proof
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Package and verify standalone game ZIP transport
+      - name: Verify all example exports and package standalone game ZIPs
         shell: pwsh
         run: |
           $cli = (Resolve-Path "target/x86_64-pc-windows-msvc/release/weftora.exe").Path
-          foreach ($story in @("story-a", "life-sim", "localization-demo")) {
+          $player = (Resolve-Path "target/x86_64-pc-windows-msvc/release/weftora-player.exe").Path
+          $cliHash = (Get-FileHash $cli -Algorithm SHA256).Hash.ToLowerInvariant()
+          $playerHash = (Get-FileHash $player -Algorithm SHA256).Hash.ToLowerInvariant()
+          $identity = & $cli --tool-identity | ConvertFrom-Json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if ($identity.profile -ne "release" -or $identity.target -ne "x86_64-pc-windows-msvc") { throw "Expected Windows release tools" }
+          $examples = @("hello-story", "presentation-demo", "rules-demo", "commands-demo", "collections-demo", "scripts-demo", "random-demo", "queries-demo", "screens-demo", "story-a", "life-sim", "localization-demo")
+          $maintainedExamples = @(Get-ChildItem examples -Directory | Where-Object { Test-Path (Join-Path $_.FullName "manifest.jsonc") } | Select-Object -ExpandProperty Name | Sort-Object)
+          if (Compare-Object ($examples | Sort-Object) $maintainedExamples) { throw "Release example list differs from maintained Stories" }
+          $records = @()
+          foreach ($story in $examples) {
             $source = Join-Path $env:RUNNER_TEMP "weftora-transport-$story"
+            if (Test-Path -LiteralPath $source) { throw "Expected fresh example export: $source" }
             & $cli export "examples/$story" --out $source
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $copiedHash = (Get-FileHash (Join-Path $source "weftora-player.exe") -Algorithm SHA256).Hash.ToLowerInvariant()
+            $dialogueHash = (Get-FileHash (Join-Path $source "compiled/dialogue.json") -Algorithm SHA256).Hash.ToLowerInvariant()
+            $metadata = Get-Content (Join-Path $source "weftora-export.json") -Raw | ConvertFrom-Json
+            if ($copiedHash -ne $playerHash -or $metadata.player.sha256 -ne $playerHash -or $metadata.cli.sha256 -ne $cliHash -or $metadata.dialogue.sha256 -ne $dialogueHash) {
+              throw "$story must preserve the frozen tools and recorded dialogue hashes"
+            }
             & (Join-Path $source "weftora-player.exe") (Join-Path $source "story") --validate
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $records += @{ story = $story; playerSha256 = $copiedHash; dialogueSha256 = $dialogueHash; validationExitCode = 0 }
+            if ($story -notin @("story-a", "life-sim", "localization-demo")) {
+              Remove-Item -LiteralPath $source -Recurse -Force
+              continue
+            }
             python -B -O scripts/stage-game-notices.py --toolkit (Join-Path $env:RUNNER_TEMP "weftora-authoring-tools") --game $source
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $output = Join-Path $env:RUNNER_TEMP "weftora-release-transport-$story"
@@ -346,6 +368,11 @@ jobs:
               throw "Standalone game must include notices and exclude the authoring CLI"
             }
           }
+          if ((Get-FileHash $cli -Algorithm SHA256).Hash.ToLowerInvariant() -ne $cliHash -or (Get-FileHash $player -Algorithm SHA256).Hash.ToLowerInvariant() -ne $playerHash) {
+            throw "Frozen tools changed during example verification"
+          }
+          @{ cliIdentity = $identity; cliSha256 = $cliHash; playerSha256 = $playerHash; examples = $records; scope = "Baseline export/hash and compiler-free validation only; edited fixtures and native acceptance remain separate." } |
+            ConvertTo-Json -Depth 10 | Set-Content -Encoding utf8 (Join-Path $env:RUNNER_TEMP "weftora-release-example-exports.json")
       - name: Stage combined release download verification candidate
         shell: pwsh
         run: |
@@ -374,6 +401,7 @@ jobs:
           name: weftora-windows-release-evidence-${{ github.sha }}
           path: |
             ${{ runner.temp }}/weftora-release-tests.log
+            ${{ runner.temp }}/weftora-release-example-exports.json
             ${{ runner.temp }}/weftora-release-new-story/
             ${{ runner.temp }}/weftora-release-story-a-edits/
             ${{ runner.temp }}/weftora-release-screen-edits/
