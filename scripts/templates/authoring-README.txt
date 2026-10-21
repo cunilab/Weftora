@@ -13,6 +13,13 @@ Edit My Story\main.yarn and check again. Use a fresh export destination each tim
 Keep every file in the exported game folder together when sharing your game.
 The CLI must stay beside its matching player when creating another export.
 
+Export does not automatically copy Engine dependency notices. Before sharing an
+export, create My Game\notices and copy this toolkit's LICENSE-MIT, LICENSE-APACHE,
+THIRD-PARTY-NOTICES.txt, dependency-notices.json and complete licenses directory
+into it. Keep your Story's font/media/content notices too. This toolkit inventory
+is a conservative superset including authoring-only dependencies; copying notices
+does not put the compiler in your game or complete the pending release audit.
+
 For the opt-in developer tools:
 
   .\weftora.exe run "My Story" --debug-tools

@@ -10,10 +10,12 @@ The checked-in corpus contains 52 package mappings and 45 unique upstream files.
 
 | Component | Evidence at pinned source | Remaining work |
 | --- | --- | --- |
-| `constgebra 0.1.4` | The pinned repository tree has no licence text; Cargo declares `MIT OR Apache-2.0` | Resolve the missing text and attribution before release audit approval |
+| `constgebra 0.1.4` | The [published revision](https://github.com/knickish/constgebra/tree/eae8e094e5779f42f1db2a7adf9036aa33744bc8) has no licence text; Cargo declares `MIT OR Apache-2.0` | Resolve the missing text and attribution before release audit approval |
 | `dispatch 0.2.0` (Mac development inventory) | The pinned repository tree has no licence text; Cargo declares `MIT` | Resolve separately for a future Mac distribution |
 | Newer `madsmtm/objc2` crates (Mac development inventory) | The pinned `LICENSE.md` gives policy, links and SDK considerations | Retain the policy and review the actual terms/attribution; do not substitute an older commit's text |
 
 The [release evidence](../../docs/evidence/phase-6.md#pinned-upstream-notice-texts) records current target inventories and checks. Embedded assets, external native libraries, source-distribution obligations and advisory exceptions still require release review. `auditApproved` remains false in every staged toolkit candidate.
 
 When dependencies change, obtain source texts from that version's published revision, preserve their bytes and update the index/hashes in a reviewed PR. A missing mapping remains visible; source/SPDX/revision/hash changes for an existing mapping refuse staging. Add the new package/version's own evidence rather than reusing another version's attribution.
+
+Standalone example games now receive a hash-checked copy of the matching toolkit notice evidence before ZIP staging; see [game notice staging](../../docs/releasing.md#include-notices-in-standalone-game-candidates). This preserves missing-text flags and does not close the unresolved-source or final audit gates.

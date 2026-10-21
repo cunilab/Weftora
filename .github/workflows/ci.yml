@@ -334,12 +334,17 @@ jobs:
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             & (Join-Path $source "weftora-player.exe") (Join-Path $source "story") --validate
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            python -B -O scripts/stage-game-notices.py --toolkit (Join-Path $env:RUNNER_TEMP "weftora-authoring-tools") --game $source
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $output = Join-Path $env:RUNNER_TEMP "weftora-release-transport-$story"
             python -B -O scripts/package-folder.py --source $source --out $output
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
             $extracted = Join-Path $output "verified/weftora-transport-$story"
             & (Join-Path $extracted "weftora-player.exe") (Join-Path $extracted "story") --validate
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            if (!(Test-Path (Join-Path $extracted "notices/dependency-notices.json")) -or !(Test-Path (Join-Path $extracted "notices/notice-provenance.json")) -or (Test-Path (Join-Path $extracted "weftora.exe"))) {
+              throw "Standalone game must include notices and exclude the authoring CLI"
+            }
           }
       - name: Stage combined release download verification candidate
         shell: pwsh

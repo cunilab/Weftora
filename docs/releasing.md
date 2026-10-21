@@ -50,6 +50,21 @@ Every staged package is an **unapproved verification candidate**: `auditApproved
 
 Package this folder using the ZIP transport helper, then run the maintained starter proof with the extracted tool pair. Windows CI stages, packages and exercises this candidate, retaining the dependency inventory and ZIP for review. This does not establish independent-author, native or clean-machine acceptance and cannot authorize publication.
 
+
+## Include notices in standalone game candidates
+
+Each game ZIP carries its own player and needs its own notice evidence. After export and validation, attach the matching toolkit's notices before packaging:
+
+```text
+python -B -O scripts/stage-game-notices.py --toolkit <staged-tools-folder> --game <exported-game-folder>
+```
+
+Run from the candidate checkout with the same lockfile used to stage the toolkit. The helper checks the export's CLI/player identities and CLI hash against the toolkit report, the actual game's player hash, the lockfile hash and the complete listed licence-file inventory. It copies only `LICENSE-MIT`, `LICENSE-APACHE`, `THIRD-PARTY-NOTICES.txt`, `dependency-notices.json` and `licenses/` under a fresh `notices/` directory. Byte checks and `notice-provenance.json` record the source report and player hashes; no CLI, compiler or toolkit README is copied. Existing notices, overlapping inputs, linked files and inventory/hash mismatches refuse. Use quiescent operator-controlled inputs; failed output may remain for inspection and must not be published. A missing `notice-provenance.json` means staging did not complete. Re-export into a fresh folder before retrying.
+
+This is the matching toolkit's conservative normal/build dependency superset, including authoring-only entries; it does not imply those components are linked into the player. Missing-text flags and `auditApproved: false` are retained. Story content, fonts/media, external native libraries, attribution and redistribution obligations still require their own review. The localisation Story's original font/OFL/provenance remain under `story/fonts/`. The `constgebra 0.1.4` text gap remains unresolved; copying its metadata does not supply missing terms.
+
+Windows release CI applies this step to all three example games, then validates the extracted player again and checks that notices are present without an authoring CLI. Raw `weftora export` does not automatically attach Engine notices: authors sharing other exports must copy the matching toolkit's notice files and `licenses/` tree into a `notices/` folder too, alongside their own asset/content notices. Weftora's licence choice covers the Engine, not independently authored Story content. Notice presence does not complete P6-06 or authorize publication.
+
 ## Verify ZIP transport
 
 After exporting and validating a game folder with the frozen tools, package that reviewed folder with:
@@ -62,7 +77,7 @@ Use a quiescent source and output parent controlled by the release operator. Thi
 
 The fixed per-package bounds are 10,000 entries including directories/root and 1 GiB of uncompressed file data. The packager refuses links, junctions/reparse points, special files, traversal/absolute paths, Windows-reserved names, case/Unicode aliases, duplicate/unexpected ZIP members and mismatched types/sizes/hashes. Windows naming follows the conservative reserved-name checks in [CPython's Windows path implementation](https://github.com/python/cpython/blob/3.13/Lib/ntpath.py#L282-L306). No archive support is added to the Engine.
 
-Run the extracted player with the extracted Story and `--validate` before using these bytes for native/clean-machine acceptance. Windows release CI does this for fresh Story A, life-sim and localisation exports and retains the ZIPs, inventories, reports and checksums; its GitHub artifact wrapper is not itself a release asset. Authoring-tools staging must first add the matching tool pair, README and reviewed notices from ADR 0013. Packaging a folder does not approve its contents or complete the licence audit.
+Run the extracted player with the extracted Story and `--validate` before using these bytes for native/clean-machine acceptance. Windows release CI does this for fresh Story A, life-sim and localisation exports and retains the ZIPs, inventories, reports and checksums; its GitHub artifact wrapper is not itself a release asset. Stage the authoring toolkit first and attach its matching notice evidence to each standalone game as described above. Packaging a folder does not approve its contents or complete the licence audit.
 
 ## Stage combined download checksums
 
