@@ -139,8 +139,19 @@ The [MacBookAir report](./phase-6-debug-tools-macos.json) records 396 passing Ru
 
 Sol independently reviewed the integration and replay/input boundaries. A native Mac launch exposed a duplicate picking component in the overlay label bundle; it was fixed and an actual overlay-spawn regression test added. A subsequent window-creation smoke run survived two seconds after creation without a panic and was terminated by the test. Visual/input acceptance could not be completed because Computer Use Accessibility/Screen Recording permissions were unavailable. This does not substitute for native Windows testing. The full Windows inspector checklist stays in [issue #5](https://github.com/cunilab/Weftora/issues/5); P6-10 remains open.
 
-[The preceding notice-collection CI](https://github.com/cunilab/Weftora/actions/runs/39548346627) passed all four jobs, including Windows release verification. The new runtime inspector change awaits its own CI run; no tag or release is created.
+[The preceding notice-collection CI](https://github.com/cunilab/Weftora/actions/runs/39548346627) passed all four jobs, including Windows release verification. [Inspector CI](https://github.com/cunilab/Weftora/actions/runs/39552475487) subsequently passed all four jobs, including Windows release verification; no tag or release is created.
 
 ## Remaining acceptance
 
 Headless execution and exported `--validate` do not establish a rendered window, native input, clean-machine operation, release-profile behavior or executable authenticity. Windows native starter preview is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5). Clean-machine export, release-profile reruns, native integration and the remaining Phase 6 release checks remain open; see the [success criteria](../success-criteria.md#phase-6--windows-foundation-release).
+
+
+## Developer command runner (P6-10 partial)
+
+The opt-in developer panel now switches between state and command modes with Tab. Command mode accepts the existing strict `command.call` UI action JSON, validates against the live Story rules registry, then dispatches through the ordinary rules/script bridge. Non-command actions, unknown commands and malformed/incorrect arguments are nonfatal input errors. Commands are never dry-run. Actual rule/script failures retain the runtime's terminal-error and partial-write behavior. Persistent effects invalidate checkpoint capture; displayed dialogue/choices remain snapshots. The bounded command buffer survives mode switches and panel reopening; each new Enter press executes again, while a held Enter and a same-frame Tab/Enter do not resubmit.
+
+[The command-runner report](./phase-6-debug-command-macos.json) records 399 passing Rust tests, including twelve developer-tool tests. Both Clippy configurations deny warnings; formatting/shared rustfmt, dependency direction, docs and diff checks pass. Three new tests cover strict rejection and state/checkpoint preservation, once-only execution with derived rules and save-file preservation, and pending/error guards plus partial-write failure semantics. Existing developer-panel tests continue to cover input capture, UTF-8/AltGr, disabled mode, overlay startup and state editing. Claude Opus 5.5 medium challenged the design and independently reviewed the implementation read-only (PASS with limits); its review is static and does not replace test or native acceptance evidence.
+
+The matching CLI/player pair was rebuilt with `--locked`; a fresh Commands Demo export passed identity verification and its developer-mode player remained alive two seconds after native Mac window creation before the test terminated its own process. This verifies startup only, not visual/input behavior.
+
+Native command-entry and release-build checks are appended to the [Windows checklist](../debug-tools.md#windows-acceptance-checklist) tracked by issue #5. Signal/event tracing, Yarn node selection and full P6-10 acceptance remain open. No tag or release is created.

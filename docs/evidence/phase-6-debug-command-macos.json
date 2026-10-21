@@ -1,0 +1,35 @@
+{
+  "check": "P6-10 developer command runner automated slice",
+  "baseCommit": "6498a1581c389f84bc6c93a7c1b1ec60eb328885",
+  "workingTreeDirty": true,
+  "platform": "MacBookAir development host",
+  "optIn": "--debug-tools; F12 opens; Tab switches state/command mode",
+  "covered": [
+    "strict existing UiAction JSON parser; command.call only",
+    "live Story command registry validates name, arity, scalar types and bounds before execution",
+    "invalid actions preserve canonical state, runner and checkpoint",
+    "valid execution settles derived rules once, keeps dialogue snapshot and preserves old save file on refusal",
+    "held Enter does not resubmit; Tab plus Enter consumes the frame",
+    "command input retained across mode switches",
+    "pending presentation guard and terminal Story error guard",
+    "runtime failure retains completed writes and refuses further actions/saves"
+  ],
+  "advisor": "Claude Opus 5.5 medium: initial design challenge and final read-only static review; PASS with limits. Main agent verifies system ordering, rules actions and checks.",
+  "visualInputAcceptance": "Unverified; Computer Use Accessibility/Screen Recording permissions unavailable from prior slice. Windows checks remain maintainer-owned in issue5.",
+  "remaining": [
+    "signal/event trace",
+    "Yarn node selection",
+    "native Windows focus/pointer/text/resize and release-build walkthrough"
+  ],
+  "scope": "No dependencies, public API, Story capability/schema or save wire changes. No complete P6-10 or release-acceptance claim.",
+  "rustTestsPassed": 399,
+  "developerToolTestsPassed": 12,
+  "validation": {
+    "defaultAndStoryClippy": "passed with warnings denied",
+    "fmtAndSharedRustfmt": "passed",
+    "dependencyDirection": "passed",
+    "docsAndDiff": "passed",
+    "matchingToolsAndExport": "Both tools rebuilt with --locked; commands-demo export and identity verification passed"
+  },
+  "nativeMacScope": "Fresh exported commands-demo player launched with --debug-tools; alive two seconds after window creation, then own process terminated. No visual/input acceptance."
+}
