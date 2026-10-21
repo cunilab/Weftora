@@ -151,8 +151,9 @@ def prove(cli, player, output, triple=None, cache=None):
             require(meta["cli"]["identity"] == baseline and meta["player"]["identity"] == player_id
                     and meta["cli"]["sha256"] == digest(tool) and meta["player"]["sha256"] == player_hash,
                     "matching control metadata mismatch")
+            require(meta["player"]["file"] in ("weftora-player", "weftora-player.exe"), "unexpected control player filename")
             copied_player = destination / meta["player"]["file"]
-            require(copied_player.name in ("weftora-player", "weftora-player.exe") and digest(copied_player) == player_hash, "control player hash mismatch")
+            require(digest(copied_player) == player_hash, "control player hash mismatch")
             run(player, destination / "story", "--dialogue", destination / "compiled/dialogue.json", "--validate")
             copied_player.unlink()
             controls.append({"pair": label, "story": story, "exportAndValidationPassed": True, "playerSha256": player_hash})

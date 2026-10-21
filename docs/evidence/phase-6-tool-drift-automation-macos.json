@@ -1,7 +1,7 @@
 {
-  "sourceCommit": "bed6e0723b2d24d45d4cd6a660b23cf389e6e6e7",
+  "sourceCommit": "742f493d3668c9e016ed1832a7d3e9993db3fe24",
   "workingTreeDirty": true,
-  "sourceInventorySha256": "8df7a901deb7f7733e302d9078d8308881ff1101f292620c6986583e7197fa00",
+  "sourceInventorySha256": "177ed116af528a9ff902f886c4334a56c6d97c5f6c2663129daca1cd7c5a4f00",
   "baselineCliIdentity": {
     "identityFormat": 1,
     "tool": "weftora",
@@ -37,8 +37,8 @@
   },
   "baselineCliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
   "retainedPlayerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
-  "isolatedUnchangedCliSha256": "1fcd0e8927613199225ddc30f67d2442daff300dd72ca56b1e65a43d7ba05b16",
-  "changedCliSha256": "1d65fddd603ec642ef3a0f3dc8372b58ab8fd0dad51fe3cf053c03a78a3a3dd0",
+  "isolatedUnchangedCliSha256": "d46a27a9bbf27d0346fbea04ad97a5975b99598d5bdf3cb44018e2555e163c9c",
+  "changedCliSha256": "9bcd9dacd844799ed6594338d779f1dabf2b5838cbfdf6094cd9d537224fdd9d",
   "controlledSource": "apps/weftora-cli/src/tool_identity.rs",
   "controlledAppend": "\n// P6-02 isolated build-fingerprint negative fixture.\n",
   "baselineSourceSha256": "9b8a79ee40535472969621dcd82dd129a2e003536aae630c22d9ab7c84c425ef",
@@ -132,12 +132,12 @@
     "debug/.fingerprint"
   ],
   "pythonTests": {
-    "run": 69,
-    "passed": 66,
+    "run": 70,
+    "passed": 67,
     "skipped": 3,
-    "focusedPassed": 8
+    "focusedPassed": 9
   },
-  "review": "Claude Opus 5.5 medium found a stale path-crate replay risk; isolated cache reset and a fresh-artifact guard fixed it. Final read-only review PASS; strengthened actual Mac proof completed successfully.",
+  "review": "Claude Opus 5.5 medium found a stale path-crate replay risk; isolated cache reset and a fresh-artifact guard fixed it. Final read-only review PASS; strengthened actual Mac proof completed successfully. Main also added an exact export-player basename guard before cleanup, a malicious-metadata regression preserving the frozen player, and reran the full real proof successfully. Claude focused cleanup review confirmed the guard; its fake-validation handling note was corrected in the test.",
   "scope": "Actual isolated builds on Mac debug tools, four matching controls and four actual changed-build refusals. Read-only original cache; no hardlinks. Not Windows release, native/clean-machine or historical-binary acceptance.",
   "ci": "Windows release job invokes same helper with explicit Windows target and copied cache after candidate packaging, before Engine independence. Requires new head CI.",
   "rustTests": "Not rerun; no Rust/dependency/fixture changes. Actual CLI was rebuilt twice from copied source only.",
@@ -148,7 +148,7 @@
   },
   "checks": [
     "Actual optimized final Mac build proof passed after isolated path-cache reset.",
-    "Full Python suite69 run66 pass3 native Windows junction skips; eight focused tests pass.",
+    "Full Python suite70 run67 pass3 native Windows junction skips; nine focused tests pass.",
     "Workflow YAML, cargo xtask docs and final staged whitespace checks passed."
   ]
 }

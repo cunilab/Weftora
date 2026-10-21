@@ -134,6 +134,32 @@ class DriftTests(unittest.TestCase):
         run.assert_not_called()
         self.assertFalse(output.exists())
 
+    def test_export_metadata_cannot_direct_cleanup_to_frozen_player(self):
+        frozen = (self.root / "frozen").resolve()
+        frozen.mkdir()
+        cli, player = frozen / "weftora", frozen / "weftora-player"
+        cli.write_bytes(b"frozen cli")
+        player.write_bytes(b"frozen player")
+        identity = {"tool": "weftora", "buildId": "baseline", "profile": "debug", "target": "host"}
+        player_id = dict(identity, tool="weftora-player")
+
+        def run(command, **kwargs):
+            if command[1] == "--tool-identity":
+                return subprocess.CompletedProcess(command, 0, stdout=json.dumps(identity if command[0] == str(cli) else player_id), stderr="")
+            if command[-1] == "--validate":
+                return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+            self.assertEqual(command[1], "export")
+            destination = Path(command[-1])
+            destination.mkdir()
+            meta = {"cli": {"identity": identity, "sha256": drift.digest(cli)},
+                    "player": {"identity": player_id, "sha256": drift.digest(player), "file": "../../frozen/weftora-player"}}
+            (destination / "weftora-export.json").write_text(json.dumps(meta))
+            return subprocess.CompletedProcess(command, 0, stdout="", stderr="")
+
+        with mock.patch.object(drift.source, "inventory", return_value={}), mock.patch.object(drift.source, "copy_workspace", return_value={}), mock.patch.object(drift.subprocess, "check_output", side_effect=["commit\n", b""]), mock.patch.object(drift.subprocess, "run", side_effect=run), self.assertRaisesRegex(SystemExit, "control player filename"):
+            drift.prove(cli, player, self.root / "proof")
+        self.assertEqual(player.read_bytes(), b"frozen player")
+
 
 if __name__ == "__main__":
     unittest.main()
