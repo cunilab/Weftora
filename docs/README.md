@@ -14,6 +14,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [Roadmap](../ROADMAP.md) | WFT-ROADMAP-001 | Phase order and tasks |
 | [Getting started](./getting-started.md) | WFT-START-001 | Create, edit, check, preview and export a starter with prebuilt tools |
 | [Phase 6 authoring evidence](./evidence/phase-6.md) | WFT-EVID-011 | Starter CLI checks and remaining foundation-release acceptance |
+| [Release proof coverage](./release-proof-coverage.md) | WFT-REL-002 | Earlier checks mapped to release commands, reports and explicit gaps |
 | [Architecture](./architecture.md) | WFT-ARCH-001 | Crates, boundaries, Story package, runtime semantics |
 | [Success Criteria](./success-criteria.md) | WFT-ACCEPT-001 | Pass/fail checks per phase and evidence rules |
 | [Releasing](./releasing.md) | WFT-REL-001 | Trunk-based main, immutable version tags, GitHub Releases and the pending release checklist |

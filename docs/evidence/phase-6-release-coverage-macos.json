@@ -1,0 +1,81 @@
+{
+  "check": "P0-07 actual Hello text-edit package/headless proof and P6-03 coverage reconciliation",
+  "baseCommit": "d470a839d6bedf7330c4411d88dbfd5a28a3570d",
+  "workingTreeDirty": true,
+  "device": "Andress-MacBook-Air.local",
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "playerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "cliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
+  "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+  "starterBranches": [
+    {
+      "choice": 0,
+      "ready": true,
+      "completed": true
+    },
+    {
+      "choice": 1,
+      "ready": false,
+      "completed": true
+    }
+  ],
+  "helloTextEdit": {
+    "check": "P0-07 automated text-edit package/headless coverage",
+    "variants": [
+      {
+        "variant": "hello-baseline",
+        "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+        "compiledDialogueSha256": "dc1dbacd621f2fcd144324ec7e3f512540b955379963871ee8719de4d1e91c14"
+      },
+      {
+        "variant": "hello-edited",
+        "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+        "compiledDialogueSha256": "13d1c9db5ee8506ce418522e3b504ebcd76e51a29bfa358c86478bd2f546d0cb"
+      }
+    ],
+    "scope": "Same player bytes validate each artifact; gameplay traces use CLI headless. Profile/target inherit top-level identities; no rendered gameplay claim.",
+    "renderedOutput": false,
+    "bothBranchesDifferOnlyByGreeting": true,
+    "sourceUnchanged": true
+  },
+  "exports": 3,
+  "helloBranchTraces": 4,
+  "pythonTests": {
+    "run": 61,
+    "passed": 58,
+    "skipped": 3,
+    "focusedPassed": 3
+  },
+  "scope": "Actual optimized helper run using Mac debug binaries. Player bytes validate explicit artifacts; complete CLI headless traces differ only by greeting. No rendered/native or Windows-release acceptance.",
+  "review": "Claude Opus 5.5 medium read-only advisor/reviewer: PASS. Main clarified nested scope, added existing-new-marker regression and retained-player rehash; also added/tested outside-checkout output refusal to prevent recursive fixture copies. Final optimized real-tool proof and full Python suite passed.",
+  "precedingCi": {
+    "url": "https://github.com/cunilab/Weftora/actions/runs/39626037734",
+    "observed": "Windows required, dependencies and macOS jobs passed; release starter/edit proof step passed, release evidence upload still in progress at observation."
+  },
+  "rustTests": "Not rerun: no Rust/dependency or fixture changes.",
+  "remaining": [
+    "New head Windows CI for Hello proof.",
+    "Actual changed-source release CLI paired with retained player experiment, documented in docs/release-proof-coverage.md.",
+    "Exact main-candidate reruns, native/manual and clean-machine acceptance; no tag/publication."
+  ]
+}
