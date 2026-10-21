@@ -1,0 +1,56 @@
+{
+  "check": "P6-11 catalog-validation implementation slice; live switching and native acceptance remain open",
+  "baseCommit": "2d7c0d3505398e3f3404ac42c6d9313f22707961",
+  "workingTreeDirty": true,
+  "platform": "MacBookAir development host",
+  "capability": "localization.catalog/1",
+  "fixture": "examples/localization-demo (en source, id, ja)",
+  "rustTestsPassed": 417,
+  "focusedFinalTestsPassed": 8,
+  "negativeCliMatrix": "20 catalog/configuration mutations each refuse check, headless run and export; no activation or export output",
+  "covered": [
+    "strict recursive duplicate-key JSONC, unknown fields/schema, capability/configuration pairing and base-language membership",
+    "bounded languages, catalogs, entries, UTF-8 text and invalid/control keys with escaped diagnostics",
+    "missing and unknown UI/dialogue keys, including choices; placeholder set equality, reorder/repeat, overflow and leading-zero refusals",
+    "canonical ICU language tags, region/script acceptance and malformed/case-alias refusals without panic",
+    "mixed-case, long and generated Yarn IDs accepted through CLI and compiler-free artifact validation",
+    "real outside-root catalog refused by dot-segment policy",
+    "both base-language dialogue branches complete; translation edits preserve artifact bytes and source hash"
+  ],
+  "validation": {
+    "fullSuite": "cargo test-all: 417 passed, 0 failed",
+    "postReviewDiagnosticChanges": "six CLI and two Story tests pass on final source",
+    "defaultAndStoryClippy": "both passed with warnings denied on final source",
+    "formatting": "cargo fmt --all --check and shared vendor rustfmt passed",
+    "dependencyDirection": "cargo xtask deps --offline passed",
+    "docsAndDiff": "cargo xtask docs and git diff --check passed",
+    "matchingTools": "cargo build --workspace --locked passed"
+  },
+  "exportProof": {
+    "platform": "MacBookAir development host",
+    "scope": "actual matching debug CLI/player export and compiler-free validation; no window/input test",
+    "exportedCatalogSha256": {
+      "locales/en.jsonc": "003743e4d4eb42ccff9717d3abf472e0225f74365ac5073c86379ec8e680a0b8",
+      "locales/id.jsonc": "52f459a6b6fb76cfcc8249b6df212c62e935dc06fba22939a585256e781212c0",
+      "locales/ja.jsonc": "6f8baa3d6c216e16b408f3cbc80d9964ddc8102f7e9deea3faff347d611a92ad"
+    },
+    "toolIdentityVerified": true,
+    "copiedPlayerSha256Verified": true,
+    "exportedPlayerValidate": "passed",
+    "missingChoiceTranslation": "refused with specific line:visit diagnostic and empty stdout",
+    "artifactPreservedOnRefusal": true,
+    "repairedCatalogValidate": "passed",
+    "temporaryExportRemoved": true
+  },
+  "advisor": "Claude Opus 5.5 medium reviewed design and implementation read-only. Mixed-case/long Yarn key incompatibility and weak traversal proof were corrected; follow-up PASS with limits. Main then escaped invalid-key/tag diagnostics and verified final focused tests.",
+  "limits": [
+    "runtime still displays source language; no locale Settings key, live switching or localized UI binding yet",
+    "no bundled Japanese font/rendering acceptance yet; markup parsing and locale-specific number formatting deferred",
+    "generated IDs can change on source edits; fixture uses explicit tags",
+    "empty strings allowed intentionally; coverage is not translation-quality review",
+    "no shadow-line alias resolution",
+    "no schema/API/save/artifact version bump; new manifest field and capability; no new dependency",
+    "no GUI/input/screenshots or native Windows acceptance; issue #5 remains open",
+    "no tag, merge or release publication"
+  ]
+}

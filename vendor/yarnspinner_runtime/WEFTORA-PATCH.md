@@ -45,3 +45,8 @@ APIs delegate directly to their registered functions. Weftora uses this hook for
 read-only canonical collection queries, avoiding error sentinels and partial VM
 execution after a failed query. Compiler/artifact signatures remain in the adapter;
 this runtime patch knows no Story, Core or collection types.
+
+`Language::try_new` exposes the existing ICU language-identifier parser without
+panicking on untrusted catalog language keys. Existing `Language::new` and
+`From` behavior is unchanged; Story validation uses the fallible API and checks
+canonical spelling before accepting a declared language.

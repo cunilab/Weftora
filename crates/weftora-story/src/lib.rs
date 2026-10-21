@@ -4,6 +4,7 @@
 
 pub mod compatibility;
 pub mod jsonc;
+pub mod localization;
 pub mod paths;
 pub mod rules;
 pub mod ui;
@@ -40,6 +41,8 @@ pub struct Manifest {
     pub screens: Vec<String>,
     #[serde(default)]
     pub events: Vec<String>,
+    #[serde(default)]
+    pub localization: Option<localization::Definition>,
     pub initial_screen: Option<String>,
     /// Reverse-domain Story ID, e.g. `com.example.hello-story`.
     pub id: String,
@@ -102,6 +105,7 @@ pub struct Story {
     assets: Catalog<Asset>,
     screens: Catalog<ui::ScreenDefinition>,
     rules: rules::Rules,
+    localization: Option<localization::Catalogs>,
 }
 
 /// One Yarn source file read from the Story.
@@ -199,10 +203,11 @@ impl Story {
             || !manifest.events.is_empty()
             || manifest.initial_screen.is_some()
             || manifest.save_schema.is_some()
+            || manifest.localization.is_some()
         {
             diags.push(manifest_diag(
                 None,
-                "requires, state, catalogs, screens and events need manifestSchema 1".into(),
+                "requires, state, catalogs, screens, events, saves and localization need manifestSchema 1".into(),
             ));
         }
         if manifest
@@ -450,6 +455,13 @@ impl Story {
                 rules::Rules::default()
             }
         };
+        let localization = match localization::load(root, &manifest) {
+            Ok(catalogs) => catalogs,
+            Err(errors) => {
+                diags.extend(errors);
+                None
+            }
+        };
         if !diags.is_empty() {
             return Err(diags);
         }
@@ -460,6 +472,7 @@ impl Story {
             assets,
             screens,
             rules,
+            localization,
         };
         let errors = ui::reference_errors(&story);
         if errors.is_empty() {
@@ -491,6 +504,11 @@ impl Story {
 
     pub fn rules(&self) -> &rules::Rules {
         &self.rules
+    }
+
+    /// Loaded catalog data; adapters must also validate language identifiers and compiled dialogue.
+    pub fn localization(&self) -> Option<&localization::Catalogs> {
+        self.localization.as_ref()
     }
 
     /// Defaults and initial overrides are validated before the Story is returned.

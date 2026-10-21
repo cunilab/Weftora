@@ -9,6 +9,13 @@ use icu_locale_core::LanguageIdentifier;
 #[non_exhaustive]
 pub struct Language(pub(crate) LanguageIdentifier);
 impl Language {
+    /// Parses an untrusted language tag without panicking.
+    pub fn try_new(language: &str) -> core::result::Result<Self, String> {
+        language
+            .parse::<LanguageIdentifier>()
+            .map(Self)
+            .map_err(|error| error.to_string())
+    }
     /// Creates a new `Language` from a string. Panics if the string is not a valid IETF BCP 47 code.
     pub fn new(language: impl Into<String>) -> Self {
         let language = language.into();

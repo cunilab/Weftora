@@ -89,7 +89,7 @@ These are current development-build contracts, not a tagged foundation release. 
 | Compiled dialogue | `dialogueArtifactFormat` `1` |
 | Compiler contract | `yarnspinner-rust` `0.9.0` |
 | Tool identity / export metadata | `identityFormat` `1` / `exportFormat` `1` with additive CLI/player identities |
-| Capabilities | `dialogue.yarn/1`, `dialogue.collections/1`, `assets.catalog/1`, `ui.screens/1`, `presentation.media/1`, `save/1`, `rules.events/1`, `rules.commands/1`, `state.collections/1`, `rules.rhai/1`, `rules.random/1` |
+| Capabilities | `dialogue.yarn/1`, `dialogue.collections/1`, `assets.catalog/1`, `ui.screens/1`, `presentation.media/1`, `save/1`, `rules.events/1`, `rules.commands/1`, `state.collections/1`, `rules.rhai/1`, `rules.random/1`, [`localization.catalog/1`](../localization.md) |
 
 [Phase 6 evidence](../evidence/phase-6.md#downgrade-compatibility-p6-09-automated-slice) maps modeled writer fixtures and real current-reader behavior to the checks below. Historical-binary guarantees, release-profile reruns and native acceptance are separate; constructed version metadata does not establish an alternate executable's behavior.
 

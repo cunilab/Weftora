@@ -1,0 +1,25 @@
+{
+  "manifestSchema": 1,
+  "id": "dev.weftora.localization-demo",
+  "storyVersion": "0.1.0",
+  "title": "Three Languages",
+  "entrypoint": "Start",
+  "dialogue": [
+    "main.yarn"
+  ],
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": [
+      "dialogue.yarn/1",
+      "localization.catalog/1"
+    ]
+  },
+  "localization": {
+    "baseLanguage": "en",
+    "languages": {
+      "en": "locales/en.jsonc",
+      "id": "locales/id.jsonc",
+      "ja": "locales/ja.jsonc"
+    }
+  }
+}
