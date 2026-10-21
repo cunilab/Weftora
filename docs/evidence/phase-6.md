@@ -92,7 +92,7 @@ Astra advised the explicit compatibility-domain policy; Sol independently review
 
 ## Folder packaging and release workflow (P6-05 decision)
 
-[ADR 0013](../adr/0013-folder-release-packages.md) records folders as the runtime container. No Engine archive reader is introduced. ZIP transport for GitHub assets has explicit path/link/bounds and extracted-inventory requirements; its packager and rejection tests remain pending. The P6-05 decision checkbox records this format choice, not a working transport packager or a release acceptance result.
+[ADR 0013](../adr/0013-folder-release-packages.md) records folders as the runtime container. No Engine archive reader is introduced. ZIP transport for GitHub assets has explicit path/link/bounds and extracted-inventory requirements; its [packager and rejection tests](#zip-transport-validation-p6-05-automated-slice) are implemented below. The P6-05 decision checkbox records this format choice, not a working transport packager or a release acceptance result.
 
 The [release guide](../releasing.md) follows the maintainer's chosen trunk-based flow: reviewed changes into `main`, an exact verified commit, annotated version tag, draft GitHub Release and approved promotion of tested bytes. Current CI has no tag-driven release pipeline. This documentation-only change does not build, tag or publish a release and does not rerun the historical Rust suite. Header/link and diff checks validate the docs; P6-03/release automation and native acceptance remain open.
 
@@ -100,10 +100,18 @@ The [release guide](../releasing.md) follows the maintainer's chosen trunk-based
 
 The `Windows release verification` CI job now runs the full fixture suite with `--release --target x86_64-pc-windows-msvc`, then builds a matching CLI/player pair and runs the maintained starter, Story A edit, screen edit and A/B same-player proofs. Engine independence runs last with `--profile release --target x86_64-pc-windows-msvc --reuse-target`; all Cargo operations and the retained standalone player use that profile/target. Staging remains outside Cargo `target/`. Logs, JSON reports and exported examples are retained in `weftora-windows-release-evidence-<SHA>` for 14 days. The stripped source/target trees are excluded from upload.
 
-Local MacBookAir validation: eight Python helper tests pass, including Cargo-option placement before test-harness arguments and release/default/explicit-target player paths. Documentation headers/links and diff checks pass. The Windows job is newly added and its first run is pending; no local release build or native Windows run is claimed. These helpers do not substitute for executing the full release proof.
+Local MacBookAir validation: eight Python helper tests pass, including Cargo-option placement before test-harness arguments and release/default/explicit-target player paths. Documentation headers/links and diff checks pass. [Windows CI 39428560262](https://github.com/cunilab/Weftora/actions/runs/39428560262) subsequently passed all four jobs, including the complete release-profile job and Engine independence. No local release build or native Windows acceptance is claimed. Artifact names use the tested PR merge SHA, as supplied by `github.sha`.
 
-P6-03 stays open: earlier hash/fixture recipes beyond the maintained scripts still need release-specific evidence. ZIP transport, clean-machine/native acceptance and tag/draft publishing automation remain pending. This job has read-only repository permissions and creates no tag or GitHub Release.
+P6-03 stays open: earlier hash/fixture recipes beyond the maintained scripts still need release-specific evidence. The ZIP transport slice is tracked below; clean-machine/native acceptance and tag/draft publishing automation remain pending. This job has read-only repository permissions and creates no tag or GitHub Release.
 
+
+## ZIP transport validation (P6-05 automated slice)
+
+`scripts/package-folder.py` freezes a reviewed folder inventory, writes a single-root ZIP, extracts into a fresh verification directory and compares names, sizes, SHA-256 hashes, empty directories and executable bits. It rechecks the source before producing the archive checksum. Limits are 10,000 entries and 1 GiB uncompressed data per package. Refusals cover unsafe/Windows-reserved paths, case/Unicode aliases, links/junctions/reparse points, special files, duplicate/missing/extra members, wrong types/sizes/hashes and exceeded limits. Existing output is never overwritten; partial failed output is retained without success/checksum publication. The release operator must control quiescent source/output directories; the helper does not expose arbitrary archive extraction.
+
+The [MacBookAir report](./phase-6-transport-macos.json) records two actual debug-tool exports (Story A and Story B), packaging under Python `-O`, successful inventory/hash round trips and `--validate` using each extracted player. Twenty Python tests run locally: nineteen pass and the native Windows junction test is skipped. Actionlint 1.7.7, docs headers/links and diff checks pass. Sol independently reviewed the transport boundaries; missing reserved console-device names and a pre-extension-space alias were fixed and added to refusal tests.
+
+Windows release CI now packages fresh A/B exports, runs the refusal suite including live/dangling native junctions and validates each extracted game before Engine cleanup. This new ZIP step has not run yet. ZIPs, source inventories, proof reports and `SHA256SUMS` are retained beside the other release evidence; verification trees are excluded to avoid duplicate binaries. This establishes transport plumbing, not an approved authoring-tools package, licence audit, clean-machine/native acceptance, or a published release. See [the operator recipe](../releasing.md#verify-zip-transport).
 
 ## Remaining acceptance
 

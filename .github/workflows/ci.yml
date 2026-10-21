@@ -309,8 +309,25 @@ jobs:
             python -B -O "scripts/verify-$proof.py" --cli $cli --player $player --out $output
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
-      - name: Test Engine-independence proof helpers
+      - name: Test packaging and Engine-independence proof helpers
         run: python -B -m unittest discover -s scripts/tests
+      - name: Package and verify standalone game ZIP transport
+        shell: pwsh
+        run: |
+          $cli = (Resolve-Path "target/x86_64-pc-windows-msvc/release/weftora.exe").Path
+          foreach ($story in @("story-a", "life-sim")) {
+            $source = Join-Path $env:RUNNER_TEMP "weftora-transport-$story"
+            & $cli export "examples/$story" --out $source
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            & (Join-Path $source "weftora-player.exe") (Join-Path $source "story") --validate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $output = Join-Path $env:RUNNER_TEMP "weftora-release-transport-$story"
+            python -B -O scripts/package-folder.py --source $source --out $output
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+            $extracted = Join-Path $output "verified/weftora-transport-$story"
+            & (Join-Path $extracted "weftora-player.exe") (Join-Path $extracted "story") --validate
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
       - name: Prove release Engine independence without Story A/B
         shell: pwsh
         run: |
@@ -328,6 +345,9 @@ jobs:
             ${{ runner.temp }}/weftora-release-story-a-edits/
             ${{ runner.temp }}/weftora-release-screen-edits/
             ${{ runner.temp }}/weftora-release-life-sim/
+            ${{ runner.temp }}/weftora-release-transport-*/*.zip
+            ${{ runner.temp }}/weftora-release-transport-*/*.json
+            ${{ runner.temp }}/weftora-release-transport-*/SHA256SUMS
             ${{ runner.temp }}/weftora-release-engine-independence/*.json
             ${{ runner.temp }}/weftora-release-engine-independence/*.log
             ${{ runner.temp }}/weftora-release-engine-independence/standalone/

@@ -18,7 +18,7 @@ The existing long-running PR #19 remains open for maintainer review; this policy
 
 This document records the intended release process. Current CI runs on PRs and pushes to `main`; no tag-triggered release builder or publisher is implemented yet. Pushing a tag currently does not build or publish release assets. Debug previews and release-verification artifacts are development evidence, not approved foundation release assets.
 
-The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile and collects the maintained starter, Story edit, A/B and Engine-independence proofs. Folder staging/ZIP transport validation, the remaining evidence recipes and a draft-release publishing workflow with explicit promotion are still pending.
+The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile and collects the maintained starter, Story edit, A/B and Engine-independence proofs. The folder transport packager is implemented and CI now exercises it for standalone A/B games. The authoring-tools licence inventory, remaining evidence recipes and draft-release publishing workflow with explicit promotion are still pending.
 
 ## Prepare a candidate
 
@@ -35,6 +35,20 @@ cargo test-all --release --target x86_64-pc-windows-msvc -- --test-threads=1
 ```
 
 Both tools then come from `target/x86_64-pc-windows-msvc/release/`. Run proofs with these explicit `--cli` and `--player` paths and fresh `--out` directories. Never combine a debug CLI with a release player. The existing starter, Story A edit, screen edit and A/B same-player scripts accept explicit tool paths. Run Engine independence with `python -B -O scripts/verify-engine-independence.py --profile release --target x86_64-pc-windows-msvc --reuse-target --out <fresh-directory-outside-checkout>`. It applies the selected profile/target to inventory, build, tests, missing-fixture controls and workspace cache cleanup, and records them in the report. The default remains `--profile dev` with the host target. This proof rebuilds workspace artifacts; run it after retaining the frozen tool/export proofs. Earlier hash/fixture proof recipes must also be rerun or ported to maintained release automation; these two Cargo commands alone do not satisfy P6-03.
+
+## Verify ZIP transport
+
+After exporting and validating a game folder with the frozen tools, package that reviewed folder with:
+
+```text
+python -B -O scripts/package-folder.py --source <reviewed-folder> --out <fresh-transport-directory>
+```
+
+Use a quiescent source and output parent controlled by the release operator. This is a release-build helper for its own generated archive, not a public arbitrary-ZIP extraction service. It snapshots the selected folder inventory, writes `<folder-name>.zip`, extracts it under `verified/<folder-name>/`, and compares every file name, size and SHA-256 plus empty directories and executable bits. It checks the source inventory again before emitting `folder-inventory.json`, `transport-proof.json` and `SHA256SUMS`. A failure leaves partial output for inspection; rerun into a fresh destination. Never publish outputs from a failed command.
+
+The fixed per-package bounds are 10,000 entries including directories/root and 1 GiB of uncompressed file data. The packager refuses links, junctions/reparse points, special files, traversal/absolute paths, Windows-reserved names, case/Unicode aliases, duplicate/unexpected ZIP members and mismatched types/sizes/hashes. Windows naming follows the conservative reserved-name checks in [CPython's Windows path implementation](https://github.com/python/cpython/blob/3.13/Lib/ntpath.py#L282-L306). No archive support is added to the Engine.
+
+Run the extracted player with the extracted Story and `--validate` before using these bytes for native/clean-machine acceptance. Windows release CI does this for fresh Story A/B exports and retains the ZIPs, inventories, reports and checksums; its GitHub artifact wrapper is not itself a release asset. Authoring-tools staging must first add the matching tool pair, README and reviewed notices from ADR 0013. Packaging a folder does not approve its contents or complete the licence audit.
 
 ## Release checklist
 
