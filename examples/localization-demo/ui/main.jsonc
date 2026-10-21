@@ -1,0 +1,107 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen",
+    "id": "main",
+    "background": "#14251F",
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 32,
+      "gap": 16
+    },
+    "children": [
+      {
+        "type": "text",
+        "bind": {
+          "localized": "language"
+        },
+        "size": 28
+      },
+      {
+        "type": "list",
+        "layout": {
+          "direction": "row",
+          "gap": 10
+        },
+        "children": [
+          {
+            "type": "button",
+            "id": "language-en",
+            "text": "English",
+            "action": {
+              "do": "state.set",
+              "key": "ui.language",
+              "value": "en"
+            },
+            "size": 22,
+            "layout": {
+              "padding": 12
+            }
+          },
+          {
+            "type": "button",
+            "id": "language-id",
+            "text": "Bahasa Indonesia",
+            "action": {
+              "do": "state.set",
+              "key": "ui.language",
+              "value": "id"
+            },
+            "size": 22,
+            "layout": {
+              "padding": 12
+            }
+          },
+          {
+            "type": "button",
+            "id": "language-ja",
+            "text": "日本語",
+            "action": {
+              "do": "state.set",
+              "key": "ui.language",
+              "value": "ja"
+            },
+            "size": 22,
+            "layout": {
+              "padding": 12
+            }
+          }
+        ]
+      },
+      {
+        "type": "text",
+        "bind": {
+          "dialogue": "speaker"
+        },
+        "size": 24
+      },
+      {
+        "type": "text",
+        "bind": {
+          "dialogue": "text"
+        },
+        "size": 28
+      },
+      {
+        "type": "choiceList",
+        "id": "choices",
+        "size": 26
+      },
+      {
+        "type": "button",
+        "id": "next",
+        "bind": {
+          "localized": "continue"
+        },
+        "action": {
+          "do": "dialogue.advance"
+        },
+        "size": 24,
+        "layout": {
+          "padding": 12
+        }
+      }
+    ]
+  }
+}

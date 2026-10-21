@@ -49,6 +49,39 @@ pub struct Presenter<S: EventSource> {
     revision: u64,
 }
 
+fn visible_choices(choices: Vec<weftora_yarn::Choice>) -> Vec<ChoiceView> {
+    choices
+        .into_iter()
+        .filter(|c| c.available)
+        .map(|c| ChoiceView {
+            index: c.index,
+            text: c.text,
+        })
+        .collect()
+}
+
+impl Presenter<DialogueRunner> {
+    pub(crate) fn refresh_localization(&mut self) {
+        if matches!(self.screen, Screen::Error(_) | Screen::End) {
+            return;
+        }
+        let screen = match self.source.refresh_localization() {
+            Ok(Some(DialogueEvent::Line { character, text })) => Screen::Line {
+                speaker: character,
+                text,
+            },
+            Ok(Some(DialogueEvent::Choices(choices))) => Screen::Choices(visible_choices(choices)),
+            Ok(_) => return,
+            Err(error) => {
+                self.fail(error.to_string());
+                return;
+            }
+        };
+        // A translation is the same offer; retain its revision and any focused choice entity.
+        self.screen = screen;
+    }
+}
+
 impl<S: EventSource> Presenter<S> {
     /// Starts the dialogue at `entrypoint` and runs to the first thing worth showing.
     pub fn new(mut source: S, entrypoint: &str) -> (Self, Vec<Action>) {
@@ -131,14 +164,7 @@ impl<S: EventSource> Presenter<S> {
                     };
                 }
                 Ok(DialogueEvent::Choices(choices)) => {
-                    let visible: Vec<ChoiceView> = choices
-                        .into_iter()
-                        .filter(|c| c.available)
-                        .map(|c| ChoiceView {
-                            index: c.index,
-                            text: c.text,
-                        })
-                        .collect();
+                    let visible = visible_choices(choices);
                     if visible.is_empty() {
                         self.fail("the dialogue offered no available choices".to_string());
                     } else {

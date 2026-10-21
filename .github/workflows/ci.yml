@@ -328,7 +328,7 @@ jobs:
         shell: pwsh
         run: |
           $cli = (Resolve-Path "target/x86_64-pc-windows-msvc/release/weftora.exe").Path
-          foreach ($story in @("story-a", "life-sim")) {
+          foreach ($story in @("story-a", "life-sim", "localization-demo")) {
             $source = Join-Path $env:RUNNER_TEMP "weftora-transport-$story"
             & $cli export "examples/$story" --out $source
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

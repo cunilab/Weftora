@@ -392,6 +392,7 @@ mod tests {
         fn as_line(&self) -> Line {
             Line {
                 id: "test".into(),
+                substitutions: vec![],
                 text: self.text.clone(),
                 attributes: self.attributes.clone(),
             }

@@ -120,6 +120,18 @@ impl From<VariableStorageError> for DialogueError {
 }
 
 impl Dialogue {
+    /// Validates substituted markup syntax without running value-dependent marker processors.
+    /// This does not execute instructions or require the dummy values to match select/plural cases.
+    pub fn validate_line_syntax(&self, line: &Line) -> Result<()> {
+        self.vm.validate_line_syntax(line)
+    }
+
+    /// Renders a previously offered line using its captured substitutions and the current provider.
+    /// This parses text only; it does not execute instructions or evaluate expressions.
+    pub fn relocalize_line(&mut self, line: &Line) -> Result<Line> {
+        self.vm.prepare_line(line.id.clone(), &line.substitutions)
+    }
+
     /// Sets the maximum instructions executed by each continue call, across node jumps.
     /// Defaults to 100,000. Zero rejects execution before the first instruction.
     pub fn set_instruction_budget(&mut self, budget: usize) {

@@ -8,16 +8,7 @@ pub fn check_story(story: &Story, dialogue: &CompiledDialogue) -> Vec<Diagnostic
         .err()
         .unwrap_or_default();
     errors.extend(crate::queries::validate(story, dialogue));
-    if let Some(localization) = story.localization() {
-        for language in localization.languages.keys() {
-            match yarnspinner_runtime::prelude::Language::try_new(language) {
-                Ok(parsed) if parsed.to_string() == *language => {},
-                _ => errors.push(Diagnostic::new("manifest.jsonc", None,
-                    format!("localization language {language:?} must be a canonical BCP 47 language identifier"))),
-            }
-        }
-        errors.extend(localization.dialogue_errors(&dialogue.strings));
-    }
+    errors.extend(crate::localization::validate(story, dialogue));
     match story.initial_state() {
         Ok(state) => {
             errors.extend(

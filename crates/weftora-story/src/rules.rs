@@ -873,12 +873,37 @@ fn validate_scopes(event: &Event, manifest: &Manifest, state: &State) -> Result<
         references(condition, &mut keys);
         condition_limits(condition)?;
     }
+    if let Some(locale_key) = manifest
+        .localization
+        .as_ref()
+        .and_then(|l| l.state_key.as_ref())
+    {
+        if event.trigger == CHANGED
+            || event.trigger.strip_prefix(CHANGED_KEY) == Some(locale_key.as_str())
+        {
+            return Err("localization Settings may not drive state.changed rules".into());
+        }
+        if keys.contains(locale_key) {
+            return Err("rule conditions may not read localization Settings".into());
+        }
+    }
     for action in &event.actions {
         match action {
             Action::Set { key, .. }
             | Action::Add { key, .. }
             | Action::Remove { key }
             | Action::Reset { key } => {
+                if manifest
+                    .localization
+                    .as_ref()
+                    .and_then(|l| l.state_key.as_ref())
+                    == Some(key)
+                {
+                    return Err(
+                        "rules may not write localization Settings; use a UI state.set action"
+                            .into(),
+                    );
+                }
                 keys.push(key.clone());
                 match action {
                     Action::Set { value, .. } => value_limit(value)?,
@@ -961,6 +986,18 @@ fn load_script(
                 return Err(
                     "script signals may not impersonate state.changed notifications".into(),
                 );
+            }
+            if matches!(label, "reads" | "writes")
+                && manifest
+                    .localization
+                    .as_ref()
+                    .and_then(|l| l.state_key.as_ref())
+                    == Some(key)
+            {
+                return Err(format!(
+                    "scripts may not {} localization Settings",
+                    if label == "reads" { "read" } else { "write" }
+                ));
             }
             if label != "signals" {
                 let scope = state.scope(key).map_err(|e| e.to_string())?;

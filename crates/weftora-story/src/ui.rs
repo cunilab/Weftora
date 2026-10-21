@@ -30,6 +30,7 @@ pub enum WidgetKind {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 pub enum Binding {
+    Localized { localized: String },
     State { state: String },
     Dialogue { dialogue: DialogueBinding },
 }
@@ -256,6 +257,11 @@ impl ScreenDefinition {
             && let Err(e) = weftora_core::state::validate_key(state)
         {
             error("/bind/state", e.to_string());
+        }
+        if let Some(Binding::Localized { localized }) = &w.bind
+            && !valid_id(localized)
+        {
+            error("/bind/localized", "invalid localization UI key".into());
         }
         if (w.kind == WidgetKind::Image) != w.image.is_some() {
             error(
@@ -550,8 +556,38 @@ pub(crate) fn reference_errors(story: &crate::Story) -> Vec<Diagnostic> {
         },
         _ => {}
     }
+    if let Some(font) = story
+        .localization()
+        .and_then(|l| l.definition.font.as_ref())
+        && !matches!(story.asset_kind(font), Ok(Some(crate::AssetKind::Font)))
+    {
+        errors.push(Diagnostic::new(
+            crate::MANIFEST_FILE,
+            None,
+            "/localization/font must name a typed font catalog asset",
+        ));
+    }
     for (_, screen) in story.screens() {
         for (path, widget) in screen.widgets() {
+            if let Some(Binding::Localized { localized }) = &widget.bind {
+                match story.localization() {
+                    Some(catalogs) if catalogs.definition.state_key.is_some() && catalogs.languages.values().all(|c| c.ui.contains_key(localized)) => {}
+                    _ => errors.push(Diagnostic::new(&screen.file, None, format!("{path}/bind/localized: requires localization.text/1 and a UI key present in every language"))),
+                }
+            }
+            if let Some(UiAction::SetState { key, value }) = &widget.action
+                && let Some(catalogs) = story.localization()
+                && catalogs.definition.state_key.as_ref() == Some(key)
+                && !matches!(value, Value::String(language) if catalogs.languages.contains_key(language))
+            {
+                errors.push(Diagnostic::new(
+                    &screen.file,
+                    None,
+                    format!(
+                        "{path}/action/value: localization state must name a supported language"
+                    ),
+                ));
+            }
             for (field, id, kind) in [
                 ("image", &widget.image, crate::AssetKind::Image),
                 ("font", &widget.font, crate::AssetKind::Font),

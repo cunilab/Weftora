@@ -9,6 +9,8 @@ use weftora_api::Diagnostic;
 
 use crate::{MANIFEST_FILE, Manifest, jsonc, paths, resolve_in_root};
 
+pub const TEXT_CAPABILITY: &str = "localization.text/1";
+
 pub const CAPABILITY: &str = "localization.catalog/1";
 pub const MAX_LANGUAGES: usize = 8;
 pub const MAX_CATALOG_BYTES: usize = 1024 * 1024;
@@ -18,6 +20,10 @@ pub const MAX_TEXT_BYTES: usize = 4096;
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 pub struct Definition {
+    #[serde(default)]
+    pub state_key: Option<String>,
+    #[serde(default)]
+    pub font: Option<String>,
     pub base_language: String,
     pub languages: BTreeMap<String, String>,
 }
@@ -43,8 +49,12 @@ pub(crate) fn load(root: &Path, manifest: &Manifest) -> Result<Option<Catalogs>,
         .requires
         .as_ref()
         .is_some_and(|r| r.capabilities.iter().any(|c| c == CAPABILITY));
+    let text_required = manifest
+        .requires
+        .as_ref()
+        .is_some_and(|r| r.capabilities.iter().any(|c| c == TEXT_CAPABILITY));
     let Some(definition) = &manifest.localization else {
-        return if required {
+        return if required || text_required {
             Err(vec![Diagnostic::new(
                 MANIFEST_FILE,
                 None,
@@ -60,6 +70,35 @@ pub(crate) fn load(root: &Path, manifest: &Manifest) -> Result<Option<Catalogs>,
             None,
             "localization requires localization.catalog/1",
         ));
+    }
+    if text_required && (definition.state_key.is_none() || definition.font.is_none()) {
+        errors.push(Diagnostic::new(
+            MANIFEST_FILE,
+            None,
+            "localization.text/1 requires localization.stateKey and localization.font",
+        ));
+    }
+    if !text_required && (definition.state_key.is_some() || definition.font.is_some()) {
+        errors.push(Diagnostic::new(
+            MANIFEST_FILE,
+            None,
+            "localization.stateKey/font requires localization.text/1",
+        ));
+    }
+    if let Some(key) = &definition.state_key {
+        match manifest.state.get(key) {
+            Some(entry) if entry.scope == weftora_core::Scope::Settings && matches!(&entry.default, weftora_api::Value::String(language) if definition.languages.contains_key(language)) => {}
+            _ => errors.push(Diagnostic::new(MANIFEST_FILE, None, "localization.stateKey must name a declared Settings string with a supported language default")),
+        }
+        if let Some(value) = manifest.initial_state.get(key)
+            && !matches!(value, weftora_api::Value::String(language) if definition.languages.contains_key(language))
+        {
+            errors.push(Diagnostic::new(
+                MANIFEST_FILE,
+                None,
+                "localization.stateKey initialState must name a supported language",
+            ));
+        }
     }
     if definition.languages.is_empty() || definition.languages.len() > MAX_LANGUAGES {
         errors.push(Diagnostic::new(
@@ -184,6 +223,34 @@ pub(crate) fn load(root: &Path, manifest: &Manifest) -> Result<Option<Catalogs>,
 }
 
 impl Catalogs {
+    /// Read the configured Settings value without interpreting any hardcoded state key.
+    pub fn language(&self, state: &weftora_core::State) -> Result<String, String> {
+        let Some(key) = &self.definition.state_key else {
+            return Ok(self.definition.base_language.clone());
+        };
+        match state.get(key).map_err(|e| e.to_string())? {
+            weftora_api::Value::String(language) if self.languages.contains_key(language) => {
+                Ok(language.clone())
+            }
+            _ => Err(format!(
+                "localization state `{key}` must name a supported language"
+            )),
+        }
+    }
+
+    pub fn ui_text<'a>(
+        &'a self,
+        state: &weftora_core::State,
+        key: &str,
+    ) -> Result<&'a str, String> {
+        let language = self.language(state)?;
+        self.languages[&language]
+            .ui
+            .get(key)
+            .map(String::as_str)
+            .ok_or_else(|| format!("missing localization UI key `{key}` for `{language}`"))
+    }
+
     /// Check against compiled Yarn templates, including option text. No compiler dependency is needed.
     pub fn dialogue_errors(&self, strings: &BTreeMap<String, String>) -> Vec<Diagnostic> {
         let mut errors = Vec::new();

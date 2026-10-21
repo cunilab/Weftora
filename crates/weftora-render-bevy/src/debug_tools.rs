@@ -105,7 +105,7 @@ fn run_command(player: &mut Player, input: &str) -> Result<(), String> {
     dispatch(player, &action)
 }
 
-fn apply(player: &mut Player, key: &str, input: &str) -> Result<(), String> {
+pub(super) fn apply(player: &mut Player, key: &str, input: &str) -> Result<(), String> {
     ready(player, input)?;
     let value: Value = serde_json::from_str(input).map_err(|error| error.to_string())?;
     {

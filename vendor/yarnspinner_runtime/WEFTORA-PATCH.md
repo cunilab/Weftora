@@ -50,3 +50,23 @@ this runtime patch knows no Story, Core or collection types.
 panicking on untrusted catalog language keys. Existing `Language::new` and
 `From` behavior is unchanged; Story validation uses the fallible API and checks
 canonical spelling before accepting a declared language.
+
+`Line.substitutions` retains the evaluated expression strings for presentation-only
+retranslation. `Dialogue::relocalize_line` uses the same provider, expansion and
+markup parser as ordinary VM lines, without continuing the VM or evaluating any
+expressions/functions. Line text edits preserve the captured values. Retention is
+bounded to 64 values and 16 KiB aggregate UTF-8 bytes even if a crafted template
+omits their markers. The count matches Weftora's pre-existing artifact operand
+limit; valid compiler output also remains subject to the existing 16 KiB expanded
+text bound. This is runtime data, absent from progress saves and dialogue artifacts.
+
+`Dialogue::validate_line_syntax` shares bounded provider lookup/substitution
+expansion, then parses markup without value-dependent select/plural/ordinal
+processors. This permits word-keyed selectors during preflight; dummy numeric
+values cannot establish their runtime validity. Adapter preflight catches parser
+panics as diagnostics. Actual runtime marker failures retain terminal error handling.
+
+`StringTableTextProvider::extend_translation` now labels a replacement table with
+the requested language, rather than retaining the previous table's language. This
+fixes live translation-table replacement across multiple languages; base fallback
+behavior remains available to other consumers.

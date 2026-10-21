@@ -16,6 +16,7 @@ pub const CAPABILITIES: &[&str] = &[
     "rules.rhai/1",
     "rules.random/1",
     "localization.catalog/1",
+    "localization.text/1",
 ];
 
 #[derive(Debug, Clone, PartialEq, Deserialize)]

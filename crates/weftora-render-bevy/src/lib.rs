@@ -6,6 +6,8 @@
 
 mod debug_tools;
 mod declarative;
+#[cfg(test)]
+mod localization_tests;
 mod media;
 pub mod presenter;
 mod saves;
@@ -192,7 +194,14 @@ struct Player {
 }
 
 #[derive(Component)]
-struct Panel;
+struct Panel(Option<u64>);
+
+#[derive(Component)]
+enum PanelBinding {
+    Speaker,
+    Text,
+    Choice(usize),
+}
 
 #[derive(Component)]
 struct SaveStatus;
@@ -229,7 +238,7 @@ fn setup(mut commands: Commands) {
         }),
     ));
     commands.spawn((
-        Panel,
+        Panel(None),
         GlobalZIndex(100000),
         Pickable::IGNORE,
         Node {
@@ -351,6 +360,7 @@ fn drive(
         }
     }
 
+    player.presenter.refresh_localization();
     let commands_ran = !actions.is_empty();
     for action in actions {
         if matches!(player.presenter.screen(), Screen::Error(_)) {
@@ -411,7 +421,7 @@ fn drive(
     if let Ok(mut state) = player.state.write() {
         state.drain_changes();
     }
-    if player.presenter.revision() != before_revision {
+    if player.presenter.revision() != before_revision || player.presenter.screen() != &before {
         player.dirty = true;
     }
 }
@@ -486,10 +496,12 @@ fn decode_image(id: &str, ext: &str, bytes: &[u8]) -> Result<Image, String> {
 /// Rebuilds the dialogue panel when the presenter's screen changed.
 fn refresh_panel(
     mut player: NonSendMut<Player>,
-    panel: Single<(Entity, &mut Visibility), With<Panel>>,
+    panel: Single<(Entity, &mut Visibility, &mut Panel)>,
+    mut texts: Query<(&PanelBinding, &mut Text, &mut Node)>,
     mut commands: Commands,
+    ui: Res<Ui>,
 ) {
-    let (panel, mut visibility) = panel.into_inner();
+    let (panel, mut visibility, mut cached) = panel.into_inner();
     let show = player.story.manifest().initial_screen.is_none()
         || matches!(player.presenter.screen(), Screen::Error(_));
     *visibility = if show {
@@ -501,7 +513,50 @@ fn refresh_panel(
         return;
     }
     player.dirty = false;
-
+    let same_shape = match player.presenter.screen() {
+        Screen::Line { .. } => {
+            texts.iter().count() == 2
+                && texts
+                    .iter()
+                    .all(|(b, _, _)| matches!(b, PanelBinding::Speaker | PanelBinding::Text))
+        }
+        Screen::Choices(choices) => {
+            texts.iter().count() == choices.len()
+                && texts
+                    .iter()
+                    .all(|(b, _, _)| matches!(b, PanelBinding::Choice(i) if *i < choices.len()))
+        }
+        _ => false,
+    };
+    if show && cached.0 == Some(player.presenter.revision()) && same_shape {
+        for (binding, mut text, mut node) in &mut texts {
+            if matches!(binding, PanelBinding::Speaker) {
+                node.display = if matches!(
+                    player.presenter.screen(),
+                    Screen::Line {
+                        speaker: Some(_),
+                        ..
+                    }
+                ) {
+                    Display::Flex
+                } else {
+                    Display::None
+                };
+            }
+            text.0 = match (binding, player.presenter.screen()) {
+                (PanelBinding::Speaker, Screen::Line { speaker, .. }) => {
+                    speaker.clone().unwrap_or_default()
+                }
+                (PanelBinding::Text, Screen::Line { text, .. }) => text.clone(),
+                (PanelBinding::Choice(i), Screen::Choices(choices)) => {
+                    format!("{}. {}", i + 1, choices[*i].text)
+                }
+                _ => unreachable!("shape checked"),
+            };
+        }
+        return;
+    }
+    cached.0 = Some(player.presenter.revision());
     commands.entity(panel).despawn_children();
     if !show {
         return;
@@ -509,14 +564,32 @@ fn refresh_panel(
     match player.presenter.screen().clone() {
         Screen::Line { speaker, text } => {
             commands.entity(panel).with_children(|p| {
-                if let Some(speaker) = speaker {
-                    p.spawn(label(speaker, 26.0, SPEAKER_COLOR));
-                }
-                p.spawn(label(text, 30.0, Color::WHITE));
-                p.spawn(label(
+                p.spawn((
+                    PanelBinding::Speaker,
+                    Node {
+                        display: if speaker.is_some() {
+                            Display::Flex
+                        } else {
+                            Display::None
+                        },
+                        ..default()
+                    },
+                    label_with_font(
+                        speaker.unwrap_or_default(),
+                        26.0,
+                        SPEAKER_COLOR,
+                        ui.default_font.clone(),
+                    ),
+                ));
+                p.spawn((
+                    PanelBinding::Text,
+                    label_with_font(text, 30.0, Color::WHITE, ui.default_font.clone()),
+                ));
+                p.spawn(label_with_font(
                     "click / Space to continue",
                     16.0,
                     Color::srgb(0.6, 0.6, 0.7),
+                    ui.default_font.clone(),
                 ));
             });
         }
@@ -538,10 +611,14 @@ fn refresh_panel(
                                 position,
                             });
                         }),
-                        children![label(
-                            format!("{}. {}", position + 1, choice.text),
-                            28.0,
-                            Color::WHITE
+                        children![(
+                            PanelBinding::Choice(position),
+                            label_with_font(
+                                format!("{}. {}", position + 1, choice.text),
+                                28.0,
+                                Color::WHITE,
+                                ui.default_font.clone()
+                            )
                         )],
                     ));
                 }
@@ -549,14 +626,34 @@ fn refresh_panel(
         }
         Screen::End => {
             commands.entity(panel).with_children(|p| {
-                p.spawn(label(END_TEXT, 30.0, Color::WHITE));
+                p.spawn(label_with_font(
+                    END_TEXT,
+                    30.0,
+                    Color::WHITE,
+                    ui.default_font.clone(),
+                ));
             });
         }
         Screen::Error(message) => {
             commands.entity(panel).with_children(|p| {
-                p.spawn(label("Story error", 26.0, ERROR_COLOR));
-                p.spawn(label(message, 22.0, Color::WHITE));
-                p.spawn(label("press Esc to quit", 16.0, Color::srgb(0.6, 0.6, 0.7)));
+                p.spawn(label_with_font(
+                    "Story error",
+                    26.0,
+                    ERROR_COLOR,
+                    ui.default_font.clone(),
+                ));
+                p.spawn(label_with_font(
+                    message,
+                    22.0,
+                    Color::WHITE,
+                    ui.default_font.clone(),
+                ));
+                p.spawn(label_with_font(
+                    "press Esc to quit",
+                    16.0,
+                    Color::srgb(0.6, 0.6, 0.7),
+                    ui.default_font.clone(),
+                ));
             });
         }
     }
@@ -591,11 +688,20 @@ fn hover_buttons(
 }
 
 fn label(text: impl Into<String>, size: f32, color: Color) -> impl Bundle {
+    label_with_font(text, size, color, None)
+}
+fn label_with_font(
+    text: impl Into<String>,
+    size: f32,
+    color: Color,
+    font: Option<Handle<Font>>,
+) -> impl Bundle {
     (
         Text::new(text),
         Pickable::IGNORE,
         TextFont {
             font_size: FontSize::Px(size),
+            font: font.map(Into::into).unwrap_or_default(),
             ..default()
         },
         TextColor(color),

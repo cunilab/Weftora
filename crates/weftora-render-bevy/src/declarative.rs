@@ -54,6 +54,7 @@ pub(crate) struct Ui {
     focus_first: bool,
     images: BTreeMap<String, Handle<Image>>,
     fonts: BTreeMap<String, Handle<Font>>,
+    pub(super) default_font: Option<Handle<Font>>,
 }
 impl Ui {
     pub fn at_initial_base(&self, story: &weftora_story::Story) -> bool {
@@ -150,11 +151,23 @@ pub(crate) fn setup(
     mut fonts: ResMut<Assets<Font>>,
     mut font_cx: ResMut<bevy::text::FontCx>,
 ) {
-    let Some(initial) = player.story.manifest().initial_screen.clone() else {
-        return;
-    };
+    let initial = player.story.manifest().initial_screen.clone();
     let result = (|| {
         let mut asset_cost = 0u64;
+        if let Some(id) = player
+            .story
+            .localization()
+            .and_then(|c| c.definition.font.as_ref())
+        {
+            let (_, bytes) = read_asset(&player.story, id, weftora_story::AssetKind::Font)?;
+            asset_cost += bytes.len() as u64;
+            if asset_cost > crate::MAX_IMAGE_BYTES {
+                return Err("localization font exceeds the 64 MiB preload budget".into());
+            }
+            let handle = fonts.add(decode_font(id, bytes, &mut font_cx)?);
+            ui.default_font = Some(handle.clone());
+            ui.fonts.insert(id.clone(), handle);
+        }
         for (_, screen) in player.story.screens() {
             for (path, widget) in screen.widgets() {
                 let source = format!("{}:{path}", screen.file);
@@ -196,11 +209,13 @@ pub(crate) fn setup(
     })();
     match result {
         Ok(()) => {
-            ui.layers.push(Layer {
-                id: initial,
-                return_focus: None,
-            });
-            ui.focus_first = true;
+            if let Some(initial) = initial {
+                ui.layers.push(Layer {
+                    id: initial,
+                    return_focus: None,
+                });
+                ui.focus_first = true;
+            }
         }
         Err(e) => {
             player.presenter.fail(e);
@@ -262,7 +277,12 @@ fn font(w: &Widget, ui: &Ui) -> TextFont {
         font_size: FontSize::Px(w.size.unwrap_or(28.0)),
         ..default()
     };
-    if let Some(handle) = w.font.as_ref().and_then(|id| ui.fonts.get(id)) {
+    if let Some(handle) = w
+        .font
+        .as_ref()
+        .and_then(|id| ui.fonts.get(id))
+        .or(ui.default_font.as_ref())
+    {
         font.font = handle.clone().into();
     }
     font
@@ -425,6 +445,9 @@ pub(crate) fn sync_layers(
         );
     }
 }
+#[derive(Component)]
+pub(crate) struct ChoiceText(usize);
+
 pub(crate) fn sync_choices(
     mut player: NonSendMut<Player>,
     mut ui: ResMut<Ui>,
@@ -432,11 +455,33 @@ pub(crate) fn sync_choices(
     mut commands: Commands,
     mut focus: ResMut<InputFocus>,
     focus_visible: Res<InputFocusVisible>,
+    mut texts: Query<(&ChoiceText, &mut Text)>,
 ) {
     let choices = match player.presenter.screen() {
         Screen::Choices(v) => v.clone(),
         _ => vec![],
     };
+    let same_offer = ui.choices_revision == player.presenter.revision()
+        && ui.choices.as_ref().is_some_and(|old| {
+            old.len() == choices.len() && old.iter().zip(&choices).all(|(a, b)| a.index == b.index)
+        });
+    if same_offer && !ui.rebuild_choices && ui.choices.as_ref() != Some(&choices) {
+        if let Err(error) = check_choices(&choices, "localized choices") {
+            player.presenter.fail(error);
+            player.dirty = true;
+            return;
+        }
+        for (binding, mut text) in &mut texts {
+            if let Some(choice) = choices.get(binding.0) {
+                let value = format!("{}. {}", binding.0 + 1, choice.text);
+                if text.0 != value {
+                    text.0 = value;
+                }
+            }
+        }
+        ui.choices = Some(choices);
+        return;
+    }
     let changed = ui.choices.as_ref() != Some(&choices)
         || (matches!(player.presenter.screen(), Screen::Choices(_))
             && ui.choices_revision != player.presenter.revision());
@@ -478,6 +523,7 @@ pub(crate) fn sync_choices(
                         });
                     }),
                     children![(
+                        ChoiceText(position),
                         Text::new(format!("{}. {}", position + 1, choice.text)),
                         font(&list.widget, &ui),
                         TextColor(color(&list.widget.color, Color::WHITE)),
@@ -557,6 +603,12 @@ pub(crate) fn validate_display(
     state: &weftora_core::State,
     screen: &Screen,
 ) -> Result<(), String> {
+    if let Some(catalogs) = story
+        .localization()
+        .filter(|c| c.definition.state_key.is_some())
+    {
+        catalogs.language(state)?;
+    }
     if let Screen::Choices(choices) = screen {
         check_choices(choices, "loaded checkpoint")?;
     }
@@ -572,6 +624,11 @@ pub(crate) fn validate_display(
         for (path, widget) in definition.widgets() {
             if let Some(binding) = &widget.bind {
                 let text = match binding {
+                    Binding::Localized { localized } => story
+                        .localization()
+                        .ok_or("localized binding requires localization")?
+                        .ui_text(state, localized)?
+                        .to_owned(),
                     Binding::State { state: key } => {
                         value_text(state.get(key).map_err(|e| e.to_string())?)?
                     }
@@ -600,7 +657,16 @@ pub(crate) fn update_bindings(
             .read()
             .map_err(|_| "canonical state lock poisoned".to_string())?;
         let mut values = BTreeMap::new();
+        let mut localized = BTreeMap::new();
         for (binding, _) in &texts {
+            if let Binding::Localized { localized: key } = &binding.binding {
+                let text = player
+                    .story
+                    .localization()
+                    .ok_or("localized binding requires localization")?
+                    .ui_text(&state, key)?;
+                localized.insert(key.clone(), checked_text(text.to_owned(), &binding.source)?);
+            }
             if let Binding::State { state: key } = &binding.binding
                 && !values.contains_key(key)
             {
@@ -613,13 +679,14 @@ pub(crate) fn update_bindings(
                 );
             }
         }
-        Ok::<_, String>(values)
+        Ok::<_, String>((values, localized))
     })();
     let result = (|| {
-        let values = snapshot?;
+        let (values, localized) = snapshot?;
         for (binding, mut text) in &mut texts {
             let value = match &binding.binding {
                 Binding::State { state } => values[state].clone(),
+                Binding::Localized { localized: key } => localized[key].clone(),
                 Binding::Dialogue { dialogue } => match (dialogue, player.presenter.screen()) {
                     (DialogueBinding::Text, Screen::Line { text, .. }) => text.clone(),
                     (DialogueBinding::Speaker, Screen::Line { speaker, .. }) => {

@@ -13,17 +13,53 @@ fn source() -> PathBuf {
 fn fixture() -> tempfile::TempDir {
     let dir = tempfile::tempdir().unwrap();
     copy_story(dir.path());
+    // Keep catalog-only compatibility cases independent of the runtime demonstration.
+    let path = dir.path().join("manifest.jsonc");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&path).unwrap()).unwrap();
+    for key in [
+        "state",
+        "screens",
+        "initialScreen",
+        "catalogs",
+        "saveSchema",
+    ] {
+        manifest.as_object_mut().unwrap().remove(key);
+    }
+    manifest["localization"]
+        .as_object_mut()
+        .unwrap()
+        .remove("stateKey");
+    manifest["localization"]
+        .as_object_mut()
+        .unwrap()
+        .remove("font");
+    manifest["requires"]["capabilities"] = json!(["dialogue.yarn/1", "localization.catalog/1"]);
+    fs::write(path, manifest.to_string()).unwrap();
+    let path = dir.path().join("main.yarn");
+    fs::write(
+        &path,
+        fs::read_to_string(&path)
+            .unwrap()
+            .replace("<<checkpoint start>>\n", ""),
+    )
+    .unwrap();
     dir
 }
 
 fn copy_story(root: &Path) {
-    fs::create_dir_all(root.join("locales")).unwrap();
+    for folder in ["locales", "fonts", "ui"] {
+        fs::create_dir_all(root.join(folder)).unwrap();
+    }
     for file in [
         "manifest.jsonc",
         "main.yarn",
         "locales/en.jsonc",
         "locales/id.jsonc",
         "locales/ja.jsonc",
+        "fonts/catalog.jsonc",
+        "fonts/NotoSansJP.ttf",
+        "fonts/OFL.txt",
+        "ui/main.jsonc",
     ] {
         fs::copy(source().join(file), root.join(file)).unwrap();
     }
@@ -364,4 +400,84 @@ fn existing_catalog_outside_story_root_is_rejected_by_path_policy() {
         String::from_utf8_lossy(&out.stderr).contains("path must not contain `.` or `..` segments")
     );
     assert!(out.stdout.is_empty());
+}
+
+#[test]
+fn runtime_languages_have_identical_gameplay_and_reject_yarn_locale_access_and_bad_markup() {
+    let dir = tempfile::tempdir().unwrap();
+    copy_story(dir.path());
+    let manifest_path = dir.path().join("manifest.jsonc");
+    let mut manifest: Value = serde_json::from_slice(&fs::read(&manifest_path).unwrap()).unwrap();
+    let mut progress = None;
+    for (language, text) in [
+        ("en", "Hello, Mira. You have 7 coins."),
+        ("id", "Hai, Mira. Kamu punya 7 koin."),
+        ("ja", "Miraさん、こんにちは。コインは7枚です。"),
+    ] {
+        manifest["initialState"] = json!({"ui.language":language});
+        fs::write(&manifest_path, manifest.to_string()).unwrap();
+        let out = Command::new(env!("CARGO_BIN_EXE_weftora"))
+            .arg("run")
+            .arg(dir.path())
+            .args(["--headless", "--choices", "0"])
+            .output()
+            .unwrap();
+        assert!(
+            out.status.success(),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+        let events: Vec<Value> = String::from_utf8_lossy(&out.stdout)
+            .lines()
+            .map(|s| serde_json::from_str(s).unwrap())
+            .collect();
+        assert!(
+            events.iter().any(|e| e["text"] == text),
+            "{language}: {events:?}"
+        );
+        let mut state = events.last().unwrap()["state"].clone();
+        assert_eq!(state["ui.language"], language);
+        state.as_object_mut().unwrap().remove("ui.language");
+        if let Some(expected) = &progress {
+            assert_eq!(&state, expected);
+        } else {
+            progress = Some(state);
+        }
+    }
+    let original = fs::read_to_string(dir.path().join("main.yarn")).unwrap();
+    for snippet in [
+        "<<if $ui__language == \"ja\">>\n<<endif>>",
+        "<<set $ui__language = \"id\">>",
+    ] {
+        fs::write(
+            dir.path().join("main.yarn"),
+            original.replace(
+                "<<checkpoint start>>",
+                &format!("<<declare $ui__language = \"en\">>\n<<checkpoint start>>\n{snippet}"),
+            ),
+        )
+        .unwrap();
+        let out = check(dir.path());
+        assert!(!out.status.success());
+        assert!(
+            String::from_utf8_lossy(&out.stderr)
+                .contains("cannot read or write localization Settings"),
+            "{}",
+            String::from_utf8_lossy(&out.stderr)
+        );
+    }
+    fs::write(dir.path().join("main.yarn"), original).unwrap();
+    edit(
+        dir.path(),
+        "locales/ja.jsonc",
+        "/dialogue/line:greeting",
+        json!("[broken {0} {1}"),
+    );
+    let out = check(dir.path());
+    assert!(!out.status.success());
+    assert!(
+        String::from_utf8_lossy(&out.stderr).contains("/dialogue/line:greeting"),
+        "{}",
+        String::from_utf8_lossy(&out.stderr)
+    );
 }

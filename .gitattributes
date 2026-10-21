@@ -2,3 +2,5 @@
 *.png binary
 *.wav binary
 *.ogg binary
+# Preserve the pinned upstream licence text byte-for-byte, including its trailing space.
+examples/localization-demo/fonts/OFL.txt -text whitespace=-blank-at-eol
