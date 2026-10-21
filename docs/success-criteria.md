@@ -116,7 +116,7 @@ For P5-05, ADR 0002's Phase column defines when each row is due: fixtures introd
 | P6-08 | Approved performance budgets are met on the reference Windows machine: 5 cold starts, 100 UI interactions, idle memory for A and B, and `weftora check` time | Measurement log |
 | P6-09 | The compatibility table (Engine API, capabilities, manifest, save and dialogue formats) is published, and the Phase 6 rows of ADR 0002 pass | Published table and fixtures |
 | P6-10 | Debug tools: inspect and edit state, run a command, view the signal and event trace, start any Yarn node | Manual steps on the release build |
-| P6-11 | Localisation: a Story ships two languages; switching language changes UI and dialogue text; a missing translation key is reported by `check` | Fixture and screenshots |
+| P6-11 | The localisation fixture Story ships English (`en`, source), Indonesian (`id`) and Japanese (`ja`); switching changes Story UI, dialogue and choice text without replaying commands or changing progress, choice IDs, order or availability; a referenced key or source key missing from a translation makes `check` fail (non-zero exit); Japanese glyphs render using a bundled, licensed font. Other Stories choose their own languages; Engine chrome may remain English | Three-language fixture, automated switching/validation checks and screenshots on the Windows release build |
 | P6-12 | The release is tagged only after every check above passes | Release checklist linking all evidence |
 
 ## Phase 7 — Each port (locked until Phase 6 passes)
