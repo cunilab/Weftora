@@ -17,6 +17,7 @@ Each document's header shows whether it is proposed or accepted. What actually w
 | [Architecture](./architecture.md) | WFT-ARCH-001 | Crates, boundaries, Story package, runtime semantics |
 | [Success Criteria](./success-criteria.md) | WFT-ACCEPT-001 | Pass/fail checks per phase and evidence rules |
 | [Releasing](./releasing.md) | WFT-REL-001 | Trunk-based main, immutable version tags, GitHub Releases and the pending release checklist |
+| [Developer tools](./debug-tools.md) | WFT-DBG-001 | Opt-in state inspection/editing, input capture and checkpoint boundaries |
 | [ADR 0013 — Folder release packages](./adr/0013-folder-release-packages.md) | WFT-ADR-013 | Folder runtime format, ZIP transport boundary and packaging verification |
 | [Platform Plan](./platforms.md) | WFT-PLAT-001 | Release target, development hosts, future ports |
 | [Documentation Standards](./standards.md) | WFT-STD-001 | How docs are written and changed |

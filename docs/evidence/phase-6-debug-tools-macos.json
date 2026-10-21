@@ -1,0 +1,39 @@
+{
+  "check": "P6-10 developer state inspector automated slice",
+  "baseCommit": "3fb42498069d88891cd1213edf47410a2e2ff474",
+  "workingTreeDirty": true,
+  "platform": "MacBookAir development host",
+  "optIn": "--debug-tools; F12 opens/closes",
+  "rustTestsPassed": 396,
+  "inspectorTestsPassed": 9,
+  "validation": {
+    "defaultAndStoryClippy": "passed with warnings denied",
+    "fmtAndSharedRustfmt": "passed",
+    "dependencyDirection": "passed",
+    "pythonTestsRun": 31,
+    "pythonTestsPassed": 30,
+    "nativeWindowsJunctionSkipped": 1
+  },
+  "covered": [
+    "disabled by default",
+    "overlay entity startup and visibility",
+    "opening/open/closing frame keyboard and queued-pointer isolation",
+    "pending presentation actions still processed",
+    "invalid edits preserve canonical state, runner and checkpoint",
+    "persistent edits settle rules and refuse save without replacing existing file",
+    "session edits retain checkpoint eligibility",
+    "load replaces the inspected state",
+    "removed declarations remain visible",
+    "UTF-8 backspace, AltGr text and bounded input",
+    "CLI flag forwarding, live artifact and cleanup"
+  ],
+  "nativeMacScope": "Developer-mode window creation followed by two seconds of live process observation, then terminated own process. Initial duplicate Pickable component panic fixed and overlay-spawn regression test added.",
+  "visualInputAcceptance": "Unverified; Computer Use Accessibility/Screen Recording permissions unavailable. Windows manual checks queued in issue5.",
+  "remaining": [
+    "command runner",
+    "signal/event trace",
+    "Yarn node selection",
+    "native Windows focus/pointer/text/resize and release-build walkthrough"
+  ],
+  "scope": "Default player remains unchanged. Runtime opt-in enables state inspector even on release builds. No save wire or Story schema/capability change; no complete P6-10 or release-acceptance claim."
+}

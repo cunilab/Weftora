@@ -24,7 +24,7 @@ const USAGE: &str = "usage:
   weftora --tool-identity
   weftora new <story-dir>
   weftora check <story-dir>
-  weftora run <story-dir>
+  weftora run <story-dir> [--debug-tools]
   weftora run <story-dir> --headless [--choices <id,id,...>] [--save-at <checkpoint>] [--load] [--save-dir <dir>]
   weftora export <story-dir> --out <dir>";
 
@@ -47,7 +47,8 @@ fn main() -> ExitCode {
         }
         ["new", dir] if !dir.starts_with('-') => scaffold::create(Path::new(dir)),
         ["check", dir] => check_command(Path::new(dir)),
-        ["run", dir] => run_command(Path::new(dir)),
+        ["run", dir] => run_command(Path::new(dir), false),
+        ["run", dir, "--debug-tools"] => run_command(Path::new(dir), true),
         ["run", dir, "--headless", flags @ ..] => headless::parse_options(flags)
             .and_then(|options| headless::run(Path::new(dir), options)),
         ["export", dir, "--out", out] | ["export", "--out", out, dir] => {
@@ -160,7 +161,7 @@ fn player_path() -> Result<PathBuf, Failure> {
     }
 }
 
-fn run_command(dir: &Path) -> CliResult {
+fn run_command(dir: &Path, debug_tools: bool) -> CliResult {
     let checked = check(dir).map_err(Failure::Messages)?;
     let player = player_path()?;
     let preview = tempfile::tempdir()
@@ -171,10 +172,12 @@ fn run_command(dir: &Path) -> CliResult {
         checked.dialogue.to_artifact_bytes().map_err(Failure::one)?,
     )
     .map_err(|e| Failure::one(format!("cannot write dialogue preview: {e}")))?;
-    let status = Command::new(&player)
-        .arg(dir)
-        .arg("--dialogue")
-        .arg(&artifact)
+    let mut command = Command::new(&player);
+    command.arg(dir).arg("--dialogue").arg(&artifact);
+    if debug_tools {
+        command.arg("--debug-tools");
+    }
+    let status = command
         .status()
         .map_err(|e| Failure::one(format!("error: cannot start `{}`: {e}", player.display())))?;
     Ok(status

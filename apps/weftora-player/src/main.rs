@@ -29,18 +29,36 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        [] => run_story(default_story_dir(), None, false),
-        [dir] => run_story(PathBuf::from(dir), None, false),
-        [dir, flag, artifact] if flag == "--dialogue" => {
-            run_story(PathBuf::from(dir), Some(PathBuf::from(artifact)), false)
+        [] => run_story(default_story_dir(), None, false, false),
+        [flag] if flag == "--debug-tools" => run_story(default_story_dir(), None, false, true),
+        [dir, flag] if flag == "--debug-tools" => run_story(PathBuf::from(dir), None, false, true),
+        [dir, flag, artifact, debug] if flag == "--dialogue" && debug == "--debug-tools" => {
+            run_story(
+                PathBuf::from(dir),
+                Some(PathBuf::from(artifact)),
+                false,
+                true,
+            )
         }
-        [dir, flag] if flag == "--validate" => run_story(PathBuf::from(dir), None, true),
+        [dir] => run_story(PathBuf::from(dir), None, false, false),
+        [dir, flag, artifact] if flag == "--dialogue" => run_story(
+            PathBuf::from(dir),
+            Some(PathBuf::from(artifact)),
+            false,
+            false,
+        ),
+        [dir, flag] if flag == "--validate" => run_story(PathBuf::from(dir), None, true, false),
         [dir, flag, artifact, validate] if flag == "--dialogue" && validate == "--validate" => {
-            run_story(PathBuf::from(dir), Some(PathBuf::from(artifact)), true)
+            run_story(
+                PathBuf::from(dir),
+                Some(PathBuf::from(artifact)),
+                true,
+                false,
+            )
         }
         _ => {
             eprintln!(
-                "usage: weftora-player [--version | --tool-identity | <story-dir> [--dialogue <artifact>] [--validate]]"
+                "usage: weftora-player [--version | --tool-identity | <story-dir> [--dialogue <artifact>] [--validate | --debug-tools]]"
             );
             ExitCode::from(2)
         }
@@ -66,7 +84,12 @@ fn version_line() -> Result<String, String> {
     ))
 }
 
-fn run_story(dir: PathBuf, artifact: Option<PathBuf>, validate: bool) -> ExitCode {
+fn run_story(
+    dir: PathBuf,
+    artifact: Option<PathBuf>,
+    validate: bool,
+    debug_tools: bool,
+) -> ExitCode {
     match load(&dir, artifact.as_deref()) {
         Ok((story, dialogue, state)) => {
             if validate {
@@ -75,7 +98,12 @@ fn run_story(dir: PathBuf, artifact: Option<PathBuf>, validate: bool) -> ExitCod
                     story.manifest().id
                 );
             } else {
-                if let Err(message) = weftora_render_bevy::run(story, dialogue, state) {
+                let run = if debug_tools {
+                    weftora_render_bevy::run_with_debug_tools
+                } else {
+                    weftora_render_bevy::run
+                };
+                if let Err(message) = run(story, dialogue, state) {
                     eprintln!("weftora-player: {message}");
                     return ExitCode::FAILURE;
                 }

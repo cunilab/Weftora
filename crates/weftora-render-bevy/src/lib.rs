@@ -4,6 +4,7 @@
 //! Bevy assets here, so Bevy never opens a path outside the Story. The dialogue-to-screen logic lives in
 //! [`presenter`] and has no Bevy types; the systems below only translate input and draw its output.
 
+mod debug_tools;
 mod declarative;
 mod media;
 pub mod presenter;
@@ -36,7 +37,29 @@ const ERROR_COLOR: Color = Color::srgb(1.0, 0.45, 0.45);
 
 /// Opens the game window and runs `story` until the window closes.
 pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Result<(), String> {
-    let title = story.manifest().title.clone();
+    run_player(story, dialogue, state, false)
+}
+
+/// Opens the player with explicitly enabled developer state tools.
+pub fn run_with_debug_tools(
+    story: Story,
+    dialogue: CompiledDialogue,
+    state: SharedState,
+) -> Result<(), String> {
+    run_player(story, dialogue, state, true)
+}
+
+fn run_player(
+    story: Story,
+    dialogue: CompiledDialogue,
+    state: SharedState,
+    debug_tools: bool,
+) -> Result<(), String> {
+    let title = if debug_tools {
+        format!("{} — Developer tools (F12)", story.manifest().title)
+    } else {
+        story.manifest().title.clone()
+    };
     let runner = DialogueRunner::for_story(&dialogue, Arc::clone(&state), &story);
     if let Ok(mut state) = state.write() {
         state.drain_changes();
@@ -68,13 +91,15 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Resu
         .add_audio_source::<media::LoopAudio>()
         .insert_non_send(player)
         .insert_resource(failure)
+        .insert_resource(debug_tools::Inspector::new(debug_tools))
         .init_resource::<Intents>()
         .init_resource::<Ui>()
         .init_resource::<media::Presentation>()
-        .add_systems(Startup, (setup, declarative::setup))
+        .add_systems(Startup, (setup, declarative::setup, debug_tools::setup))
         .add_systems(
             Update,
             (
+                debug_tools::input,
                 drive,
                 media::sync_views,
                 declarative::sync_layers,
@@ -85,6 +110,7 @@ pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Resu
                 refresh_panel,
                 refresh_save_status,
                 hover_buttons,
+                debug_tools::refresh,
                 remember_failure,
             )
                 .chain(),
@@ -182,6 +208,7 @@ fn setup(mut commands: Commands) {
 #[allow(clippy::too_many_arguments)]
 fn drive(
     mut player: NonSendMut<Player>,
+    inspector: Res<debug_tools::Inspector>,
     keys: Res<ButtonInput<KeyCode>>,
     mut intents: ResMut<Intents>,
     mut ui: ResMut<Ui>,
@@ -192,7 +219,7 @@ fn drive(
     mut media: Media,
     time: Res<Time>,
 ) {
-    if keys.just_pressed(KeyCode::Escape) {
+    if !inspector.captured && keys.just_pressed(KeyCode::Escape) {
         exit.write(AppExit::Success);
         return;
     }
@@ -207,12 +234,12 @@ fn drive(
     let mut requested = None;
 
     let focused_button = focus.get().is_some_and(|e| buttons.contains(e));
-    if keys.just_pressed(KeyCode::F9) {
+    if !inspector.captured && keys.just_pressed(KeyCode::F9) {
         requested = Some(UiAction::Load);
-    } else if keys.just_pressed(KeyCode::F5) {
+    } else if !inspector.captured && keys.just_pressed(KeyCode::F5) {
         requested = Some(UiAction::Save);
     }
-    if !ui.modal() && requested.is_none() {
+    if !inspector.captured && !ui.modal() && requested.is_none() {
         if let Some(position) = DIGIT_KEYS.iter().position(|k| keys.just_pressed(*k)) {
             intents.push(Intent::Select {
                 layer: None,
@@ -231,6 +258,9 @@ fn drive(
     }
     let mut progressed = false;
     for intent in intents.drain() {
+        if inspector.captured {
+            continue;
+        }
         if matches!(player.presenter.screen(), Screen::Error(_)) {
             continue;
         }
@@ -588,6 +618,8 @@ mod tests {
             dirty: true,
         })
         .init_resource::<RuntimeFailure>()
+        .init_resource::<debug_tools::Inspector>()
+        .add_message::<bevy::input::keyboard::KeyboardInput>()
         .init_resource::<Time>()
         .init_resource::<ButtonInput<KeyCode>>()
         .init_resource::<InputFocus>()
@@ -598,7 +630,10 @@ mod tests {
         .init_resource::<Assets<Image>>()
         .init_resource::<Assets<AudioSource>>()
         .add_message::<AppExit>()
-        .add_systems(Update, (drive, remember_failure).chain());
+        .add_systems(
+            Update,
+            (debug_tools::input, drive, remember_failure).chain(),
+        );
         app
     }
     #[test]

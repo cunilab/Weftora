@@ -589,22 +589,33 @@ fn preview_passes_a_live_artifact_and_cleans_it_without_story_writes() {
         .map(|e| e.unwrap().file_name())
         .collect();
     let player = tmp.path().join("inspect-player");
-    fs::write(&player, b"#!/bin/sh\ntest \"$2\" = --dialogue || exit 11\ntest -s \"$3\" || exit 12\nprintf '%s' \"$3\"\nexit 23\n").unwrap();
+    fs::write(&player, b"#!/bin/sh\ntest \"$2\" = --dialogue || exit 11\ntest -s \"$3\" || exit 12\ncase \"$4\" in \"\"|--debug-tools) ;; *) exit 13;; esac\nprintf '%s\\n%s' \"$3\" \"$4\"\nexit 23\n").unwrap();
     fs::set_permissions(&player, fs::Permissions::from_mode(0o755)).unwrap();
-    let output = weftora()
-        .env("WEFTORA_PLAYER", &player)
-        .arg("run")
-        .arg(&story)
-        .output()
-        .unwrap();
-    assert_eq!(output.status.code(), Some(23), "{}", stderr(&output));
-    let path = std::path::PathBuf::from(String::from_utf8(output.stdout).unwrap());
-    assert!(!path.exists(), "preview artifact was not cleaned up");
-    let after: Vec<_> = fs::read_dir(&story)
-        .unwrap()
-        .map(|e| e.unwrap().file_name())
-        .collect();
-    assert_eq!(before, after);
+    for debug_tools in [false, true] {
+        let mut command = weftora();
+        command
+            .env("WEFTORA_PLAYER", &player)
+            .arg("run")
+            .arg(&story);
+        if debug_tools {
+            command.arg("--debug-tools");
+        }
+        let output = command.output().unwrap();
+        assert_eq!(output.status.code(), Some(23), "{}", stderr(&output));
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        let mut lines = stdout.lines();
+        let path = std::path::PathBuf::from(lines.next().unwrap());
+        assert_eq!(
+            lines.next().unwrap_or(""),
+            if debug_tools { "--debug-tools" } else { "" }
+        );
+        assert!(!path.exists(), "preview artifact was not cleaned up");
+        let after: Vec<_> = fs::read_dir(&story)
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(before, after);
+    }
 }
 
 #[test]
