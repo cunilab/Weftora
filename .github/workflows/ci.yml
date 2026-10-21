@@ -388,6 +388,11 @@ jobs:
           name: weftora-windows-download-candidate-${{ github.sha }}
           path: ${{ runner.temp }}/weftora-release-assets/
           retention-days: 14
+      - name: Prove actual changed-build CLI refuses the frozen release player
+        shell: pwsh
+        run: |
+          python -B -O scripts/verify-tool-drift.py --cli target/x86_64-pc-windows-msvc/release/weftora.exe --player target/x86_64-pc-windows-msvc/release/weftora-player.exe --target x86_64-pc-windows-msvc --cache-target target --out (Join-Path $env:RUNNER_TEMP "weftora-release-tool-drift")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Prove release Engine independence without Story A/B
         shell: pwsh
         run: |
@@ -402,6 +407,8 @@ jobs:
           path: |
             ${{ runner.temp }}/weftora-release-tests.log
             ${{ runner.temp }}/weftora-release-example-exports.json
+            ${{ runner.temp }}/weftora-release-tool-drift/tool-drift-proof.json
+            ${{ runner.temp }}/weftora-release-tool-drift/*.log
             ${{ runner.temp }}/weftora-release-new-story/
             ${{ runner.temp }}/weftora-release-story-a-edits/
             ${{ runner.temp }}/weftora-release-screen-edits/

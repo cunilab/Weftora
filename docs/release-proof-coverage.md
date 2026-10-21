@@ -38,18 +38,26 @@ The [Windows release job](../.github/workflows/ci.yml) uses the pinned toolchain
 
 The release artifact also retains `weftora-release-example-exports.json` for all 12 baseline Stories. ZIP, notice and combined-checksum reports are additional packaging evidence; they do not replace earlier gameplay or native checks. See [Phase 6 evidence](./evidence/phase-6.md) for historical runs and implementation limits.
 
-## Actual changed-build mismatch: release gap
+## Actual changed-build mismatch
 
-The [historical changed-source experiment](./evidence/phase-6.md#export-tool-identity-p6-02-automated-slice) used real Mac **debug** tools. Release unit tests cover identity fields with responders, and the A/B helper refuses the actual CLI in the player role. Neither repeats a real changed-build release pair. The controls below repeat the [recorded experiment](./evidence/phase-6-tool-drift-macos.json). It still needs a release-specific rerun under P6-02/P6-03:
+The [historical changed-source experiment](./evidence/phase-6.md#export-tool-identity-p6-02-automated-slice) used Mac debug tools. The maintained [tool-drift helper](../scripts/verify-tool-drift.py) now repeats its real-build controls in Windows release CI:
 
-1. Retain the candidate's frozen player, CLI, identities and hashes; first prove the matching pair exports A/B successfully.
-2. Use a separate checkout/worktree at the same full candidate SHA. Record a controlled CLI source-only change and before/after source hashes; do not modify the candidate checkout or published bytes.
-3. Build only that checkout's CLI with the same pinned toolchain, lockfile, release profile and Windows target. Record its actual identity/hash. Require the build ID to differ while all other CLI identity fields remain equal. Keep the baseline player and prove its bytes unchanged.
-4. Pair the changed CLI with the retained baseline player through `WEFTORA_PLAYER`. For both A/B Stories and both absent/existing-empty outputs, require the identity mismatch diagnostic, nonzero exit, no stdout and unchanged source/output inventories.
-5. Retain commands, source delta, all identities/hashes, four refusal logs and matching-pair controls. The changed CLI is experiment evidence only; never promote it as a candidate tool.
+```text
+python -B -O scripts/verify-tool-drift.py --cli target/x86_64-pc-windows-msvc/release/weftora.exe --player target/x86_64-pc-windows-msvc/release/weftora-player.exe --target x86_64-pc-windows-msvc --cache-target target --out <fresh-directory-outside-checkout>
+```
 
-Use isolated build outputs or prove the correct checkout was rebuilt; shared caches can retain fixture paths from another checkout. This recipe is documented, not installed or executed as release automation.
+The supplied pair must match. The helper first exports and validates A/B with that original pair. It copies the Engine source to its own workspace (omitting A/B, which are excluded from the tool fingerprint), while controls and refusals use the untouched original Stories. It builds into its own Cargo target, never the original target.
+
+Optional `--cache-target` seeds dependency artifacts, host build dependencies and fingerprints by copying them into that isolated target. Incremental data, final top-level executables and test executables are excluded. Windows uses ordinary copies; macOS uses independent copy-on-write clones on the same filesystem. No hardlinks are used. This is a warm-cache proof, not a cold-build claim. Without the option, the isolated build starts without a seed.
+
+Before the unchanged control build, the helper queries Cargo metadata and cleans every path package, including workspace and vendored crates, in host and selected-target layouts **only in the isolated target**. The control requires Cargo to report all path-crate artifacts freshly compiled; its identity must exactly equal the baseline. This prevents cached workspace libraries or build-script values from masquerading as a relocation control. The original and isolated matching pairs must both export/validate A/B.
+
+It then appends the recorded comment to the isolated CLI source and rebuilds only the CLI. Cargo must report a real CLI rebuild and dependency info from the isolated checkout. The new identity must differ only in `buildId`. Both A/B Stories, with absent and existing-empty outputs, must refuse specifically with both build IDs in the mismatch diagnostic, exit 1, no stdout and unchanged source/output inventories. Original tool hashes and the complete original source inventory are checked again.
+
+`tool-drift-proof.json` records the source delta, identities/hashes, commands, path-cache reset, four matching controls and four refusals. Build/refusal logs are retained too. Successful runs remove their own source/target copies; failures can leave partial output for inspection, without a success report. Never promote the rebuilt CLI as candidate bytes. Run from a quiescent checkout and do not run another Cargo build against the cache while seeding. The source, original build outputs and candidate exports remain unchanged.
+
+The Windows job invokes this after candidate packaging and before Engine independence. Its report/logs are evidence, not download assets. New head CI and the exact selected main candidate must still run it successfully; automation being present is not acceptance.
 
 ## Remaining P6-03 acceptance
 
-Run the mapped checks at the exact selected `main` candidate and retain its full SHA, target/profile, commands and reports. Complete the real changed-build release experiment above, then review the table against the candidate artifacts. Native/manual rows stay open until their own release evidence is accepted through issue #5. P6-03 is not checked off by this document, and the foundation release remains gated by all of P6-01–P6-12.
+Run the mapped checks at the exact selected `main` candidate and retain its full SHA, target/profile, commands and reports. Require the real changed-build report above and review the table against the candidate artifacts. Native/manual rows stay open until their own release evidence is accepted through issue #5. P6-03 is not checked off by this document, and the foundation release remains gated by all of P6-01–P6-12.
