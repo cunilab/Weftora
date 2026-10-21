@@ -4,7 +4,7 @@ use serde::Deserialize;
 use std::{
     collections::{BTreeMap, BTreeSet},
     path::Path,
-    sync::Arc,
+    sync::{Arc, Mutex},
 };
 use weftora_api::{Diagnostic, ScriptDefinition, Value};
 use weftora_core::{Scope, State, catalog::Catalog, command::ValueType, signal::Signal};
@@ -16,17 +16,34 @@ use weftora_flow::{
     },
 };
 
+mod trace;
+pub use trace::RuleTrace;
+
 pub const DISPATCH_BUDGET: usize = 1024;
 const CHANGED: &str = "state.changed";
 const CHANGED_KEY: &str = "state.changed.";
 
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Default)]
 pub struct Rules {
     scheduler: Arc<Scheduler>,
     sources: Arc<BTreeMap<String, (String, String)>>,
     action_sources: Arc<BTreeMap<String, Vec<Location>>>,
     commands: Arc<BTreeMap<String, Command>>,
     scripts: Arc<Vec<ScriptDefinition>>,
+    trace: Option<Mutex<RuleTrace>>,
+}
+
+impl Clone for Rules {
+    fn clone(&self) -> Self {
+        Self {
+            scheduler: self.scheduler.clone(),
+            sources: self.sources.clone(),
+            action_sources: self.action_sources.clone(),
+            commands: self.commands.clone(),
+            scripts: self.scripts.clone(),
+            trace: None,
+        }
+    }
 }
 
 impl Rules {
@@ -108,17 +125,17 @@ impl Rules {
             cursor += 1;
             for trigger in [CHANGED.to_owned(), format!("{CHANGED_KEY}{key}")] {
                 if self.scheduler.has_trigger(&trigger) {
-                    self.scheduler
-                        .dispatch_with(
-                            Signal {
-                                id: trigger,
-                                value: Value::String(key.clone()),
-                            },
-                            state,
-                            budget,
-                            executor,
-                        )
-                        .map_err(|error| self.diagnostic(error.error))?;
+                    let result = self.scheduler.dispatch_with(
+                        Signal {
+                            id: trigger,
+                            value: Value::String(key.clone()),
+                        },
+                        state,
+                        budget,
+                        executor,
+                    );
+                    self.record_trace(&result);
+                    result.map_err(|error| self.diagnostic(error.error))?;
                     check_notifications(state, from)?;
                 }
             }
@@ -794,28 +811,30 @@ impl Rules {
             .collect();
         let actions = materialize(&command.actions, &bindings)?;
         let mut budget = Budget::new(DISPATCH_BUDGET);
-        self.scheduler
-            .execute_with(name, &actions, state, &mut budget, executor)
-            .map_err(|error| {
-                if let Some(diagnostic) = command_diagnostic(&error.error) {
-                    return diagnostic;
+        let result = self
+            .scheduler
+            .execute_with(name, &actions, state, &mut budget, executor);
+        self.record_trace(&result);
+        result.map_err(|error| {
+            if let Some(diagnostic) = command_diagnostic(&error.error) {
+                return diagnostic;
+            }
+            match error.error {
+                FlowError::Sequence(error) => {
+                    let index = match &*error {
+                        FlowError::Action { index, .. } => Some(*index),
+                        FlowError::Budget { action, .. } => *action,
+                        _ => None,
+                    };
+                    index
+                        .and_then(|i| command.actions.get(i))
+                        .map(|a| &a.location)
+                        .unwrap_or(&command.location)
+                        .error(error)
                 }
-                match error.error {
-                    FlowError::Sequence(error) => {
-                        let index = match &*error {
-                            FlowError::Action { index, .. } => Some(*index),
-                            FlowError::Budget { action, .. } => *action,
-                            _ => None,
-                        };
-                        index
-                            .and_then(|i| command.actions.get(i))
-                            .map(|a| &a.location)
-                            .unwrap_or(&command.location)
-                            .error(error)
-                    }
-                    error => self.diagnostic(error),
-                }
-            })?;
+                error => self.diagnostic(error),
+            }
+        })?;
         self.settle_budgeted(state, from, &mut budget, executor)
     }
 }
@@ -1222,5 +1241,6 @@ pub(crate) fn load(
         action_sources: Arc::new(action_sources),
         commands: Arc::new(commands),
         scripts: Arc::new(scripts),
+        trace: None,
     })
 }

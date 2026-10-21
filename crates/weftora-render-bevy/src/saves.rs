@@ -79,7 +79,7 @@ impl Player {
             .restore_visits(game.visits())
             .map_err(|error| error.to_string())?;
         let node = &self.compiled.checkpoints()[game.checkpoint()];
-        let (presenter, actions) = Presenter::new(runner, node);
+        let (mut presenter, actions) = Presenter::new(runner, node);
         if let Screen::Error(error) = presenter.screen() {
             return Err(error.clone());
         }
@@ -97,6 +97,9 @@ impl Player {
                 weftora_core::presentation::volumes(&candidate)?;
             }
             candidate.drain_changes();
+        }
+        if self.presenter.source().rule_trace().is_some() {
+            presenter.source_mut().enable_rule_trace();
         }
         Ok(Candidate {
             state,

@@ -1,0 +1,42 @@
+{
+  "check": "P6-10 opt-in rules signal/event trace automated slice",
+  "baseCommit": "be2e8e21d6ef6c8e00cf3244e47036112a5fabb0",
+  "workingTreeDirty": true,
+  "platform": "MacBookAir development host",
+  "optIn": "--debug-tools; F12 opens; Tab cycles state, command, trace",
+  "retention": {
+    "rows": 128,
+    "charactersPerRow": 256,
+    "visibleRows": 12,
+    "dropCounter": "saturating; Delete resets history and count"
+  },
+  "covered": [
+    "normal launches retain no trace; developer capture starts before first displayed line",
+    "Rules clones never inherit tracing; optional per-instance mutex held only after scheduler returns",
+    "existing dispatch order: emitted signals, matched/skipped conditions, completed zero-based actions",
+    "partial scheduler failure rows followed by bounded diagnostic",
+    "streaming bounded formatting, escaped controls, Unicode truncation and exact eviction count",
+    "on/off state, screen and save-byte equivalence; trace-only clear/navigation preserves save bytes",
+    "read-only trace mode captures Enter, text and queued Story input; command buffer survives mode cycle",
+    "successful load candidate has fresh history excluding replay; failed load preserves live ring"
+  ],
+  "advisor": "Claude Opus 5.5 medium challenged design (clone isolation fixed) and independently reviewed final code: PASS with limits. Main verifies compile/runtime ordering and validation.",
+  "limits": [
+    "scheduler results only; unsubscribed state notifications, preflight/pre-dispatch errors, general signal bus and script instructions are outside this trace",
+    "tail-relative scrolling moves as new rows arrive; rows clip horizontally and Unicode previews may split grapheme clusters",
+    "native visual/input acceptance remains queued in issue5; prior Computer Use permissions unavailable",
+    "Yarn node selection and full P6-10/release acceptance remain open"
+  ],
+  "scope": "No dependencies or Story schema/capability/save wire changes; no tag or release.",
+  "rustTestsPassed": 404,
+  "developerPanelTestsPassed": 16,
+  "traceModelTestsPassed": 1,
+  "validation": {
+    "defaultAndStoryClippy": "passed with warnings denied",
+    "fmtAndSharedRustfmt": "passed",
+    "dependencyDirection": "passed",
+    "docsAndDiff": "passed",
+    "matchingToolsAndExport": "Both tools rebuilt with --locked; fresh commands-demo export and matching tool identity verification passed"
+  },
+  "nativeMacScope": "Fresh exported developer player survived two seconds after window creation, then test terminated its own process. Startup only; no visual/input acceptance."
+}

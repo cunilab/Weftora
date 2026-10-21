@@ -22,7 +22,7 @@ The window title identifies developer mode. Press **F12** to open the inspector.
 
 | Control | Action |
 | --- | --- |
-| Tab | Switch between state and command mode |
+| Tab | Cycle state → command → trace → state |
 | Up / Down | Select a state key in state mode |
 | PageUp / PageDown | Move by twelve keys |
 | Ctrl+A | Clear the current JSON input for replacement |
@@ -38,7 +38,7 @@ Accepted edits pass through the normal rule/event bridge. Derived rule changes s
 
 ## Run a Story command
 
-Press **Tab** in the open panel to switch to the command runner. Enter the same JSON action used by a Story screen, for example in Commands Demo:
+Press **Tab** from state mode to switch to the command runner. Enter the same JSON action used by a Story screen, for example in Commands Demo:
 
 ```json
 {"do":"command.call","command":"award","args":[10]}
@@ -48,7 +48,17 @@ Only commands declared by the Story's rules are available. Names and parameter t
 
 Malformed JSON, unknown commands, wrong argument counts/types and value-limit violations are rejected before execution, preserving state and checkpoint eligibility. A valid command runs once through the ordinary rules/script bridge without a dry run or dialogue replay. Actual command failures (such as state arithmetic overflow or a script error) retain completed writes and put the Story into its normal terminal error state. Commands can also change values that make a later dialogue/display validation fail; parameter validation does not predict command effects.
 
-The command buffer remains when changing modes or closing the panel. **Each new Enter press runs it again**; holding Enter does not resubmit. Tab consumes its frame, including a simultaneous Enter. Returning to state mode reloads the selected key's current value. Commands have the same input bound, capture, persistent-save invalidation and snapshot-dialogue behavior as state edits.
+The command buffer remains when changing modes or closing the panel. **Each new Enter press runs it again**; holding Enter does not resubmit. Tab consumes its frame, including a simultaneous Enter. Tab cycles through the read-only trace view before returning to state mode. Returning to state mode reloads the selected key's current value. Commands have the same input bound, capture, persistent-save invalidation and snapshot-dialogue behavior as state edits.
+
+## Trace signals and events
+
+Press **Tab** twice from state mode to open the read-only trace view. Developer launches capture scheduler traces from before the first displayed line, even while the panel is closed. Normal launches retain no trace history. The latest twelve rows are displayed; Up/Down scroll by one row and PageUp/PageDown by twelve. Returning to the newest page follows the tail. Delete clears history and its dropped-row count. Enter and printable input do nothing in trace mode; the command buffer is preserved.
+
+Rows show delivered signals with bounded debug-value previews, event conditions as `matched` or `skipped`, zero-based indexes of completed actions, and scheduler errors after any completed rows. Signals emitted by actions/scripts and subscribed `state.changed` notifications appear in their existing dispatch order. Notifications without a matching scheduler subscription are not dispatched and do not appear. This is a rules-scheduler trace, not a general log of every state write, Engine signal bus, command attempt or script instruction. Parse/preflight failures remain command-editor messages; failures before scheduler dispatch have no trace rows.
+
+History keeps the latest **128 rows**, each limited to **256 Unicode characters**, with a count of older rows dropped. Control characters are escaped and truncated rows end in `…`; previews can split grapheme clusters. Trace rows do not wrap and are clipped at the panel edge; narrower windows may hide the end of a row. This first view has no search, export or persistence.
+
+Tracing only observes existing dispatch results; it does not rerun commands, evaluate extra conditions, consume dispatch/RNG budgets, edit state or invalidate checkpoints. A successful load starts fresh empty history after candidate replay; replay rows are intentionally excluded. A failed load retains the live runner's history. Cloned rule definitions never inherit tracing. Actual runtime failures leave completed rows available for inspection; the normal Story error behavior still applies.
 
 ## Input and saves
 
@@ -58,7 +68,7 @@ A persistent edit invalidates the current checkpoint, including persistent chang
 
 ## Remaining tools and acceptance
 
-Signal/event tracing and starting at a selected Yarn node remain separate P6-10 work. The [Phase 6 evidence](./evidence/phase-6.md#developer-state-inspector-p6-10-partial) records automated coverage. Native Windows text entry, focus/pointer capture, resize/DPI and save/load walkthroughs remain in [issue #5](https://github.com/cunilab/Weftora/issues/5); this slice does not close the full debug-tools or foundation-release gate.
+Starting at a selected Yarn node remains separate P6-10 work. The [Phase 6 evidence](./evidence/phase-6.md#developer-state-inspector-p6-10-partial) records automated coverage. Native Windows text entry, focus/pointer capture, resize/DPI and save/load walkthroughs remain in [issue #5](https://github.com/cunilab/Weftora/issues/5); this slice does not close the full debug-tools or foundation-release gate.
 
 ## Windows acceptance checklist
 
@@ -69,5 +79,6 @@ Use the matching release tools from a successful CI run for this PR. Copy `examp
 - [ ] On Commands Demo's first line, save before editing. Reject a string for integer `points` and malformed JSON without changing values or save eligibility. Set Boolean `input` to `true`: rules add ten points and set `awarded`; displayed dialogue stays at its previous line until normal progression.
 - [ ] Close and try saving after that persistent edit: refusal preserves the existing slot/backup. F9 loads the old save; reopening reads restored values. Repeat the edit, reach the next authored checkpoint and verify save/load there works without repeating rewards.
 - [ ] In a copied Story with declared string/session and collection keys, check Unicode/AltGr input, UTF-8 backspace, Ctrl+A, valid JSON types, the 16 KiB limit, and rejection of nested/oversized collections. Session-only changes retain save eligibility when rules do not change persistent state.
-- [ ] Switch to command mode with Tab. Reject malformed JSON, `save`, an unknown command, and `award` with a string argument without mutation or save invalidation. Execute `{"do":"command.call","command":"award","args":[10]}`: exactly ten points and `awarded=true`, unchanged displayed line, and save refused until a new checkpoint. Hold Enter (no repeat), release and press again (another ten points); Tab+Enter changes mode without execution. Close/reopen and verify the command buffer remains.
+- [ ] Switch to command mode with Tab. Reject malformed JSON, `save`, an unknown command, and `award` with a string argument without mutation or save invalidation. Execute `{"do":"command.call","command":"award","args":[10]}`: exactly ten points and `awarded=true`, unchanged displayed line, and save refused until a new checkpoint. Hold Enter (no repeat), release and press again (another ten points); Tab+Enter changes mode without execution. Cycle through trace to return to state mode. Close/reopen and verify the command buffer remains.
 - [ ] Check pointer capture, focus loss/resume, keyboard navigation, resize and supported DPI settings. Inspect long keys/values and multiple pages for clipping/readability. Record OS, GPU, layout and observed issues before signing off.
+- [ ] In developer mode, Tab twice opens trace: Commands Demo `award` shows completed actions, subscribed state notifications and matched/skipped events in order. Enter/typing/Story clicks and F5/F9 do not execute or progress. Page navigation and Delete affect only history; the command buffer survives the three-mode cycle. Generate enough command activity to verify 128-row retention, dropped counts and readable clipping at supported DPI/window sizes. A successful load starts empty history, a failed load keeps the live history, and saving before/after trace-only operations has unchanged bytes. A normal launch retains no trace.

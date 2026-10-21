@@ -60,7 +60,10 @@ fn run_player(
     } else {
         story.manifest().title.clone()
     };
-    let runner = DialogueRunner::for_story(&dialogue, Arc::clone(&state), &story);
+    let mut runner = DialogueRunner::for_story(&dialogue, Arc::clone(&state), &story);
+    if debug_tools {
+        runner.enable_rule_trace();
+    }
     if let Ok(mut state) = state.write() {
         state.drain_changes();
     }
@@ -603,8 +606,14 @@ mod tests {
         app_for(story, compiled)
     }
     pub(super) fn app_for(story: Story, compiled: CompiledDialogue) -> App {
+        app_for_debug(story, compiled, false)
+    }
+    pub(super) fn app_for_debug(story: Story, compiled: CompiledDialogue, debug: bool) -> App {
         let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
-        let runner = DialogueRunner::for_story(&compiled, state.clone(), &story);
+        let mut runner = DialogueRunner::for_story(&compiled, state.clone(), &story);
+        if debug {
+            runner.enable_rule_trace();
+        }
         let (presenter, pending) = Presenter::new(runner, "Start");
         let mut app = App::new();
         app.insert_non_send(Player {
@@ -618,7 +627,7 @@ mod tests {
             dirty: true,
         })
         .init_resource::<RuntimeFailure>()
-        .init_resource::<debug_tools::Inspector>()
+        .insert_resource(debug_tools::Inspector::new(debug))
         .add_message::<bevy::input::keyboard::KeyboardInput>()
         .init_resource::<Time>()
         .init_resource::<ButtonInput<KeyCode>>()

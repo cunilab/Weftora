@@ -11,6 +11,14 @@ use crate::{Player, Screen, declarative};
 const MAX_INPUT: usize = 16 * 1024;
 const PAGE_SIZE: usize = 12;
 
+#[derive(Default, PartialEq, Eq)]
+enum Mode {
+    #[default]
+    State,
+    Command,
+    Trace,
+}
+
 #[derive(Resource, Default)]
 pub(super) struct Inspector {
     enabled: bool,
@@ -18,7 +26,8 @@ pub(super) struct Inspector {
     pub captured: bool,
     selected: Option<String>,
     input: String,
-    command_mode: bool,
+    mode: Mode,
+    trace_offset: usize,
     command_input: String,
     status: String,
     previous_focus: Option<Entity>,
@@ -154,7 +163,7 @@ pub(super) fn input(
         if inspector.open {
             inspector.previous_focus = focus.get();
             focus.clear();
-            if !inspector.command_mode {
+            if inspector.mode == Mode::State {
                 inspector.select(&player, 0);
             }
         } else {
@@ -176,16 +185,49 @@ pub(super) fn input(
     }
     focus.clear();
     if keys.just_pressed(KeyCode::Tab) {
-        let Inspector {
-            input,
-            command_input,
-            ..
-        } = &mut *inspector;
-        std::mem::swap(input, command_input);
-        inspector.command_mode = !inspector.command_mode;
+        if inspector.mode != Mode::Command {
+            let Inspector {
+                input,
+                command_input,
+                ..
+            } = &mut *inspector;
+            std::mem::swap(input, command_input);
+        }
+        inspector.mode = match inspector.mode {
+            Mode::State => Mode::Command,
+            Mode::Command => Mode::Trace,
+            Mode::Trace => Mode::State,
+        };
         inspector.status.clear();
-        if !inspector.command_mode {
+        inspector.trace_offset = 0;
+        if inspector.mode == Mode::State {
             inspector.select(&player, 0);
+        }
+        events.clear();
+        return;
+    }
+    if inspector.mode == Mode::Trace {
+        let len = player
+            .presenter
+            .source()
+            .rule_trace()
+            .map_or(0, |trace| trace.rows.len());
+        for (key, movement) in [
+            (KeyCode::ArrowUp, 1),
+            (KeyCode::ArrowDown, -1),
+            (KeyCode::PageUp, PAGE_SIZE as isize),
+            (KeyCode::PageDown, -(PAGE_SIZE as isize)),
+        ] {
+            if keys.just_pressed(key) {
+                inspector.trace_offset = inspector
+                    .trace_offset
+                    .saturating_add_signed(movement)
+                    .min(len.saturating_sub(PAGE_SIZE));
+            }
+        }
+        if keys.just_pressed(KeyCode::Delete) {
+            player.presenter.source().clear_rule_trace();
+            inspector.trace_offset = 0;
         }
         events.clear();
         return;
@@ -196,7 +238,7 @@ pub(super) fn input(
         (KeyCode::PageUp, -(PAGE_SIZE as isize)),
         (KeyCode::PageDown, PAGE_SIZE as isize),
     ] {
-        if !inspector.command_mode && keys.just_pressed(key) {
+        if inspector.mode == Mode::State && keys.just_pressed(key) {
             inspector.select(&player, movement);
         }
     }
@@ -223,7 +265,7 @@ pub(super) fn input(
         }
     }
     if keys.just_pressed(KeyCode::Enter) || keys.just_pressed(KeyCode::NumpadEnter) {
-        inspector.status = if inspector.command_mode {
+        inspector.status = if inspector.mode == Mode::Command {
             match run_command(&mut player, &inspector.input) {
                 Ok(()) => {
                     "Command ran. Enter runs it again; persistent changes require a new checkpoint."
@@ -263,13 +305,18 @@ pub(super) fn setup(mut commands: Commands, inspector: Res<Inspector>) {
                 width: percent(100),
                 height: percent(100),
                 padding: UiRect::all(px(24)),
+                overflow: Overflow::clip(),
                 display: Display::None,
                 ..default()
             },
             BackgroundColor(Color::srgb(0.02, 0.02, 0.04)),
         ))
         .with_children(|parent| {
-            parent.spawn((Contents, crate::label("", 16.0, Color::WHITE)));
+            parent.spawn((
+                Contents,
+                crate::label("", 16.0, Color::WHITE),
+                TextLayout::default(),
+            ));
         });
 }
 
@@ -277,12 +324,14 @@ pub(super) fn refresh(
     inspector: Res<Inspector>,
     player: NonSend<Player>,
     mut overlay: Query<&mut Node, With<Overlay>>,
-    mut contents: Query<&mut Text, With<Contents>>,
+    mut contents: Query<(&mut Text, &mut TextLayout), With<Contents>>,
 ) {
     if !inspector.enabled {
         return;
     }
-    let (Ok(mut overlay), Ok(mut text)) = (overlay.single_mut(), contents.single_mut()) else {
+    let (Ok(mut overlay), Ok((mut text, mut layout))) =
+        (overlay.single_mut(), contents.single_mut())
+    else {
         return;
     };
     overlay.display = if inspector.open {
@@ -291,6 +340,38 @@ pub(super) fn refresh(
         Display::None
     };
     if !inspector.open {
+        return;
+    }
+    *layout = if inspector.mode == Mode::Trace {
+        TextLayout::no_wrap()
+    } else {
+        TextLayout::default()
+    };
+    if inspector.mode == Mode::Trace {
+        let mut lines = vec![
+            "DEVELOPER SIGNAL / EVENT TRACE — F12 / Esc: close".to_string(),
+            "Tab: state • Up/Down: scroll • PageUp/PageDown: page • Delete: clear history".into(),
+            "128 recent rows; each preview is limited to 256 characters. Not saved; load starts a fresh trace.".into(),
+        ];
+        if let Some(trace) = player.presenter.source().rule_trace() {
+            let end = trace.rows.len().saturating_sub(
+                inspector
+                    .trace_offset
+                    .min(trace.rows.len().saturating_sub(PAGE_SIZE)),
+            );
+            let start = end.saturating_sub(PAGE_SIZE);
+            lines.push(format!(
+                "Rows {}–{} of {} • {} older rows dropped",
+                if end == 0 { 0 } else { start + 1 },
+                end,
+                trace.rows.len(),
+                trace.dropped
+            ));
+            lines.extend(trace.rows.iter().skip(start).take(end - start).cloned());
+        } else {
+            lines.push("Tracing disabled for this runner".into());
+        }
+        text.0 = lines.join("\n");
         return;
     }
     let Ok(state) = player.state.read() else {
@@ -305,9 +386,9 @@ pub(super) fn refresh(
         .unwrap_or(0);
     let start = selected / PAGE_SIZE * PAGE_SIZE;
     let mut lines = vec!["DEVELOPER STATE INSPECTOR — F12 / Esc: close".to_string(),
-        "Tab: state / command • Up/Down: select • PageUp/PageDown: page • Ctrl+A: replace • Backspace: delete • Enter: apply JSON".into(),
+        "Tab: state / command / trace • Up/Down: select • PageUp/PageDown: page • Ctrl+A: replace • Backspace: delete • Enter: apply JSON".into(),
         "Story input is captured. Displayed dialogue remains unchanged until normal progression.".into(), String::new()];
-    if inspector.command_mode {
+    if inspector.mode == Mode::Command {
         lines[0] = "DEVELOPER COMMAND RUNNER — F12 / Esc: close".into();
         lines.push(
             r#"Enter a Story rules action: {"do":"command.call","command":"name","args":[]}"#
@@ -317,11 +398,15 @@ pub(super) fn refresh(
             "Only authored rules commands; no presentation, save/load or node commands.".into(),
         );
     }
-    for (position, key) in keys
-        .iter()
-        .enumerate()
-        .skip(start)
-        .take(if inspector.command_mode { 0 } else { PAGE_SIZE })
+    for (position, key) in
+        keys.iter()
+            .enumerate()
+            .skip(start)
+            .take(if inspector.mode == Mode::Command {
+                0
+            } else {
+                PAGE_SIZE
+            })
     {
         let value = state
             .get(key)
@@ -336,7 +421,7 @@ pub(super) fn refresh(
             value.chars().take(120).collect::<String>()
         ));
     }
-    if !inspector.command_mode {
+    if inspector.mode == Mode::State {
         lines.push(format!(
             "\nKeys {}–{} of {}\nSelected: {}",
             if keys.is_empty() { 0 } else { start + 1 },
@@ -368,16 +453,19 @@ mod tests {
     use std::sync::Arc;
 
     fn fixture() -> (tempfile::TempDir, App) {
+        fixture_traced(false)
+    }
+    fn fixture_traced(debug: bool) -> (tempfile::TempDir, App) {
         let temp = tempfile::tempdir().unwrap();
         let root = temp.path().join("story");
         std::fs::create_dir(&root).unwrap();
         std::fs::write(root.join("manifest.jsonc"), r#"{"manifestSchema":1,"saveSchema":1,"id":"test.debug-tools","storyVersion":"0.1.0","title":"Debug","requires":{"engineApi":">=0.1.0 <0.2.0","capabilities":["dialogue.yarn/1","rules.events/1","rules.commands/1","save/1"]},"entrypoint":"Start","dialogue":["main.yarn"],"events":["events.jsonc"],"state":{"n":{"default":0},"derived":{"default":false},"temporary":{"default":0,"scope":"session"}}}"#).unwrap();
         std::fs::write(root.join("main.yarn"), "title: Start\n---\n<<declare $n = 0>>\n<<checkpoint debug.start>>\nFirst {$n}\nSecond {$n}\n===\n").unwrap();
-        std::fs::write(root.join("events.jsonc"), r#"{"rulesSchema":1,"commands":[{"id":"increment","parameters":[{"name":"amount","type":"int"}],"actions":[{"do":"state.add","key":"n","amount":{"argument":"amount"}}]},{"id":"fail","actions":[{"do":"state.add","key":"n","amount":1},{"do":"state.add","key":"n","amount":9223372036854775807}]}],"events":[{"id":"derive","trigger":"state.changed.n","actions":[{"do":"state.set","key":"derived","value":true}]}]}"#).unwrap();
+        std::fs::write(root.join("events.jsonc"), r#"{"rulesSchema":1,"commands":[{"id":"increment","parameters":[{"name":"amount","type":"int"}],"actions":[{"do":"state.add","key":"n","amount":{"argument":"amount"}}]},{"id":"fail","actions":[{"do":"state.add","key":"n","amount":1},{"do":"state.add","key":"n","amount":9223372036854775807}]}],"events":[{"id":"derive","trigger":"state.changed.n","actions":[{"do":"state.set","key":"derived","value":true},{"do":"signal.emit","id":"derived.done","value":"ok\né"}]} ,{"id":"skip","trigger":"derived.done","condition":{"op":"compare","operator":"==","left":{"state":"derived"},"right":{"literal":false}},"actions":[]}]}"#).unwrap();
         let story = weftora_story::Story::load(&root).unwrap();
         let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
         assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
-        let mut app = crate::tests::app_for(story, compiled);
+        let mut app = crate::tests::app_for_debug(story, compiled, debug);
         app.world_mut().non_send_mut::<Player>().save_store = Some(Ok(
             weftora_save::storage::Store::new(temp.path().join("saves")),
         ));
@@ -650,6 +738,7 @@ mod tests {
             Ok(&Value::Int(0))
         );
         tap(&mut app, KeyCode::Tab);
+        tap(&mut app, KeyCode::Tab);
         assert_eq!(app.world().resource::<Inspector>().input, command);
         let revision = app.world().non_send::<Player>().presenter.revision();
         advance_intent(&mut app);
@@ -694,6 +783,168 @@ mod tests {
                 .unwrap_err()
                 .contains("Story error")
         );
+    }
+
+    #[test]
+    fn tracing_preserves_behavior_save_bytes_and_records_order_and_partial_failure() {
+        let mut outcomes = Vec::new();
+        for debug in [false, true] {
+            let (temp, mut app) = fixture_traced(debug);
+            let player = &mut *app.world_mut().non_send_mut::<Player>();
+            player.write_save().unwrap();
+            let bytes = std::fs::read(temp.path().join("saves/save.json")).unwrap();
+            assert!(player.story.rules().trace().is_none());
+            run_command(
+                player,
+                r#"{"do":"command.call","command":"increment","args":[3]}"#,
+            )
+            .unwrap();
+            let state = player.state.read().unwrap().clone();
+            outcomes.push((bytes, state, player.presenter.screen().clone()));
+            if debug {
+                let trace = player.presenter.source().rule_trace().unwrap();
+                assert_eq!(
+                    trace.rows.iter().map(String::as_str).collect::<Vec<_>>(),
+                    [
+                        "action increment[0] completed",
+                        "signal state.changed.n = String(\"n\")",
+                        "event derive: matched",
+                        "action derive[0] completed",
+                        "action derive[1] completed",
+                        r#"signal derived.done = String("ok\né")"#,
+                        "event skip: skipped",
+                    ]
+                );
+                assert_eq!(trace.dropped, 0);
+                player.presenter.source().clear_rule_trace();
+                assert!(run_command(player, r#"{"do":"command.call","command":"fail"}"#).is_err());
+                let trace = player.presenter.source().rule_trace().unwrap();
+                assert_eq!(trace.rows.len(), 2);
+                assert_eq!(trace.rows[0], "action fail[0] completed");
+                assert!(trace.rows[1].starts_with("error: "));
+            } else {
+                assert!(player.presenter.source().rule_trace().is_none());
+            }
+        }
+        assert_eq!(outcomes[0], outcomes[1]);
+    }
+
+    #[test]
+    fn trace_mode_is_read_only_bounded_scrollable_and_clear_does_not_change_saves() {
+        let (temp, mut app) = fixture_traced(true);
+        app.world().non_send::<Player>().write_save().unwrap();
+        let save_path = temp.path().join("saves/save.json");
+        let saved = std::fs::read(&save_path).unwrap();
+        app.add_systems(Startup, setup);
+        app.add_systems(Update, refresh.after(crate::drive));
+        let command = r#"{"do":"command.call","command":"increment","args":[0]}"#;
+        for _ in 0..140 {
+            run_command(&mut app.world_mut().non_send_mut::<Player>(), command).unwrap();
+        }
+        tap(&mut app, KeyCode::F12);
+        tap(&mut app, KeyCode::Tab);
+        app.world_mut().resource_mut::<Inspector>().input = command.into();
+        tap(&mut app, KeyCode::Tab);
+        advance_intent(&mut app);
+        app.world_mut().write_message(KeyboardInput {
+            key_code: KeyCode::KeyX,
+            logical_key: bevy::input::keyboard::Key::Character("x".into()),
+            state: bevy::input::ButtonState::Pressed,
+            text: Some("x".into()),
+            repeat: false,
+            window: Entity::PLACEHOLDER,
+        });
+        tap(&mut app, KeyCode::Enter);
+        let trace = app
+            .world()
+            .non_send::<Player>()
+            .presenter
+            .source()
+            .rule_trace()
+            .unwrap();
+        assert_eq!((trace.rows.len(), trace.dropped), (128, 12));
+        let input = app.world().resource::<Inspector>().input.clone();
+        tap(&mut app, KeyCode::PageUp);
+        assert_eq!(app.world().resource::<Inspector>().trace_offset, 12);
+        let mut text = app.world_mut().query_filtered::<&Text, With<Contents>>();
+        assert!(
+            text.single(app.world())
+                .unwrap()
+                .0
+                .contains("Rows 105–116 of 128")
+        );
+        tap(&mut app, KeyCode::PageDown);
+        assert_eq!(app.world().resource::<Inspector>().trace_offset, 0);
+        tap(&mut app, KeyCode::Delete);
+        let player = app.world().non_send::<Player>();
+        assert_eq!(
+            player.presenter.source().rule_trace().unwrap().rows.len(),
+            0
+        );
+        assert_eq!(player.presenter.source().rule_trace().unwrap().dropped, 0);
+        assert!(player.presenter.source().save_point().is_ok());
+        player.write_save().unwrap();
+        assert_eq!(std::fs::read(save_path).unwrap(), saved);
+        assert!(
+            matches!(player.presenter.screen(), Screen::Line { text, .. } if text == "First 0")
+        );
+        assert_eq!(app.world().resource::<Inspector>().input, input);
+        tap(&mut app, KeyCode::Tab);
+        tap(&mut app, KeyCode::Tab);
+        assert_eq!(app.world().resource::<Inspector>().input, command);
+    }
+
+    #[test]
+    fn successful_load_starts_fresh_trace_failed_load_keeps_live_history() {
+        let (temp, mut app) = fixture_traced(true);
+        let player = &mut *app.world_mut().non_send_mut::<Player>();
+        player.write_save().unwrap();
+        run_command(
+            player,
+            r#"{"do":"command.call","command":"increment","args":[3]}"#,
+        )
+        .unwrap();
+        let before = player.presenter.source().rule_trace().unwrap();
+        let candidate = player.prepare_load().unwrap();
+        assert_eq!(
+            candidate
+                .presenter
+                .source()
+                .rule_trace()
+                .unwrap()
+                .rows
+                .len(),
+            0
+        );
+        assert_eq!(player.presenter.source().rule_trace().unwrap(), before);
+        std::fs::remove_dir_all(temp.path().join("saves")).unwrap();
+        assert!(player.prepare_load().is_err());
+        assert_eq!(player.presenter.source().rule_trace().unwrap(), before);
+    }
+
+    #[test]
+    fn developer_tracing_starts_before_initial_dialogue_commands() {
+        let (temp, _app) = fixture();
+        let root = temp.path().join("story");
+        let path = root.join("main.yarn");
+        let text = std::fs::read_to_string(&path).unwrap().replace(
+            "<<checkpoint debug.start>>",
+            "<<checkpoint debug.start>>\n<<increment 1>>",
+        );
+        std::fs::write(path, text).unwrap();
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let app = crate::tests::app_for_debug(story, compiled, true);
+        let player = app.world().non_send::<Player>();
+        assert_eq!(
+            player.presenter.source().rule_trace().unwrap().rows[0],
+            "action increment[0] completed"
+        );
+        assert!(
+            matches!(player.presenter.screen(), Screen::Line { text, .. } if text == "First 1")
+        );
+        assert!(player.presenter.source().save_point().is_ok());
     }
 
     #[test]

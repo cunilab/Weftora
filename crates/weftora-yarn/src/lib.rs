@@ -377,6 +377,17 @@ impl DialogueRunner {
         }
     }
 
+    /// Enable a fresh noncanonical rule trace; save replay stays untraced unless explicitly enabled.
+    pub fn enable_rule_trace(&mut self) {
+        self.rules.enable_trace();
+    }
+    pub fn rule_trace(&self) -> Option<weftora_story::rules::RuleTrace> {
+        self.rules.trace()
+    }
+    pub fn clear_rule_trace(&self) {
+        self.rules.clear_trace();
+    }
+
     /// Creates a Story-aware runner, including its validated rules. Hosts use this for play and restore.
     pub fn for_story(
         dialogue: &CompiledDialogue,

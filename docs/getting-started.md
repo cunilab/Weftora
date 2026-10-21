@@ -33,4 +33,4 @@ Run `my-game/weftora-player.exe` on Windows (or the corresponding player executa
 
 The CLI finds the player beside itself; `WEFTORA_PLAYER` can select an explicit player path. Export refuses mismatched tool identities before creating output. `weftora --tool-identity` and `weftora-player --tool-identity` show the build and supported compiler/format contract. Install both executables from the same build; there is no force option. Export currently targets the host platform. Automated starter checks and their limits are recorded in [Phase 6 evidence](./evidence/phase-6.md). Native Windows preview and clean-machine acceptance remain tracked in [issue #5](https://github.com/cunilab/Weftora/issues/5).
 
-For state inspection during authoring, run `weftora run my-story --debug-tools` and press F12. The [developer-tools guide](./debug-tools.md) covers editing and save-checkpoint rules.
+For developer tools during authoring, run `weftora run my-story --debug-tools` and press F12. Tab cycles state editing, Story command execution and the read-only signal/event trace. The [developer-tools guide](./debug-tools.md) covers controls and save-checkpoint rules.

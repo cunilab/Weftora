@@ -13,13 +13,15 @@ Edit My Story\main.yarn and check again. Use a fresh export destination each tim
 Keep every file in the exported game folder together when sharing your game.
 The CLI must stay beside its matching player when creating another export.
 
-For the opt-in developer state inspector:
+For the opt-in developer tools:
 
   .\weftora.exe run "My Story" --debug-tools
 
-Press F12; use Up/Down to select, Ctrl+A to replace JSON, Enter to apply, and
-F12/Escape to close. Persistent edits require a new authored checkpoint before
-saving. Guide: https://github.com/cunilab/Weftora/blob/main/docs/debug-tools.md
+Press F12; Tab cycles state, command and trace modes. State/command input uses
+Ctrl+A to clear JSON and Enter to apply/run. Trace is read-only: Up/Down or
+PageUp/PageDown scroll; Delete clears history. F12/Escape closes the panel.
+Persistent edits/commands require a new authored checkpoint before saving.
+Guide: https://github.com/cunilab/Weftora/blob/main/docs/debug-tools.md
 
 For toolkit version and build-pair diagnostics:
 
