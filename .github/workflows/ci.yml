@@ -304,7 +304,7 @@ jobs:
         run: |
           $cli = "target/x86_64-pc-windows-msvc/release/weftora.exe"
           $player = "target/x86_64-pc-windows-msvc/release/weftora-player.exe"
-          foreach ($proof in @("new-story", "story-a-edits", "screen-edits", "life-sim")) {
+          foreach ($proof in @("new-story", "story-a-edits", "screen-edits", "life-sim", "mechanics-edits")) {
             $output = Join-Path $env:RUNNER_TEMP "weftora-release-$proof"
             python -B -O "scripts/verify-$proof.py" --cli $cli --player $player --out $output
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
@@ -406,6 +406,9 @@ jobs:
             ${{ runner.temp }}/weftora-release-story-a-edits/
             ${{ runner.temp }}/weftora-release-screen-edits/
             ${{ runner.temp }}/weftora-release-life-sim/
+            ${{ runner.temp }}/weftora-release-mechanics-edits/same-player-proof.json
+            ${{ runner.temp }}/weftora-release-mechanics-edits/**/*.jsonl
+            ${{ runner.temp }}/weftora-release-mechanics-edits/**/*.log
             ${{ runner.temp }}/weftora-toolkit-starter/new-story-proof.json
             ${{ runner.temp }}/weftora-authoring-tools/dependency-notices.json
             ${{ runner.temp }}/weftora-release-authoring-transport/*.zip

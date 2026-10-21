@@ -1,0 +1,237 @@
+{
+  "check": "P6-03 six isolated mechanics-edit recipes, automated slice",
+  "baseCommit": "e3025456c4424e8a3d5909c1b812304c908cd8b3",
+  "workingTreeDirty": true,
+  "device": "Andress-MacBook-Air.local",
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "playerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "cliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
+  "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+  "sourceReportSha256": "57cf3dc4d446dac5b1c8388a899d4f20d54a74bcdbe5f3c344cd98279d11b74e",
+  "cases": [
+    {
+      "case": "rules",
+      "baselineLines": [
+        "First points 0",
+        "After rules 10"
+      ],
+      "editedLines": [
+        "First points 0",
+        "After rules 20"
+      ],
+      "baselineFinalState": {
+        "awarded": true,
+        "input": true,
+        "points": 10,
+        "temporary": 1
+      },
+      "editedFinalState": {
+        "awarded": true,
+        "input": true,
+        "points": 20,
+        "temporary": 1
+      },
+      "compiledDialogueSha256": "aa281904ac9c846d2f4eda7c5b112d80927100bb2327d527b64b367eddd8e76c",
+      "editedCompiledDialogueIdentical": true,
+      "checkpointReplays": 2,
+      "oldSchemaRefusals": 1,
+      "baselineSaveSchema": 1,
+      "editedSaveSchema": 2
+    },
+    {
+      "case": "commands",
+      "baselineLines": [
+        "First points 2",
+        "Next points 3"
+      ],
+      "editedLines": [
+        "First points 4",
+        "Next points 8"
+      ],
+      "baselineFinalState": {
+        "awarded": true,
+        "input": false,
+        "points": 3,
+        "temporary": 0
+      },
+      "editedFinalState": {
+        "awarded": true,
+        "input": false,
+        "points": 8,
+        "temporary": 0
+      },
+      "compiledDialogueSha256": "3f0fa4887528ba315fb476b2b4b9b487fe75094a1d9740aa3324020a78749813",
+      "editedCompiledDialogueIdentical": true,
+      "checkpointReplays": 4,
+      "oldSchemaRefusals": 2,
+      "baselineSaveSchema": 1,
+      "editedSaveSchema": 2
+    },
+    {
+      "case": "collections",
+      "baselineLines": [
+        "Packed 2 items",
+        "Items after reset 0"
+      ],
+      "editedLines": [
+        "Packed 3 items",
+        "Items after reset 0"
+      ],
+      "baselineFinalState": {
+        "item_count": 0,
+        "items": [],
+        "schedule": {},
+        "status": "Empty kit"
+      },
+      "editedFinalState": {
+        "item_count": 0,
+        "items": [],
+        "schedule": {},
+        "status": "Empty kit"
+      },
+      "compiledDialogueSha256": "5e11face6690daf0771fa848299dd8650a990b3178c97f5e5aea056376ef1bdf",
+      "editedCompiledDialogueIdentical": true,
+      "checkpointReplays": 4,
+      "oldSchemaRefusals": 2,
+      "baselineSaveSchema": 1,
+      "editedSaveSchema": 2
+    },
+    {
+      "case": "scripts",
+      "baselineLines": [
+        "Packed 2 items",
+        "Items after reset 0"
+      ],
+      "editedLines": [
+        "Packed 3 items",
+        "Items after reset 0"
+      ],
+      "baselineFinalState": {
+        "item_count": 0,
+        "items": [],
+        "request": false,
+        "schedule": {},
+        "status": "Empty kit"
+      },
+      "editedFinalState": {
+        "item_count": 0,
+        "items": [],
+        "request": false,
+        "schedule": {},
+        "status": "Empty kit"
+      },
+      "compiledDialogueSha256": "80abd20c5c99a12dc0c2ad153558228cca7c5803ce788824c60a576396f1e9a6",
+      "editedCompiledDialogueIdentical": true,
+      "checkpointReplays": 4,
+      "oldSchemaRefusals": 2,
+      "baselineSaveSchema": 1,
+      "editedSaveSchema": 2
+    },
+    {
+      "case": "random",
+      "baselineLines": [
+        "Roll 2",
+        "Roll 1",
+        "Roll 2"
+      ],
+      "editedLines": [
+        "Roll 6",
+        "Roll 2",
+        "Roll 1"
+      ],
+      "baselineFinalState": {
+        "last": 2,
+        "rng": -2691343689449507777,
+        "rolls": [
+          2,
+          1,
+          2
+        ]
+      },
+      "editedFinalState": {
+        "last": 1,
+        "rng": -2691343689449507776,
+        "rolls": [
+          6,
+          2,
+          1
+        ]
+      },
+      "compiledDialogueSha256": "a4d84d9976f69c0050e44ee419a7478b8b3dfbe0f9339f7c26cf84d8a82c1156",
+      "editedCompiledDialogueIdentical": true,
+      "checkpointReplays": 6,
+      "oldSchemaRefusals": 3,
+      "baselineSaveSchema": 1,
+      "editedSaveSchema": 2
+    },
+    {
+      "case": "queries",
+      "baselineLines": [
+        "Packed 2 items",
+        "Now 2, key true, schedule 3, morning true",
+        "Items after reset 0"
+      ],
+      "editedLines": [
+        "Packed 3 items",
+        "Now 3, key true, schedule 3, morning true",
+        "Items after reset 0"
+      ],
+      "baselineFinalState": {
+        "items": [],
+        "schedule": {},
+        "status": "Empty kit"
+      },
+      "editedFinalState": {
+        "items": [],
+        "schedule": {},
+        "status": "Empty kit"
+      },
+      "compiledDialogueSha256": "244f36b40b9dd84331e08d571a8fbc168138403ad5e984b6f35bad8212eb72b0",
+      "editedCompiledDialogueIdentical": true,
+      "checkpointReplays": 4,
+      "oldSchemaRefusals": 2,
+      "baselineSaveSchema": 1,
+      "editedSaveSchema": 2
+    }
+  ],
+  "totals": {
+    "edits": 6,
+    "exports": 12,
+    "checkpointReplays": 24,
+    "oldSchemaRefusals": 12
+  },
+  "pythonTests": {
+    "run": 58,
+    "passed": 55,
+    "skipped": 3,
+    "focusedPassed": 6
+  },
+  "scope": "Actual optimized helper run on Mac debug tools: retained-player explicit artifact validation plus CLI headless mechanics, source/tool/package/save preservation. Not Windows release/native acceptance.",
+  "rustTests": "Not rerun; no Rust/dependency/fixture changes.",
+  "ci": "New helper added to existing Windows release-proof loop before Engine independence; only report/traces/refusal logs uploaded. Requires new head CI.",
+  "review": "Claude Opus 5.5 medium read-only advice/review: PASS, no confirmed blockers. Main then added observed exported-schema reporting and two mirror-guard regressions, and reran the full optimized real-tool proof and Python suite successfully.",
+  "checks": [
+    "Full Python suite and actual optimized six-case proof passed.",
+    "Workflow YAML, cargo xtask docs and final staged whitespace checks passed."
+  ]
+}
