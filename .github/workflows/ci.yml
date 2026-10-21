@@ -341,6 +341,21 @@ jobs:
             & (Join-Path $extracted "weftora-player.exe") (Join-Path $extracted "story") --validate
             if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
           }
+      - name: Stage combined release download verification candidate
+        shell: pwsh
+        run: |
+          $packages = @('--package', (Join-Path $env:RUNNER_TEMP "weftora-release-authoring-transport"))
+          foreach ($story in @("story-a", "life-sim", "localization-demo")) {
+            $packages += @('--package', (Join-Path $env:RUNNER_TEMP "weftora-release-transport-$story"))
+          }
+          python -B -O scripts/stage-release-assets.py @packages --out (Join-Path $env:RUNNER_TEMP "weftora-release-assets")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - uses: actions/upload-artifact@v4
+        with:
+          if-no-files-found: error
+          name: weftora-windows-download-candidate-${{ github.sha }}
+          path: ${{ runner.temp }}/weftora-release-assets/
+          retention-days: 14
       - name: Prove release Engine independence without Story A/B
         shell: pwsh
         run: |

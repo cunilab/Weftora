@@ -18,7 +18,7 @@ The existing long-running PR #19 remains open for maintainer review; this policy
 
 This document records the intended release process. Current CI runs on PRs and pushes to `main`; no tag-triggered release builder or publisher is implemented yet. Pushing a tag currently does not build or publish release assets. Debug previews and release-verification artifacts are development evidence, not approved foundation release assets.
 
-The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile and collects the maintained starter, Story edit, A/B and Engine-independence proofs. The folder transport packager is implemented and CI now exercises it for standalone A/B games. Authoring-tools candidate staging and a licence-text review inventory are implemented. Final licence/advisory review, remaining evidence recipes and draft-release publishing automation are still pending.
+The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile and collects the maintained starter, Story edit, A/B and Engine-independence proofs. The folder transport packager is implemented and CI exercises it for standalone Story A, life-sim and localisation games. Authoring-tools candidate staging, a licence-text review inventory and combined download checksum staging are implemented. Final licence/advisory review, remaining evidence recipes and draft-release publishing automation are still pending.
 
 ## Prepare a candidate
 
@@ -62,7 +62,21 @@ Use a quiescent source and output parent controlled by the release operator. Thi
 
 The fixed per-package bounds are 10,000 entries including directories/root and 1 GiB of uncompressed file data. The packager refuses links, junctions/reparse points, special files, traversal/absolute paths, Windows-reserved names, case/Unicode aliases, duplicate/unexpected ZIP members and mismatched types/sizes/hashes. Windows naming follows the conservative reserved-name checks in [CPython's Windows path implementation](https://github.com/python/cpython/blob/3.13/Lib/ntpath.py#L282-L306). No archive support is added to the Engine.
 
-Run the extracted player with the extracted Story and `--validate` before using these bytes for native/clean-machine acceptance. Windows release CI does this for fresh Story A/B exports and retains the ZIPs, inventories, reports and checksums; its GitHub artifact wrapper is not itself a release asset. Authoring-tools staging must first add the matching tool pair, README and reviewed notices from ADR 0013. Packaging a folder does not approve its contents or complete the licence audit.
+Run the extracted player with the extracted Story and `--validate` before using these bytes for native/clean-machine acceptance. Windows release CI does this for fresh Story A, life-sim and localisation exports and retains the ZIPs, inventories, reports and checksums; its GitHub artifact wrapper is not itself a release asset. Authoring-tools staging must first add the matching tool pair, README and reviewed notices from ADR 0013. Packaging a folder does not approve its contents or complete the licence audit.
+
+## Stage combined download checksums
+
+After all selected folders pass their transport round trips and extracted-tool/Story checks, collect their ZIPs into one fresh download directory:
+
+```text
+python -B -O scripts/stage-release-assets.py --package <tools-transport-directory> --package <story-a-transport-directory> --package <life-sim-transport-directory> --package <localization-transport-directory> --out <fresh-download-directory>
+```
+
+Each `--package` selects a transport output directory containing exactly the one ZIP named by its `SHA256SUMS`. The stager checks the source hash before and after copying, verifies the copied bytes, then writes a sorted combined `SHA256SUMS` and `release-assets.json` with names, sizes, hashes and source-directory basenames as labels. It refuses duplicate case/Unicode aliases, unsafe names, linked inputs, changed ZIPs/checksums, existing destinations and outputs inside an input package. Limits are 16 packages, 2 GiB per ZIP, 4 GiB total and 4 KiB per input checksum file. Use quiescent inputs and an output parent controlled by the operator; failure can leave partial output, which must not be published. Rerun into a fresh directory.
+
+This helper verifies byte identity against the selected package checksums; it does not repeat transport extraction, authenticate the checksum author, establish a shared build identity or approve release contents. Keep the per-package transport reports and candidate-SHA evidence. Windows release CI retains a separate `weftora-windows-download-candidate-<SHA>` artifact with all four ZIPs, the combined checksums and inventory. Its artifact wrapper is for review; the contained ZIPs are the candidate download bytes. Later CI failure or any pending foundation criterion still prevents release approval.
+
+For independent verification after extracting the artifact wrapper, run `sha256sum --check SHA256SUMS` where available. On Windows, compare each selected ZIP's `Get-FileHash -Algorithm SHA256` result with its entry. Use the exact staged paths in the draft-release recipe below, including the localisation demo when selected. Keep `release-assets.json` with the review evidence; the published `SHA256SUMS` covers ZIP downloads only.
 
 ## Release checklist
 
@@ -85,7 +99,7 @@ $candidateSha = '<approved-full-main-commit-SHA>'
 $version = '<approved-SemVer>'
 $tag = "v$version"
 $notes = '<path-to-reviewed-release-notes.md>'
-$assets = @('<path-to-tools.zip>', '<path-to-story-a.zip>', '<path-to-story-b.zip>', '<path-to-SHA256SUMS>')
+$assets = @('<path-to-tools.zip>', '<path-to-story-a.zip>', '<path-to-life-sim.zip>', '<path-to-localization-demo.zip>', '<path-to-SHA256SUMS>')
 git fetch origin main --tags
 if ($LASTEXITCODE -ne 0) { throw 'Fetch failed' }
 git merge-base --is-ancestor $candidateSha origin/main

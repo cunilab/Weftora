@@ -1,0 +1,66 @@
+{
+  "device": "Andress-MacBook-Air.local",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "python": "3.9.6",
+  "scope": "Synthetic four-package transport fixtures; no executable, native acceptance or release approval.",
+  "optimizedCliExit": 0,
+  "independentChecksumVerifier": "shasum -a 256 -c SHA256SUMS",
+  "checksumExit": 0,
+  "checksumOutput": [
+    "weftora-authoring-tools.zip: OK",
+    "weftora-transport-life-sim.zip: OK",
+    "weftora-transport-localization-demo.zip: OK",
+    "weftora-transport-story-a.zip: OK"
+  ],
+  "assets": [
+    {
+      "name": "weftora-authoring-tools.zip",
+      "size": 346,
+      "sha256": "12b2236db3ff98f9c1109b31c7766297e5c53d1713b8a72eb7da6757f7a0983a",
+      "sourcePackage": "weftora-authoring-tools-package"
+    },
+    {
+      "name": "weftora-transport-life-sim.zip",
+      "size": 354,
+      "sha256": "7ca8e7c1cbdaced72474f38d6ac21d412de4ea8edea70173140a8316492ef25f",
+      "sourcePackage": "weftora-transport-life-sim-package"
+    },
+    {
+      "name": "weftora-transport-localization-demo.zip",
+      "size": 399,
+      "sha256": "c7c7f10263094921eb4ed07f8e3174a358f554cc0039dd3beee93de8e4656f8e",
+      "sourcePackage": "weftora-transport-localization-demo-package"
+    },
+    {
+      "name": "weftora-transport-story-a.zip",
+      "size": 347,
+      "sha256": "4a8028102f36783061f18ab79ae4865dd26945125b9340f27d1110eec5adc1fb",
+      "sourcePackage": "weftora-transport-story-a-package"
+    }
+  ],
+  "check": "P6-05 combined download asset staging, automated slice",
+  "baseCommit": "7845e5006916c4bd403e82befcbb8fe3e71ad140",
+  "workingTreeDirty": true,
+  "pythonTestsRun": 42,
+  "pythonTestsPassed": 40,
+  "pythonTestsSkipped": [
+    "transport native Windows junction",
+    "release-assets native Windows junction"
+  ],
+  "focusedTestsRun": 11,
+  "focusedTestsPassed": 10,
+  "focusedTestsSkipped": 1,
+  "rustTests": "Not rerun: no Rust implementation, dependency, fixture or build-input changes.",
+  "ci": "Windows release job stages four previously checked ZIP transports into a separate download-candidate artifact; this change requires its own head CI.",
+  "limits": [
+    "Synthetic local fixtures only; no release binaries rebuilt or native acceptance established.",
+    "Checksum identity does not authenticate authors, prove shared build identity or approve licences.",
+    "No tag or release publication; Phase 6 acceptance remains open."
+  ],
+  "review": "Claude Opus 5.5 medium read-only static review: PASS, no blockers. Main added and tested an input/output overlap guard and an absent-inventory failure assertion after the review.",
+  "checks": [
+    "Full Python suite passed with two native Windows skips.",
+    "Workflow YAML parsed with Ruby standard-library YAML.",
+    "cargo xtask docs and final staged diff whitespace checks passed."
+  ]
+}
