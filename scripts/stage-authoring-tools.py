@@ -68,8 +68,38 @@ def licence_files(root, declared_file):
     return sorted(result)
 
 
+
+def upstream_notice_files(package, root, notice_root, index):
+    matches = [entry for entry in index.get("packages", [])
+               if (entry["name"], entry["version"]) == (package["name"], package["version"])]
+    require(len(matches) <= 1, "duplicate upstream notice mapping")
+    if not matches:
+        return []
+    entry = matches[0]
+    require(entry["source"] == package.get("source") and entry["declaredLicense"] == package.get("license"),
+            f"upstream notice metadata changed: {package['name']}")
+    vcs = json.loads((root / ".cargo_vcs_info.json").read_text(encoding="utf-8"))
+    require(not vcs["git"].get("dirty", False) and vcs["git"]["sha1"] == entry["upstreamCommit"], f"upstream notice revision changed: {package['name']}")
+    result = []
+    for file in entry["files"]:
+        relative = Path(file["path"])
+        require(not relative.is_absolute() and ".." not in relative.parts, "unsafe upstream notice path")
+        path = notice_root / relative
+        require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(notice_root.resolve()),
+                "upstream notice escapes checked-in collection")
+        require(digest(path) == file["sha256"], f"upstream notice hash changed: {file['path']}")
+        require(file.get("kind") in ("licence-text", "licensing-policy"), "unknown upstream notice kind")
+        result.append((path, "upstream/" + relative.as_posix(),
+                       {"url": file["url"], "commit": entry["upstreamCommit"], "kind": file["kind"]}))
+    return result
+
+
 def collect_notices(metadata, repository, output):
     records = []
+    notice_root = repository / "third-party" / "notices"
+    index_file = notice_root / "index.json"
+    index = json.loads(index_file.read_text(encoding="utf-8")) if index_file.is_file() else {"format": 1, "packages": []}
+    require(index.get("format") == 1, "unsupported upstream notice index format")
     packages = dependency_packages(metadata)
     keys = [unicodedata.normalize("NFC", package["name"] + "-" + package["version"]).casefold() for package in packages]
     require(len(keys) == len(set(keys)), "ambiguous package name/version notice destination")
@@ -80,13 +110,21 @@ def collect_notices(metadata, repository, output):
         record = {"name": package["name"], "version": package["version"], "declaredLicense": package.get("license"),
                   "repository": package.get("repository"), "workspace": workspace,
                   "source": "workspace" if workspace else (package.get("source") or "vendored path dependency"), "files": []}
-        for path in files:
-            relative = path.name if workspace else path.relative_to(root).as_posix()
+        sources = [(path, path.name if workspace else path.relative_to(root).as_posix(), None) for path in files]
+        if not workspace:
+            sources += upstream_notice_files(package, root, notice_root, index)
+        for path, relative, provenance in sources:
             destination = output / "licenses" / (package["name"] + "-" + package["version"]) / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
+            require(not os.path.lexists(destination), "notice destination already exists")
             shutil.copy2(path, destination)
-            record["files"].append({"path": destination.relative_to(output).as_posix(), "sha256": digest(destination)})
-        record["missingTextOrMetadata"] = not record["declaredLicense"] or not record["files"]
+            file_record = {"path": destination.relative_to(output).as_posix(), "sha256": digest(destination)}
+            if provenance:
+                file_record["upstream"] = provenance
+            record["files"].append(file_record)
+        # A nested third-party notice alone cannot stand in for the crate's own licence.
+        has_package_text = workspace or bool([path for path in files if path.parent == root]) or any(source[2] and source[2]["kind"] == "licence-text" for source in sources)
+        record["missingTextOrMetadata"] = not record["declaredLicense"] or not has_package_text
         records.append(record)
     return records
 

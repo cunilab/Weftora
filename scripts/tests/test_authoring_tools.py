@@ -64,7 +64,7 @@ class AuthoringTests(unittest.TestCase):
         records = authoring.collect_notices(self.metadata, self.repository, self.output)
         self.assertTrue(next(record for record in records if record["name"] == "dependency")["missingTextOrMetadata"])
         self.metadata["packages"][0]["license"] = None
-        records = authoring.collect_notices(self.metadata, self.repository, self.output)
+        records = authoring.collect_notices(self.metadata, self.repository, self.root / "second-output")
         self.assertTrue(next(record for record in records if record["name"] == "weftora-cli")["missingTextOrMetadata"])
 
     def test_declared_licence_cannot_escape_dependency_root(self):
@@ -91,6 +91,55 @@ class AuthoringTests(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "ambiguous package"):
                     authoring.collect_notices(self.metadata, self.repository, self.output)
             self.assertFalse(self.output.exists())
+
+    def fallback_fixture(self, kind="licence-text"):
+        root = self.repository / "third-party/notices"
+        root.mkdir(parents=True)
+        (root / "LICENSE-MIT").write_text("exact upstream copyright and terms")
+        revision = "a" * 40
+        (self.package / ".cargo_vcs_info.json").write_text(json.dumps({"git": {"sha1": revision}}))
+        entry = {"name": "dependency", "version": "1.0.0", "source": None, "declaredLicense": "MIT",
+                 "upstreamCommit": revision, "files": [{"path": "LICENSE-MIT", "sha256": authoring.digest(root / "LICENSE-MIT"),
+                 "url": "https://example.test/" + revision + "/LICENSE-MIT", "kind": kind}]}
+        (root / "index.json").write_text(json.dumps({"format": 1, "packages": [entry]}))
+        return root, entry
+
+    def test_pinned_fallback_copies_hash_and_provenance(self):
+        self.fallback_fixture()
+        (self.package / "LICENSE-MIT").unlink()
+        records = authoring.collect_notices(self.metadata, self.repository, self.output)
+        record = next(row for row in records if row["name"] == "dependency")
+        self.assertFalse(record["missingTextOrMetadata"])
+        copied = next(file for file in record["files"] if "upstream" in file)
+        self.assertEqual(copied["upstream"]["commit"], "a" * 40)
+        self.assertEqual(authoring.digest(self.output / copied["path"]), copied["sha256"])
+
+    def test_fallback_rejects_changed_revision_text_metadata_and_escaped_path(self):
+        root, entry = self.fallback_fixture()
+        package = self.metadata["packages"][2]
+        for change in ("revision", "text", "metadata", "path"):
+            modified = json.loads(json.dumps(entry))
+            if change == "revision":
+                modified["upstreamCommit"] = "b" * 40
+            elif change == "text":
+                modified["files"][0]["sha256"] = "0" * 64
+            elif change == "metadata":
+                modified["declaredLicense"] = "Apache-2.0"
+            else:
+                modified["files"][0]["path"] = "../LICENSE-MIT"
+            with self.subTest(change=change), self.assertRaises(ValueError):
+                authoring.upstream_notice_files(package, self.package, root, {"packages": [modified]})
+
+        self.assertEqual(authoring.upstream_notice_files(dict(package, version="2.0.0"), self.package, root, {"packages": [entry]}), [])
+        (self.package / ".cargo_vcs_info.json").write_text(json.dumps({"git": {"sha1": "a" * 40, "dirty": True}}))
+        with self.assertRaisesRegex(ValueError, "revision changed"):
+            authoring.upstream_notice_files(package, self.package, root, {"packages": [entry]})
+
+    def test_nested_notice_or_upstream_policy_does_not_resolve_missing_crate_licence(self):
+        self.fallback_fixture(kind="licensing-policy")
+        (self.package / "LICENSE-MIT").unlink()
+        records = authoring.collect_notices(self.metadata, self.repository, self.output)
+        self.assertTrue(next(row for row in records if row["name"] == "dependency")["missingTextOrMetadata"])
 
     def test_mismatched_tools_refuse_before_creating_output(self):
         cli, player = self.root / "weftora", self.root / "weftora-player"
