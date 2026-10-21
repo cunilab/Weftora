@@ -311,6 +311,19 @@ jobs:
           }
       - name: Test packaging and Engine-independence proof helpers
         run: python -B -m unittest discover -s scripts/tests
+      - name: Stage and exercise authoring-tools verification candidate
+        shell: pwsh
+        run: |
+          $tools = Join-Path $env:RUNNER_TEMP "weftora-authoring-tools"
+          python -B -O scripts/stage-authoring-tools.py --cli target/x86_64-pc-windows-msvc/release/weftora.exe --player target/x86_64-pc-windows-msvc/release/weftora-player.exe --out $tools
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $transport = Join-Path $env:RUNNER_TEMP "weftora-release-authoring-transport"
+          python -B -O scripts/package-folder.py --source $tools --out $transport
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $extracted = Join-Path $transport "verified/weftora-authoring-tools"
+          $proof = Join-Path $env:RUNNER_TEMP "weftora-toolkit-starter"
+          python -B -O scripts/verify-new-story.py --cli (Join-Path $extracted "weftora.exe") --player (Join-Path $extracted "weftora-player.exe") --out $proof
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Package and verify standalone game ZIP transport
         shell: pwsh
         run: |
@@ -345,6 +358,11 @@ jobs:
             ${{ runner.temp }}/weftora-release-story-a-edits/
             ${{ runner.temp }}/weftora-release-screen-edits/
             ${{ runner.temp }}/weftora-release-life-sim/
+            ${{ runner.temp }}/weftora-toolkit-starter/new-story-proof.json
+            ${{ runner.temp }}/weftora-authoring-tools/dependency-notices.json
+            ${{ runner.temp }}/weftora-release-authoring-transport/*.zip
+            ${{ runner.temp }}/weftora-release-authoring-transport/*.json
+            ${{ runner.temp }}/weftora-release-authoring-transport/SHA256SUMS
             ${{ runner.temp }}/weftora-release-transport-*/*.zip
             ${{ runner.temp }}/weftora-release-transport-*/*.json
             ${{ runner.temp }}/weftora-release-transport-*/SHA256SUMS

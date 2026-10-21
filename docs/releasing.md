@@ -18,7 +18,7 @@ The existing long-running PR #19 remains open for maintainer review; this policy
 
 This document records the intended release process. Current CI runs on PRs and pushes to `main`; no tag-triggered release builder or publisher is implemented yet. Pushing a tag currently does not build or publish release assets. Debug previews and release-verification artifacts are development evidence, not approved foundation release assets.
 
-The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile and collects the maintained starter, Story edit, A/B and Engine-independence proofs. The folder transport packager is implemented and CI now exercises it for standalone A/B games. The authoring-tools licence inventory, remaining evidence recipes and draft-release publishing workflow with explicit promotion are still pending.
+The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile and collects the maintained starter, Story edit, A/B and Engine-independence proofs. The folder transport packager is implemented and CI now exercises it for standalone A/B games. Authoring-tools candidate staging and a licence-text review inventory are implemented. Final licence/advisory review, remaining evidence recipes and draft-release publishing automation are still pending.
 
 ## Prepare a candidate
 
@@ -35,6 +35,20 @@ cargo test-all --release --target x86_64-pc-windows-msvc -- --test-threads=1
 ```
 
 Both tools then come from `target/x86_64-pc-windows-msvc/release/`. Run proofs with these explicit `--cli` and `--player` paths and fresh `--out` directories. Never combine a debug CLI with a release player. The existing starter, Story A edit, screen edit and A/B same-player scripts accept explicit tool paths. Run Engine independence with `python -B -O scripts/verify-engine-independence.py --profile release --target x86_64-pc-windows-msvc --reuse-target --out <fresh-directory-outside-checkout>`. It applies the selected profile/target to inventory, build, tests, missing-fixture controls and workspace cache cleanup, and records them in the report. The default remains `--profile dev` with the host target. This proof rebuilds workspace artifacts; run it after retaining the frozen tool/export proofs. Earlier hash/fixture proof recipes must also be rerun or ported to maintained release automation; these two Cargo commands alone do not satisfy P6-03.
+
+## Stage the authoring-tools candidate
+
+Build the CLI/player together from the selected clean candidate first. Keep the same checkout and lockfile for notice collection; the helper checks matching tool identities and workspace versions, but cannot prove an old same-version pair was built from the current dependency graph. Then run:
+
+```text
+python -B -O scripts/stage-authoring-tools.py --cli target/x86_64-pc-windows-msvc/release/weftora.exe --player target/x86_64-pc-windows-msvc/release/weftora-player.exe --out <fresh-folder-outside-checkout>
+```
+
+The folder includes matching tools, a Windows author README, Weftora's existing MIT/Apache licence choices as full texts, `THIRD-PARTY-NOTICES.txt`, `dependency-notices.json` and copied upstream texts under `licenses/`. Source texts retain their bytes and attribution. The [Cargo metadata](https://doc.rust-lang.org/cargo/commands/cargo-metadata.html) inventory starts at both apps, follows normal/build edges and excludes dev-only edges. It filters for the tool target and conservatively includes workspace-unified features/build tools; it is not an exact binary-linkage or embedded-asset inventory. Recursive collection includes named font/controller notices as well as package-root texts. Missing texts/metadata are explicitly listed, never filled with guessed upstream attribution.
+
+Every staged package is an **unapproved verification candidate**: `auditApproved` stays false even when all Cargo metadata rows have some text. The release audit must resolve missing upstream texts against pinned sources, review embedded assets/external native libraries and their terms, inspect any source-distribution obligations, and review the existing advisory exceptions. Cargo-deny passing its declared-licence policy does not complete this audit. [MIT](https://opensource.org/license/mit) and [Apache-2.0](https://www.apache.org/licenses/LICENSE-2.0) are the workspace's already-declared alternatives; third-party terms remain independent.
+
+Package this folder using the ZIP transport helper, then run the maintained starter proof with the extracted tool pair. Windows CI stages, packages and exercises this candidate, retaining the dependency inventory and ZIP for review. This does not establish independent-author, native or clean-machine acceptance and cannot authorize publication.
 
 ## Verify ZIP transport
 

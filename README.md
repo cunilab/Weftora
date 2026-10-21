@@ -103,3 +103,7 @@ python3 -B scripts/verify-engine-independence.py --out /tmp/weftora-engine-proof
 ```
 
 Use `python` and a fresh output directory on Windows. The script copies nonignored working sources, omits only `examples/story-a/` and `examples/life-sim/`, builds/tests the remaining workspace, and captures missing-Story errors from the built player. `--reuse-target` reuses the target directory but cleans workspace-package artifacts before and after the proof so only dependency cache is retained; omit it for an isolated target directory. Neither mode claims a cold dependency build. Logs include intentional failing controls: explicitly enabling the Story suites in the stripped copy must fail on missing fixtures. [Phase 5 evidence](./docs/evidence/phase-5.md) records the suite boundary and results.
+
+## Licence
+
+Weftora's workspace is licensed under MIT OR Apache-2.0; see [LICENSE-MIT](./LICENSE-MIT) and [LICENSE-APACHE](./LICENSE-APACHE). Third-party components retain their own terms. The [release guide](./docs/releasing.md#stage-the-authoring-tools-candidate) explains the notice inventory and outstanding distribution audit.
