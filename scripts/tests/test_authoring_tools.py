@@ -150,6 +150,68 @@ class AuthoringTests(unittest.TestCase):
                 self.assertEqual(copied["upstream"]["kind"], kind)
                 self.assertTrue((output / copied["path"]).is_file())
 
+    def source_fixture(self):
+        root, entry = self.fallback_fixture(kind="source-archive")
+        package = self.metadata["packages"][2]
+        package["source"] = entry["source"] = "registry+https://github.com/rust-lang/crates.io-index"
+        (root / "index.json").write_text(json.dumps({"format": 1, "packages": [entry]}))
+        block = '\n'.join(f'{key} = {json.dumps(package[key])}' for key in ("name", "version", "source"))
+        lock = self.repository / "Cargo.lock"
+        lock.write_text('version = 4\n[[package]]\n' + block + '\nchecksum = "' + entry["files"][0]["sha256"] + '"\n')
+        return package, lock, entry
+
+    def test_source_archive_is_checked_against_lockfile_and_does_not_clear_missing_text(self):
+        package, lock, entry = self.source_fixture()
+        (self.package / "LICENSE-MIT").unlink()
+        records = authoring.collect_notices(self.metadata, self.repository, self.output)
+        record = next(row for row in records if row["name"] == "dependency")
+        copied = next(file for file in record["files"] if "upstream" in file)
+        self.assertEqual(copied["upstream"]["kind"], "source-archive")
+        self.assertTrue(record["missingTextOrMetadata"])
+        self.assertEqual(authoring.digest(self.output / copied["path"]), entry["files"][0]["sha256"])
+        lock.write_text(lock.read_text().replace(entry["files"][0]["sha256"], "0" * 64))
+        with self.assertRaisesRegex(ValueError, "checksum differs"):
+            authoring.collect_notices(self.metadata, self.repository, self.root / "refused-output")
+        self.assertFalse((self.root / "refused-output/licenses/dependency-1.0.0").exists())
+
+    def test_source_archive_changed_during_copy_is_refused(self):
+        self.source_fixture()
+        copy = authoring.shutil.copy2
+        source = self.repository / "third-party/notices/LICENSE-MIT"
+        def tamper(path, destination):
+            result = copy(path, destination)
+            if path == source:
+                destination.write_bytes(b"changed archive bytes")
+            return result
+        with patch.object(authoring.shutil, "copy2", side_effect=tamper):
+            with self.assertRaisesRegex(ValueError, "checksum differs"):
+                authoring.collect_notices(self.metadata, self.repository, self.output)
+
+    def test_unused_patch_table_cannot_supply_source_archive_package_fields(self):
+        package, lock, entry = self.source_fixture()
+        original = lock.read_text()
+        lock.write_text(original.replace('name = "dependency"', 'name = "other"')
+                        + '\n[[patch.unused]]\nname = "dependency"\nversion = "1.0.0"\n'
+                        + 'source = "' + package["source"] + '"\n')
+        with self.assertRaisesRegex(ValueError, "missing/ambiguous"):
+            authoring.check_archive_lock(package, lock, entry["files"][0]["sha256"])
+
+    def test_source_archive_lock_refuses_missing_duplicate_or_changed_package(self):
+        package, lock, entry = self.source_fixture()
+        original = lock.read_text()
+        for content in ("", original + original[original.index("[[package]]"):],
+                        original.replace('version = "1.0.0"', 'version = "2.0.0"'),
+                        original.replace('checksum =', 'other =')):
+            with self.subTest(content=content):
+                lock.write_text(content)
+                with self.assertRaisesRegex(ValueError, "source archive"):
+                    authoring.check_archive_lock(package, lock, entry["files"][0]["sha256"])
+        with self.assertRaisesRegex(ValueError, "crates.io"):
+            authoring.check_archive_lock(dict(package, source="git+https://example.test/repo"), lock, entry["files"][0]["sha256"])
+        with self.assertRaisesRegex(ValueError, "mapping missing"):
+            authoring.upstream_notice_files(dict(package, version="2.0.0"), self.package,
+                self.repository / "third-party/notices", {"packages": [entry]})
+
     def test_mismatched_tools_refuse_before_creating_output(self):
         cli, player = self.root / "weftora", self.root / "weftora-player"
         cli.write_bytes(b"CLI")

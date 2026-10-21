@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import shutil
 import subprocess
@@ -74,6 +75,9 @@ def upstream_notice_files(package, root, notice_root, index):
                if (entry["name"], entry["version"]) == (package["name"], package["version"])]
     require(len(matches) <= 1, "duplicate upstream notice mapping")
     if not matches:
+        require(not any(entry["name"] == package["name"] and any(
+            file.get("kind") == "source-archive" for file in entry["files"])
+            for entry in index.get("packages", [])), "source archive mapping missing for package version")
         return []
     entry = matches[0]
     require(entry["source"] == package.get("source") and entry["declaredLicense"] == package.get("license"),
@@ -88,10 +92,25 @@ def upstream_notice_files(package, root, notice_root, index):
         require(path.is_file() and not path.is_symlink() and path.resolve().is_relative_to(notice_root.resolve()),
                 "upstream notice escapes checked-in collection")
         require(digest(path) == file["sha256"], f"upstream notice hash changed: {file['path']}")
-        require(file.get("kind") in ("licence-text", "licensing-policy", "embedded-asset-notice"), "unknown upstream notice kind")
+        require(file.get("kind") in ("licence-text", "licensing-policy", "embedded-asset-notice", "source-archive"), "unknown upstream notice kind")
         result.append((path, "upstream/" + relative.as_posix(),
                        {"url": file["url"], "commit": entry["upstreamCommit"], "kind": file["kind"]}))
     return result
+
+
+def check_archive_lock(package, lockfile, checksum):
+    require(package.get("source") == "registry+https://github.com/rust-lang/crates.io-index",
+            "source archives require a crates.io registry package")
+    # Cargo-generated lock entries use quoted strings for these three fields.
+    fields = {key: package[key] for key in ("name", "version", "source")}
+    blocks = re.split(r"(?m)^\[\[package\]\]\s*$", lockfile.read_text(encoding="utf-8"))
+    blocks = [re.split(r"(?m)^\[", block, maxsplit=1)[0] for block in blocks[1:]]
+    matches = [block for block in blocks if all(
+        re.search(r"(?m)^" + key + r"\s*=\s*" + re.escape(json.dumps(value)) + r"\s*$", block)
+        for key, value in fields.items())]
+    require(len(matches) == 1, "source archive package missing/ambiguous in Cargo.lock")
+    sums = re.findall(r'(?m)^checksum\s*=\s*"([0-9a-f]{64})"\s*$', matches[0])
+    require(sums == [checksum], "source archive checksum differs from Cargo.lock")
 
 
 def collect_notices(metadata, repository, output):
@@ -113,11 +132,16 @@ def collect_notices(metadata, repository, output):
         sources = [(path, path.name if workspace else path.relative_to(root).as_posix(), None) for path in files]
         if not workspace:
             sources += upstream_notice_files(package, root, notice_root, index)
+        for path, _, provenance in sources:
+            if provenance and provenance["kind"] == "source-archive":
+                check_archive_lock(package, repository / "Cargo.lock", digest(path))
         for path, relative, provenance in sources:
             destination = output / "licenses" / (package["name"] + "-" + package["version"]) / relative
             destination.parent.mkdir(parents=True, exist_ok=True)
             require(not os.path.lexists(destination), "notice destination already exists")
             shutil.copy2(path, destination)
+            if provenance and provenance["kind"] == "source-archive":
+                check_archive_lock(package, repository / "Cargo.lock", digest(destination))
             file_record = {"path": destination.relative_to(output).as_posix(), "sha256": digest(destination)}
             if provenance:
                 file_record["upstream"] = provenance
@@ -157,10 +181,20 @@ def stage(cli, player, output):
               "scope": "Conservative workspace-feature normal/build dependency inventory for the tool target, not exact binary linkage. Copied available upstream texts; missing texts, embedded assets, external native libraries and licence obligations require review. Not release approval."}
     (output / "dependency-notices.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     lines = ["Third-party notice review inventory", "", "This candidate is not approved for release. See dependency-notices.json.",
-             "Declared SPDX expressions are upstream metadata, not a legal determination. All available collected licence/notice texts are retained verbatim.", ""]
+             "Declared SPDX expressions are upstream metadata, not a legal determination. All available collected licence/notice texts are retained verbatim.",
+             "Paths below are relative to the folder containing this notice.", ""]
     for record in records:
         lines.append(f"{record['name']} {record['version']}: {record['declaredLicense']}" + (" [MISSING TEXT OR LICENCE METADATA]" if record["missingTextOrMetadata"] else ""))
         lines.extend("  " + file["path"] for file in record["files"])
+        for file in record["files"]:
+            if file.get("upstream", {}).get("kind") == "source-archive":
+                lines.extend([
+                    f"  Source code for {record['name']} {record['version']} is included under {record['declaredLicense']}.",
+                    "  Published source archive (gzip-compressed tar): " + file["path"],
+                    "  SHA-256: " + file["sha256"],
+                    "  Copy the archive to a separate folder and extract with tar -xf <archive>.",
+                    "  The archive retains the upstream source, licence and attribution; see its licence file.",
+                ])
     (output / "THIRD-PARTY-NOTICES.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
     readme = (repository / "scripts" / "templates" / "authoring-README.txt").read_text(encoding="utf-8")
     (output / "README.txt").write_text(readme, encoding="utf-8")

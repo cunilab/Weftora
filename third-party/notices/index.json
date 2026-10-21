@@ -859,6 +859,23 @@
       ]
     },
     {
+      "name": "smartstring",
+      "version": "1.0.1",
+      "declaredLicense": "MPL-2.0+",
+      "source": "registry+https://github.com/rust-lang/crates.io-index",
+      "repository": "https://github.com/bodil/smartstring",
+      "upstreamCommit": "e407ca23c747257a812d2d2e70bf336412718c3a",
+      "cratePath": "",
+      "files": [
+        {
+          "path": "bodil-smartstring/e407ca23c747257a812d2d2e70bf336412718c3a/smartstring-1.0.1.crate",
+          "url": "https://static.crates.io/crates/smartstring/smartstring-1.0.1.crate",
+          "sha256": "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29",
+          "kind": "source-archive"
+        }
+      ]
+    },
+    {
       "name": "spirv",
       "version": "0.4.0+sdk-1.4.341.0",
       "declaredLicense": "Apache-2.0",

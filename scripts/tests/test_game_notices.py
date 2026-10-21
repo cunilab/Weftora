@@ -75,6 +75,21 @@ class GameNoticeTests(unittest.TestCase):
         self.assertEqual({path.name for path in output.rglob("*") if path.suffix == ".exe"}, set())
         self.assertFalse((output / "README.txt").exists())
 
+    def test_source_archive_and_recipient_notice_survive_game_copy(self):
+        toolkit, game = self.fixture()
+        archive = toolkit / "licenses/dependency-1.0/source.crate"
+        archive.write_bytes(b"fixture source archive")
+        text = "Source code is available in licenses/dependency-1.0/source.crate under its original terms.\n"
+        (toolkit / "THIRD-PARTY-NOTICES.txt").write_text(text)
+        report = notices.read_json(toolkit / "dependency-notices.json")
+        report["packages"][0]["files"].append({"path": archive.relative_to(toolkit).as_posix(),
+            "sha256": notices.transport.file_hash(archive), "upstream": {"kind": "source-archive"}})
+        self.write_report(toolkit, report)
+        output = notices.stage(toolkit, game)
+        self.assertEqual((output / archive.relative_to(toolkit)).read_bytes(), archive.read_bytes())
+        self.assertEqual((output / "THIRD-PARTY-NOTICES.txt").read_text(), text)
+        self.assertFalse(notices.read_json(output / "dependency-notices.json")["auditApproved"])
+
     def test_mismatched_pair_lock_or_approval_refuses_before_writing(self):
         for field in ("playerSha256", "cliSha256", "playerIdentity", "cliIdentity", "cargoLockSha256", "auditApproved"):
             with self.subTest(field=field):

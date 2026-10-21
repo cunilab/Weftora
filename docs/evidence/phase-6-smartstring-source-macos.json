@@ -1,0 +1,70 @@
+{
+  "sourceCommit": "c6e22fda8f24f53b9dece7fc097aabc03e93ecb2",
+  "workingTreeDirty": true,
+  "host": "Andress-MacBook-Air",
+  "scope": "Local Mac debug toolkit/game ZIP proof and Windows-target metadata; not native Windows execution, selected main candidate, binary/source attestation or final licence approval.",
+  "auditApproved": false,
+  "cargoLockSha256": "d727a7872b4d3b5c4d5c09e928b095e69445303a3dac0d070336cd9d86e0d33e",
+  "windowsMetadata": {
+    "packageCount": 445,
+    "collectedFileCount": 863,
+    "missingTextOrMetadata": [
+      "constgebra 0.1.4"
+    ]
+  },
+  "macToolIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "cliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
+  "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+  "sourceArchive": {
+    "path": "licenses/smartstring-1.0.1/upstream/bodil-smartstring/e407ca23c747257a812d2d2e70bf336412718c3a/smartstring-1.0.1.crate",
+    "sha256": "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29",
+    "upstream": {
+      "url": "https://static.crates.io/crates/smartstring/smartstring-1.0.1.crate",
+      "commit": "e407ca23c747257a812d2d2e70bf336412718c3a",
+      "kind": "source-archive"
+    }
+  },
+  "recipientNoticeSha256": "1800a0b1c7fe31be2edf6fc95232903197048d4d1f88b17bb26da2afa885fd82",
+  "toolkitAndGameZipRoundTrips": true,
+  "extractedPlayerExplicitArtifactValidate": true,
+  "localRegistrySourceMatchesArchive": {
+    "archiveFileCount": 25,
+    "allArchivedFilesByteIdentical": true,
+    "scope": "Current local registry files, not an attestation about previously built tools or another machine."
+  },
+  "transports": {
+    "toolkit": {
+      "zip": "toolkit.zip",
+      "sha256": "31be9599b05ba49f8ccf6271480d548710a4b6da50f50a32b67be7197022af83",
+      "entries": 1503,
+      "uncompressedBytes": 221011014,
+      "maxEntries": 10000,
+      "maxUncompressedBytes": 1073741824,
+      "inventorySha256": "bcf49a94d34e96a137db03f9a869ce7d5e397f37910c81155185511dcbd7f01e",
+      "roundTripVerified": true,
+      "scope": "Transport of a reviewed, quiescent folder; not Engine archive support, licence approval or native/clean-machine acceptance."
+    },
+    "game": {
+      "zip": "game.zip",
+      "sha256": "4678d1d7ea891b244f5e2c2ec966603d72f5242061de4b757779ea7eac50c5a4",
+      "entries": 1521,
+      "uncompressedBytes": 208206294,
+      "maxEntries": 10000,
+      "maxUncompressedBytes": 1073741824,
+      "inventorySha256": "e43714a7c382ed9875aa1c1683e3516611441cb46c4cfe663acd59e40bfa9b1c",
+      "roundTripVerified": true,
+      "scope": "Transport of a reviewed, quiescent folder; not Engine archive support, licence approval or native/clean-machine acceptance."
+    }
+  },
+  "frozenToolsUnchanged": true
+}

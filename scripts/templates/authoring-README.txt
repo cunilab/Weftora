@@ -44,6 +44,9 @@ Issues: https://github.com/cunilab/Weftora/issues
 Weftora is offered under MIT OR Apache-2.0; see LICENSE-MIT and LICENSE-APACHE.
 Third-party components retain their own terms. THIRD-PARTY-NOTICES.txt lists
 available upstream texts in licenses/; dependency-notices.json records hashes
-and missing-text cases. The licence/advisory audit is pending: this verification
+and missing-text cases. THIRD-PARTY-NOTICES.txt also identifies included source
+archives under licenses/ and their terms. Keep these archives when copying the
+notice tree; included source archives can be extracted locally without a download.
+The licence/advisory audit is pending: this verification
 candidate must not be published as an approved release. Included licence texts
 and metadata do not by themselves establish all redistribution obligations.

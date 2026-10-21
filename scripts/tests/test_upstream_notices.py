@@ -1,7 +1,13 @@
 import hashlib
+import importlib.util
 import json
 from pathlib import Path
 import unittest
+import tarfile
+
+spec = importlib.util.spec_from_file_location("authoring", Path(__file__).resolve().parents[1] / "stage-authoring-tools.py")
+authoring = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(authoring)
 
 
 class UpstreamNoticeDataTests(unittest.TestCase):
@@ -33,9 +39,26 @@ class UpstreamNoticeDataTests(unittest.TestCase):
                     self.assertNotIn("..", path.parts)
                     self.assertFalse((root / path).is_symlink())
                     self.assertTrue((root / path).resolve().is_relative_to(root.resolve()))
-                    self.assertRegex(file["url"], r"^https://(raw\.githubusercontent\.com|gitlab\.com)/")
-                    self.assertIn("/" + package["upstreamCommit"] + "/", file["url"])
-                    self.assertIn(file["kind"], ("licence-text", "licensing-policy", "embedded-asset-notice"))
+                    if file["kind"] == "source-archive":
+                        name = package["name"] + "-" + package["version"]
+                        self.assertEqual(file["url"], f"https://static.crates.io/crates/{package['name']}/{name}.crate")
+                        self.assertEqual(path.name, name + ".crate")
+                        authoring.check_archive_lock(package, root.parents[1] / "Cargo.lock", file["sha256"])
+                        with tarfile.open(root / path) as archive:
+                            for member in archive.getmembers():
+                                relative = Path(member.name)
+                                self.assertFalse(relative.is_absolute())
+                                self.assertNotIn("..", relative.parts)
+                                self.assertEqual(relative.parts[0], name)
+                                self.assertTrue(member.isfile() or member.isdir())
+                            self.assertIn(name + "/src/lib.rs", archive.getnames())
+                            self.assertIn(name + "/LICENCE.md", archive.getnames())
+                            vcs = json.load(archive.extractfile(name + "/.cargo_vcs_info.json"))
+                            self.assertEqual(vcs["git"]["sha1"], package["upstreamCommit"])
+                    else:
+                        self.assertRegex(file["url"], r"^https://(raw\.githubusercontent\.com|gitlab\.com)/")
+                        self.assertIn("/" + package["upstreamCommit"] + "/", file["url"])
+                    self.assertIn(file["kind"], ("licence-text", "licensing-policy", "embedded-asset-notice", "source-archive"))
                     self.assertEqual(hashlib.sha256((root / path).read_bytes()).hexdigest(), file["sha256"])
                     files.add(path.as_posix())
         actual = {path.relative_to(root).as_posix() for path in root.rglob("*")
