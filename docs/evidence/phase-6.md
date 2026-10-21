@@ -296,3 +296,37 @@ Seventy-one Python tests run: 68 pass and three native Windows junction cases sk
 | Other resources and obligations | Existing conservative Cargo normal/build notice inventory retained | Complete embedded-resource/Story-asset provenance, source-distribution obligations and advisory-exception review |
 
 Native-load source evidence is at [wgpu-hal's pinned DX12 adapter](https://github.com/gfx-rs/wgpu/blob/40f4a34ebaf56f9a046231f54125ad046239d3f3/wgpu-hal/src/dx12/mod.rs) and [shader compiler](https://github.com/gfx-rs/wgpu/blob/40f4a34ebaf56f9a046231f54125ad046239d3f3/wgpu-hal/src/dx12/shader_compilation.rs). Feature unification and possible code paths do not establish which backend/modules a candidate uses. Absence of Cargo `links` metadata does not establish absence of native dependencies. Do not copy system or SDK DLLs based on this inventory. P6-06, native/clean-machine acceptance and final licence/advisory approval remain open; Windows work stays in issue #5.
+
+
+## Example-resource and advisory review
+
+The [2026-10-22 MacBookAir audit report](phase-6-resource-advisory-audit-macos.json) records 21 tracked binary media files across four examples, with source hashes and the existing in-Story notice/declaration hashes. The scan covers PNG, WAV, TTF/OTF, OGG, JPEG, MP3 and FLAC suffixes among the 97 tracked example files; it is not a general binary-content detector or a complete dependency-resource inventory. This review preserves existing rights declarations rather than making a new authorship claim.
+
+| Example | Media reviewed | Existing declaration and checked result |
+| --- | --- | --- |
+| Hello Story | One PNG and one WAV | README declares generated CC0 placeholders; media and README bytes survive export |
+| Presentation demo | Six PNGs and four WAVs | README declares generated CC0 rectangles/tones; media and README bytes survive export |
+| Story A | Five PNGs and three WAVs | README declares CC0 presentation-demo sources; all eight media hashes match those source files exactly and survive export |
+| Localisation demo | [Pinned full Noto Sans JP font](../../examples/localization-demo/fonts/README.md) | Existing OFL notice and pinned provenance retained; font and OFL bytes survive export |
+
+Four fresh exports using one matching prebuilt Mac debug CLI/player pair retain every listed media file and notice byte. Each exported player validates its explicit compiled dialogue artifact without a compiler. This is package/validation evidence, not new graphical/audio testing or Windows acceptance. Existing CC0 statements establish the repository's declared terms, not independent copyright clearance. No media, rights declaration or Story content was changed.
+
+The first-party source scan also locates the CLI's three embedded starter templates in `scaffold.rs` (project-authored text, with no media/font payload); the reviewed media `include_bytes!` sites in the player/renderer are inside test modules. Bevy's embedded default font is covered by the separate [Fira Mono notice audit](#embedded-font-notice-audit). Other dependency-embedded fonts, shaders, generated data and native components remain subject to the conservative inventory and final review; this source scan is not exhaustive binary provenance.
+
+`cargo deny check advisories` passes against RustSec database commit `4b587f00996ebe5c05a73eaef105ef241e876414`, with the three existing exceptions unchanged. A fresh Windows-target graph review on the Mac using `cargo tree --locked --target x86_64-pc-windows-msvc -p <app> --edges normal` gives the table below. Upstream advisory status was checked on rustsec.org on 2026-10-22:
+
+| Exception | Upstream status | Current reachability and review |
+| --- | --- | --- |
+| [smartstring / RUSTSEC-2026-0249](https://rustsec.org/advisories/RUSTSEC-2026-0249.html) | Unmaintained; no patched versions listed | Present in both Windows tools through weftora-yarn → weftora-script → Rhai → smartstring. Bounded scripting is not a guarantee against dependency defects. Revisit with Rhai upgrades; final exception acceptance remains open |
+| [instant / RUSTSEC-2024-0384](https://rustsec.org/advisories/RUSTSEC-2024-0384.html) | Unmaintained; no patched versions listed | Present in the Windows CLI through antlr-rust/parking_lot; absent from the player's normal dependency graph. Revisit with compiler upgrades |
+| [ttf-parser / RUSTSEC-2026-0192](https://rustsec.org/advisories/RUSTSEC-2026-0192.html) | Unmaintained; no patched versions listed | Absent from both Windows normal dependency graphs. Linux player path confirmed through winit → sctk-adwaita → ab_glyph → owned_ttf_parser → ttf-parser. Future Linux release review remains required |
+
+The Linux check used `cargo tree --locked --target x86_64-unknown-linux-gnu -p weftora-player --edges normal -i ttf-parser` on the Mac; only the Linux player was inspected. These graph statements describe Cargo's normal dependency edges, not exact machine-code linkage, all build/dev edges or a vulnerability-free result. Passing the configured check does not approve its exceptions for a release. No dependency version, `deny.toml` exception or runtime code changed.
+
+### Source-availability follow-up
+
+Both Windows tool graphs include `smartstring 1.0.1`, whose Cargo licence metadata is `MPL-2.0+`. Copying its licence text alone does not resolve the source-availability and recipient-notice review. [MPL 2.0 §3.2](https://www.mozilla.org/en-US/MPL/2.0/#distribution-of-executable-form) and [Mozilla's FAQ Q8](https://www.mozilla.org/en-US/MPL/2.0/FAQ/) describe that requirement for distributed executable forms. The release still needs a concrete, reviewed way to provide the exact covered source and tell recipients how to obtain it. The current staged notice list is not claimed to satisfy that obligation.
+
+The cached published `smartstring-1.0.1.crate` archive has a SHA-256 matching the selected lockfile; its full MPL text and published VCS metadata are present. The audit report records the actual archive size, hashes and revision. This archive is not yet included by the stager, and matching a cached package does not establish the source of previously built tools.
+
+Next portable release work is to prepare and verify the exact `smartstring` source distribution/recipient notice against the selected lockfile, while preserving upstream terms and attribution. `constgebra`'s missing pinned text, other resource/native obligations, final exception approval and candidate reruns remain open. P6-06 is not checked off; no release/tag or native Windows test is performed by this audit.

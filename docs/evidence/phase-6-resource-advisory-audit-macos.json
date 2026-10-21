@@ -1,0 +1,455 @@
+{
+  "sourceCommit": "c9a140f2a6f7629436033657ae88e9acb3e2e75b",
+  "workingTreeDirty": false,
+  "checkedAtUtc": "2026-10-21T18:03:33.390330+00:00",
+  "host": "Andress-MacBook-Air",
+  "scope": "Tracked binary example-media files in the listed formats; existing repository rights declarations, byte identity and local Mac debug export retention. Not independent authorship or copyright clearance, native Windows execution, an exhaustive embedded dependency-resource audit or release approval.",
+  "auditApproved": false,
+  "cargoLockSha256": "d727a7872b4d3b5c4d5c09e928b095e69445303a3dac0d070336cd9d86e0d33e",
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "playerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "cliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
+  "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+  "trackedExampleFileCount": 97,
+  "mediaCount": 21,
+  "media": [
+    {
+      "path": "examples/hello-story/assets/chime.wav",
+      "bytes": 52964,
+      "sha256": "29f682ad87b6c3a5f97de72ef4ac78ecce2346cc2e08542cd13a6689f5e08dc6",
+      "notice": "examples/hello-story/README.md",
+      "noticeSha256": "a4fed78ab9f4e416152a228ad4f1140150789890c73af4a5baa80bf8bf01b3d6",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 26460,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/hello-story/assets/room.png",
+      "bytes": 168289,
+      "sha256": "c689c1aa788df1d4669f8b2c7d84184819a81c8adb56c69208147e701b23c9b6",
+      "notice": "examples/hello-story/README.md",
+      "noticeSha256": "a4fed78ab9f4e416152a228ad4f1140150789890c73af4a5baa80bf8bf01b3d6",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "examples/localization-demo/fonts/NotoSansJP.ttf",
+      "bytes": 9589900,
+      "sha256": "c2f3b4d463500a2ddcd3849cded1fceeb9fd6d1c32e6cbecd568453ba50fc68f",
+      "notice": "examples/localization-demo/fonts/OFL.txt",
+      "noticeSha256": "1c05c68c34f9708415aada51f17e1b0092d2cea709bf4a94cd38114f9e73d7d9",
+      "declaredTerms": "OFL-1.1"
+    },
+    {
+      "path": "examples/presentation-demo/assets/alice.png",
+      "bytes": 652,
+      "sha256": "b52ca0ffc7819e512e96224409d38aacd1b6e17f86a594d562fecd50df06a054",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "pngDimensions": [
+        160,
+        320
+      ]
+    },
+    {
+      "path": "examples/presentation-demo/assets/ambience.wav",
+      "bytes": 44144,
+      "sha256": "a153d56c0249866938152e2e39f51678a803828e34ba2c020a9d5375a6fa75c1",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 22050,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/presentation-demo/assets/bob.png",
+      "bytes": 652,
+      "sha256": "545ad8d9507b988d49c097658a11ee425343e14a6064997726ba2a5e42053317",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "pngDimensions": [
+        160,
+        320
+      ]
+    },
+    {
+      "path": "examples/presentation-demo/assets/cg.png",
+      "bytes": 4758,
+      "sha256": "8ef49c74fa15453a015e340b5bc5a5550de54a04ee0bd2f03abdfc380e4e7408",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "examples/presentation-demo/assets/day.png",
+      "bytes": 4758,
+      "sha256": "80f40dfb7e91a43ddbf214fb3eb6b7e69400ab0281b84cff6e670a222fc523f4",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "examples/presentation-demo/assets/effect.wav",
+      "bytes": 44144,
+      "sha256": "3df55e1d81c4b6478c2204b388c3e45af275b9a353da8422fd2db18baa410336",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 22050,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/presentation-demo/assets/music.wav",
+      "bytes": 44144,
+      "sha256": "3e64d78542963a961a61a06c04752890a3ffd10154ab720e9f96deba41f4d7cc",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 22050,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/presentation-demo/assets/night.png",
+      "bytes": 4758,
+      "sha256": "21dd4e3e7b4d34d379b5f2bf4ce9309fac7bb697e3ef189ff245cb2796dda3aa",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "examples/presentation-demo/assets/overlay.png",
+      "bytes": 4759,
+      "sha256": "bd2f1cef67167f706545fdae032814b08568c84c162e606229b496026c6781d0",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "examples/presentation-demo/assets/voice.wav",
+      "bytes": 44144,
+      "sha256": "fc3556221d6fb4ad3da024fdbaca3d331d18fadc05984cb3fc3b94be3285a19b",
+      "notice": "examples/presentation-demo/README.md",
+      "noticeSha256": "01c5adf1ed1e745d588a7bd7aa866817290b21b2d1c414da728546775b46380e",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 22050,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/story-a/assets/alice.png",
+      "bytes": 652,
+      "sha256": "b52ca0ffc7819e512e96224409d38aacd1b6e17f86a594d562fecd50df06a054",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/alice.png",
+      "pngDimensions": [
+        160,
+        320
+      ]
+    },
+    {
+      "path": "examples/story-a/assets/ambience.wav",
+      "bytes": 44144,
+      "sha256": "a153d56c0249866938152e2e39f51678a803828e34ba2c020a9d5375a6fa75c1",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/ambience.wav",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 22050,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/story-a/assets/bob.png",
+      "bytes": 652,
+      "sha256": "545ad8d9507b988d49c097658a11ee425343e14a6064997726ba2a5e42053317",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/bob.png",
+      "pngDimensions": [
+        160,
+        320
+      ]
+    },
+    {
+      "path": "examples/story-a/assets/cg.png",
+      "bytes": 4758,
+      "sha256": "8ef49c74fa15453a015e340b5bc5a5550de54a04ee0bd2f03abdfc380e4e7408",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/cg.png",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "examples/story-a/assets/day.png",
+      "bytes": 4758,
+      "sha256": "80f40dfb7e91a43ddbf214fb3eb6b7e69400ab0281b84cff6e670a222fc523f4",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/day.png",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    },
+    {
+      "path": "examples/story-a/assets/effect.wav",
+      "bytes": 44144,
+      "sha256": "3df55e1d81c4b6478c2204b388c3e45af275b9a353da8422fd2db18baa410336",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/effect.wav",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 22050,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/story-a/assets/music.wav",
+      "bytes": 44144,
+      "sha256": "3e64d78542963a961a61a06c04752890a3ffd10154ab720e9f96deba41f4d7cc",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/music.wav",
+      "wav": {
+        "channels": 1,
+        "sampleRate": 22050,
+        "frames": 22050,
+        "sampleWidth": 2
+      }
+    },
+    {
+      "path": "examples/story-a/assets/night.png",
+      "bytes": 4758,
+      "sha256": "21dd4e3e7b4d34d379b5f2bf4ce9309fac7bb697e3ef189ff245cb2796dda3aa",
+      "notice": "examples/story-a/README.md",
+      "noticeSha256": "6c25ea06b11a1495c4e30fe26baea77fa9925e74489014c813185b74698d3f13",
+      "declaredTerms": "CC0 (existing repository declaration)",
+      "identicalSource": "examples/presentation-demo/assets/night.png",
+      "pngDimensions": [
+        1280,
+        720
+      ]
+    }
+  ],
+  "exports": [
+    {
+      "story": "hello-story",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "allListedMediaAndNoticesUnchanged": true,
+      "explicitCompiledArtifactValidate": true
+    },
+    {
+      "story": "localization-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "allListedMediaAndNoticesUnchanged": true,
+      "explicitCompiledArtifactValidate": true
+    },
+    {
+      "story": "presentation-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "allListedMediaAndNoticesUnchanged": true,
+      "explicitCompiledArtifactValidate": true
+    },
+    {
+      "story": "story-a",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "allListedMediaAndNoticesUnchanged": true,
+      "explicitCompiledArtifactValidate": true
+    }
+  ],
+  "advisories": {
+    "checkedAtUtc": "2026-10-21T18:04:13.254913+00:00",
+    "command": [
+      "cargo",
+      "deny",
+      "check",
+      "advisories"
+    ],
+    "result": "passed under existing unchanged exceptions",
+    "databaseCommit": "4b587f00996ebe5c05a73eaef105ef241e876414",
+    "exceptions": [
+      {
+        "id": "RUSTSEC-2026-0249",
+        "package": "smartstring 1.0.1",
+        "classification": "unmaintained",
+        "patchedVersions": "none listed",
+        "windowsPlayerReachable": true,
+        "licenseMetadata": "MPL-2.0+",
+        "releaseReview": "bounded Rhai host is not proof against defects; source-availability/notice obligations and final exception acceptance remain open"
+      },
+      {
+        "id": "RUSTSEC-2024-0384",
+        "package": "instant 0.1.13",
+        "classification": "unmaintained",
+        "patchedVersions": "none listed",
+        "windowsPlayerReachable": false,
+        "windowsCliReachable": true,
+        "releaseReview": "authoring compiler chain; revisit with antlr/compiler upgrade"
+      },
+      {
+        "id": "RUSTSEC-2026-0192",
+        "package": "ttf-parser 0.25.1",
+        "classification": "unmaintained",
+        "patchedVersions": "none listed",
+        "windowsPlayerReachable": false,
+        "linuxPlayerPath": "winit \u2192 sctk-adwaita \u2192 ab_glyph \u2192 owned_ttf_parser \u2192 ttf-parser",
+        "releaseReview": "not a Windows normal-runtime edge; retain review for future Linux distribution"
+      }
+    ],
+    "windowsNormalDependencyGraphs": [
+      {
+        "package": "weftora-player",
+        "target": "x86_64-pc-windows-msvc",
+        "edges": "normal",
+        "command": [
+          "cargo",
+          "tree",
+          "--locked",
+          "--target",
+          "x86_64-pc-windows-msvc",
+          "-p",
+          "weftora-player",
+          "--edges",
+          "normal",
+          "--prefix",
+          "none",
+          "--format",
+          "{p}"
+        ],
+        "exceptionPackagesPresent": [
+          "smartstring"
+        ]
+      },
+      {
+        "package": "weftora-cli",
+        "target": "x86_64-pc-windows-msvc",
+        "edges": "normal",
+        "command": [
+          "cargo",
+          "tree",
+          "--locked",
+          "--target",
+          "x86_64-pc-windows-msvc",
+          "-p",
+          "weftora-cli",
+          "--edges",
+          "normal",
+          "--prefix",
+          "none",
+          "--format",
+          "{p}"
+        ],
+        "exceptionPackagesPresent": [
+          "smartstring",
+          "instant"
+        ]
+      }
+    ],
+    "policyChanged": false,
+    "releaseApproved": false
+  },
+  "remainingReview": [
+    "Existing CC0 declarations are not independent authorship clearance",
+    "Other dependency-embedded assets and native components remain separate",
+    "smartstring MPL source availability and recipient notice need a concrete release plan",
+    "constgebra missing licence text/attribution remains",
+    "Exact main candidate reruns and final exception approval remain"
+  ],
+  "localizationProvenance": {
+    "path": "examples/localization-demo/fonts/README.md",
+    "sha256": "7a6889dadb2f471a198b426213ed3e2ec8bbaf964d0aff39a3c83370f37e28f5",
+    "exportedUnchanged": true
+  },
+  "smartstringSourceReview": {
+    "package": "smartstring 1.0.1",
+    "registryArchiveUrl": "https://static.crates.io/crates/smartstring/smartstring-1.0.1.crate",
+    "archiveSha256": "3fb72c633efbaa2dd666986505016c32c3044395ceaf881518399d2f4127ee29",
+    "archiveMatchesCargoLock": true,
+    "archiveBytes": 29555,
+    "publishedVcs": {
+      "git": {
+        "sha1": "e407ca23c747257a812d2d2e70bf336412718c3a"
+      },
+      "path_in_vcs": ""
+    },
+    "licensePathInArchive": "smartstring-1.0.1/LICENCE.md",
+    "licenseSha256": "e6b6566f085df5746515c6d7e2edcaec0d2b77d527ac40d91409d783fb6c8508",
+    "archiveShippedByCurrentStager": false,
+    "scope": "Cached published source archive verified against lockfile; not proof of the source of previously built tools or completion of redistribution obligations."
+  }
+}
