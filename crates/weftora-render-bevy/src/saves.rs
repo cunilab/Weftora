@@ -29,6 +29,7 @@ impl Player {
     }
 
     pub(super) fn write_save(&self) -> Result<(), String> {
+        let store = self.store()?;
         let context = weftora_yarn::save_context(&self.story, &self.compiled)
             .map_err(|error| error.to_string())?;
         let snapshot = self
@@ -47,9 +48,7 @@ impl Player {
                 weftora_core::presentation::volumes(&state)?;
             }
         }
-        self.store()?
-            .write(&game)
-            .map_err(|error| error.to_string())
+        store.write(&game).map_err(|error| error.to_string())
     }
 
     pub(super) fn prepare_load(&self) -> Result<Candidate, String> {

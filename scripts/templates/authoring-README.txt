@@ -21,6 +21,8 @@ Press F12; Tab cycles state, command and trace modes. State/command input uses
 Ctrl+A to clear JSON and Enter to apply/run. Trace is read-only: Up/Down or
 PageUp/PageDown scroll; Delete clears history. F12/Escape closes the panel.
 Persistent edits/commands require a new authored checkpoint before saving.
+To preview one authored node from defaults, append --start-node ExactTitle after
+--debug-tools. Save/load are disabled for that preview; normal saves stay untouched.
 Guide: https://github.com/cunilab/Weftora/blob/main/docs/debug-tools.md
 
 For toolkit version and build-pair diagnostics:

@@ -60,6 +60,22 @@ History keeps the latest **128 rows**, each limited to **256 Unicode characters*
 
 Tracing only observes existing dispatch results; it does not rerun commands, evaluate extra conditions, consume dispatch/RNG budgets, edit state or invalidate checkpoints. A successful load starts fresh empty history after candidate replay; replay rows are intentionally excluded. A failed load retains the live runner's history. Cloned rule definitions never inherit tracing. Actual runtime failures leave completed rows available for inspection; the normal Story error behavior still applies.
 
+## Start at a Yarn node
+
+Select an exact, case-sensitive compiled Yarn node when launching a fresh developer session:
+
+```text
+weftora run my-story --debug-tools --start-node Later
+weftora-player.exe my-game/story --debug-tools --start-node Later
+weftora-player.exe --debug-tools --start-node Later
+```
+
+The third command uses the adjacent `story/` folder. An explicit artifact goes before the developer options: `weftora-player.exe my-story --dialogue compiled/dialogue.json --debug-tools --start-node Later`. Keep this option order. `--start-node` requires `--debug-tools` and cannot be combined with `--headless` or `--validate`. Unknown, empty and case-mismatched names fail before a player/window starts. Use the exact `title:` from the authored Yarn source; compiler-generated node groups/helpers are not a supported authoring feature of the pinned compiler.
+
+Each launch starts from Story/Yarn defaults (Persistent, Session and Settings), fresh visit/script state and the authored RNG seed. Earlier nodes are not replayed. The selected node runs its commands once to the first line/choice using ordinary rule, budget and presentation behavior; trace capture is already enabled. Content that assumes earlier state may fail or show different results. There is no in-session node picker or jump, and the manifest/compiled artifact are not rewritten.
+
+The title identifies the selected node and **save/load disabled**. Both F5/F9 and authored save/load buttons refuse for the entire `--start-node` session, including after reaching an authored checkpoint; the normal slot/backup is never read or written. Relaunch without `--start-node` for normal save/load testing. Runtime checkpoint eligibility still follows authored checkpoints; selection creates no synthetic checkpoint. Visit counts follow the pinned runtime's normal semantics: tracked visits increment when leaving a node, so the first display in a freshly selected node sees zero prior visits. Fresh sessions do not inherit visits from another process.
+
 ## Input and saves
 
 While the inspector is open, Story keyboard/pointer intents and save/load shortcuts are captured. The opening and closing frames are captured too: Escape closes the inspector, and Enter applies an edit without also advancing dialogue. Existing presentation actions and media continue processing. Closing restores the previous focus when that entity still exists.
@@ -68,7 +84,7 @@ A persistent edit invalidates the current checkpoint, including persistent chang
 
 ## Remaining tools and acceptance
 
-Starting at a selected Yarn node remains separate P6-10 work. The [Phase 6 evidence](./evidence/phase-6.md#developer-state-inspector-p6-10-partial) records automated coverage. Native Windows text entry, focus/pointer capture, resize/DPI and save/load walkthroughs remain in [issue #5](https://github.com/cunilab/Weftora/issues/5); this slice does not close the full debug-tools or foundation-release gate.
+State editing, command execution, rules tracing and launch-time node selection are implemented; full native release-build acceptance remains open. The [Phase 6 evidence](./evidence/phase-6.md#developer-state-inspector-p6-10-partial) records automated coverage. Native Windows text entry, focus/pointer capture, resize/DPI and save/load walkthroughs remain in [issue #5](https://github.com/cunilab/Weftora/issues/5); this slice does not close the full debug-tools or foundation-release gate.
 
 ## Windows acceptance checklist
 
@@ -82,3 +98,4 @@ Use the matching release tools from a successful CI run for this PR. Copy `examp
 - [ ] Switch to command mode with Tab. Reject malformed JSON, `save`, an unknown command, and `award` with a string argument without mutation or save invalidation. Execute `{"do":"command.call","command":"award","args":[10]}`: exactly ten points and `awarded=true`, unchanged displayed line, and save refused until a new checkpoint. Hold Enter (no repeat), release and press again (another ten points); Tab+Enter changes mode without execution. Cycle through trace to return to state mode. Close/reopen and verify the command buffer remains.
 - [ ] Check pointer capture, focus loss/resume, keyboard navigation, resize and supported DPI settings. Inspect long keys/values and multiple pages for clipping/readability. Record OS, GPU, layout and observed issues before signing off.
 - [ ] In developer mode, Tab twice opens trace: Commands Demo `award` shows completed actions, subscribed state notifications and matched/skipped events in order. Enter/typing/Story clicks and F5/F9 do not execute or progress. Page navigation and Delete affect only history; the command buffer survives the three-mode cycle. Generate enough command activity to verify 128-row retention, dropped counts and readable clipping at supported DPI/window sizes. A successful load starts empty history, a failed load keeps the live history, and saving before/after trace-only operations has unchanged bytes. A normal launch retains no trace.
+- [ ] Launch Commands Demo directly at `Next` with `--debug-tools --start-node Next` (or another exact authored node in a copied Story); verify `Next points 1` from defaults, without Start's two-point reward. Record the node/source/build. Confirm the title names the node and disables save/load. Try F5/F9 and authored save/load buttons at a checkpoint: normal slot/backup hashes stay unchanged. Relaunch normally to confirm ordinary save/load still works. Missing/case-mismatched node names refuse before a window. Repeat with CLI preview and the exported player's adjacent/explicit Story and artifact forms; inspect that node's presentation/audio and F12 trace. Node starts do not replace the other checklist's normal-session save tests.

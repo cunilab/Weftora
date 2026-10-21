@@ -947,6 +947,187 @@ mod tests {
         assert!(player.presenter.source().save_point().is_ok());
     }
 
+    fn node_fixture() -> (
+        tempfile::TempDir,
+        weftora_story::Story,
+        weftora_yarn::CompiledDialogue,
+    ) {
+        let (temp, _app) = fixture();
+        let root = temp.path().join("story");
+        std::fs::write(
+            root.join("main.yarn"),
+            r#"title: Start
+---
+<<declare $n = 0>>
+<<checkpoint debug.start>>
+<<increment 100>>
+Start {$n}
+<<jump Later>>
+===
+title: Later
+---
+<<checkpoint debug.later>>
+<<increment 1>>
+Later {$n} start {visited_count("Start")} self {visited_count("Later")}
+<<jump Finish>>
+===
+title: NoCheckpoint
+---
+No checkpoint
+===
+title: Finish
+---
+<<checkpoint debug.finish>>
+Finish {$n} start {visited_count("Start")} later {visited_count("Later")}
+===
+"#,
+        )
+        .unwrap();
+        let story = weftora_story::Story::load(&root).unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        (temp, story, compiled)
+    }
+
+    #[test]
+    fn selected_node_starts_fresh_runs_once_and_uses_normal_visit_and_checkpoint_rules() {
+        let (temp, story, compiled) = node_fixture();
+        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
+        let mut player =
+            crate::prepare_player(story, compiled, state, true, Some("Later")).unwrap();
+        assert!(
+            matches!(player.presenter.screen(), Screen::Line { text, .. } if text == "Later 1 start 0 self 0")
+        );
+        assert_eq!(player.state.read().unwrap().get("n"), Ok(&Value::Int(1)));
+        assert_eq!(
+            player.state.read().unwrap().get("temporary"),
+            Ok(&Value::Int(0))
+        );
+        let checkpoint = player.presenter.source().save_point().unwrap();
+        assert_eq!(checkpoint.checkpoint, "debug.later");
+        assert!(checkpoint.visits.is_empty());
+        assert_eq!(
+            player.presenter.source().rule_trace().unwrap().rows[0],
+            "action increment[0] completed"
+        );
+        player.presenter.advance();
+        assert!(
+            matches!(player.presenter.screen(), Screen::Line { text, .. } if text == "Finish 1 start 0 later 1")
+        );
+        assert_eq!(
+            player.presenter.source().save_point().unwrap().visits,
+            std::collections::BTreeMap::from([("Later".into(), 1)])
+        );
+        assert_eq!(player.story.manifest().entrypoint, "Start");
+        let story = weftora_story::Story::load(&temp.path().join("story")).unwrap();
+        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
+        let no_checkpoint = crate::prepare_player(
+            story,
+            player.compiled.clone(),
+            state,
+            true,
+            Some("NoCheckpoint"),
+        )
+        .unwrap();
+        assert!(matches!(
+            no_checkpoint.presenter.source().save_point(),
+            Err(weftora_yarn::SaveRefusal::NotAtCheckpoint)
+        ));
+    }
+
+    #[test]
+    fn selected_node_never_reads_or_writes_normal_save_slot_or_backup() {
+        let (temp, story, compiled) = node_fixture();
+        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
+        let mut normal = crate::prepare_player(story, compiled.clone(), state, true, None).unwrap();
+        normal.save_store = Some(Ok(weftora_save::storage::Store::new(
+            temp.path().join("saves"),
+        )));
+        normal.write_save().unwrap();
+        normal.write_save().unwrap();
+        let slot = std::fs::read(temp.path().join("saves/save.json")).unwrap();
+        let backup = std::fs::read(temp.path().join("saves/save.bak")).unwrap();
+        let story = weftora_story::Story::load(&temp.path().join("story")).unwrap();
+        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
+        let node = crate::prepare_player(story, compiled, state, true, Some("Later")).unwrap();
+        assert!(node.write_save().unwrap_err().contains("--start-node"));
+        assert!(node.prepare_load().err().unwrap().contains("--start-node"));
+        assert_eq!(
+            std::fs::read(temp.path().join("saves/save.json")).unwrap(),
+            slot
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("saves/save.bak")).unwrap(),
+            backup
+        );
+        assert_eq!(normal.state.read().unwrap().get("n"), Ok(&Value::Int(100)));
+        assert_eq!(node.state.read().unwrap().get("n"), Ok(&Value::Int(1)));
+        let story = weftora_story::Story::load(&temp.path().join("story")).unwrap();
+        let mut app = crate::tests::app_for_debug(story, node.compiled.clone(), true);
+        app.world_mut().insert_non_send(node);
+        let status = app
+            .world_mut()
+            .spawn((crate::SaveStatus, Text::new("")))
+            .id();
+        app.add_systems(Update, crate::refresh_save_status.after(crate::drive));
+        app.update();
+        assert!(
+            app.world()
+                .get::<Text>(status)
+                .unwrap()
+                .0
+                .contains("--start-node")
+        );
+        for key in [KeyCode::F5, KeyCode::F9] {
+            tap(&mut app, key);
+            assert!(
+                app.world()
+                    .non_send::<Player>()
+                    .save_status
+                    .contains("--start-node")
+            );
+        }
+        for action in [UiAction::Save, UiAction::Load] {
+            app.world_mut()
+                .resource_mut::<Intents>()
+                .push(Intent::Action {
+                    layer: None,
+                    action,
+                });
+            tap(&mut app, KeyCode::F1);
+            assert!(
+                app.world()
+                    .non_send::<Player>()
+                    .save_status
+                    .contains("--start-node")
+            );
+        }
+        assert_eq!(
+            std::fs::read(temp.path().join("saves/save.json")).unwrap(),
+            slot
+        );
+        assert_eq!(
+            std::fs::read(temp.path().join("saves/save.bak")).unwrap(),
+            backup
+        );
+    }
+
+    #[test]
+    fn invalid_selected_node_preserves_supplied_state_and_fails_before_window() {
+        let (_temp, story, compiled) = node_fixture();
+        let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
+        let before = state.read().unwrap().clone();
+        for node in ["Missing", "later", "", "$Yarn.Internal.Later"] {
+            let story = weftora_story::Story::load(story.root()).unwrap();
+            let error =
+                crate::prepare_player(story, compiled.clone(), state.clone(), true, Some(node))
+                    .err()
+                    .unwrap();
+            assert!(error.contains("does not exist"));
+            assert_eq!(*state.read().unwrap(), before);
+        }
+    }
+
     #[test]
     fn removed_declarations_stay_visible_in_the_key_list() {
         let mut state = State::new();

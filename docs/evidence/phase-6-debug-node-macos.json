@@ -1,0 +1,51 @@
+{
+  "check": "P6-10 launch-time Yarn node preview automated slice",
+  "baseCommit": "79dea217a3793bd8cc1f103315cc3ebc9c986457",
+  "workingTreeDirty": true,
+  "platform": "MacBookAir development host",
+  "optIn": "--debug-tools --start-node <exact-title>; fixed order; no headless/validate combination",
+  "semantics": [
+    "fresh Story/Yarn defaults across all scopes, fresh visits/scripts and authored RNG seed",
+    "no preceding-node replay or in-session jump; manifest entrypoint/artifact unchanged",
+    "trace enabled before first display; selected node commands run once",
+    "checkpoint eligibility remains authored; no synthetic checkpoint",
+    "save/load unavailable for entire selected-node session through store refusal; no normal slot path resolved",
+    "normal and ordinary --debug-tools launches preserve existing behavior"
+  ],
+  "covered": [
+    "CLI exact argv forwarding, live artifact/cleanup, exit-code preservation",
+    "unknown/case-mismatched/empty/internal-variable-like names rejected before child discovery or window creation",
+    "invalid option combinations fail usage",
+    "shared production initializer produces expected selected first line and rule trace",
+    "fresh visit counters and ordinary increment-on-node-exit behavior",
+    "ordinary runtime checkpoint vs no-checkpoint eligibility",
+    "save/load refusal preserves normal slot and backup, including F5/F9 and queued authored Save/Load intents"
+  ],
+  "advisor": "Claude Opus 5.5 medium challenged design and independently reviewed final code read-only: PASS with limits. Main verified save-status display has no file I/O, all production save/load entry points use the refused store, and pinned compiler names come from authored titles.",
+  "limits": [
+    "no in-session node picker or jump",
+    "node content may assume earlier state; normal Story errors remain",
+    "pinned compiler has no node-group/smart-variable helper authoring support; exact compiled titles used",
+    "native visual/input acceptance remains maintainer-owned issue5; prior Computer Use permissions unavailable"
+  ],
+  "scope": "No dependencies, Story capability/schema or save wire changes. Existing renderer APIs preserved. No complete P6-10 manual-release acceptance or publication claim.",
+  "validation": {
+    "defaultAndStoryClippy": "passed with warnings denied",
+    "fmtAndSharedRustfmt": "passed",
+    "dependencyDirection": "passed",
+    "docsAndDiff": "passed",
+    "matchingToolsAndExport": "Both tools rebuilt with --locked; fresh commands-demo export and matching identities verified"
+  },
+  "rustTestsPassed": 409,
+  "developerPanelTestsPassed": 19,
+  "playerUnitTestsPassed": 4,
+  "cliIntegrationTestsPassed": 36,
+  "nativeMacScope": {
+    "forms": {
+      "adjacent": "unknown node refused before window; valid Next survived 2s after window creation",
+      "explicit-story": "unknown node refused before window; valid Next survived 2s after window creation",
+      "explicit-artifact": "unknown node refused before window; valid Next survived 2s after window creation"
+    },
+    "limit": "Window startup only; each own process terminated after 2 seconds. No visual/input acceptance."
+  }
+}

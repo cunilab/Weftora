@@ -589,17 +589,19 @@ fn preview_passes_a_live_artifact_and_cleans_it_without_story_writes() {
         .map(|e| e.unwrap().file_name())
         .collect();
     let player = tmp.path().join("inspect-player");
-    fs::write(&player, b"#!/bin/sh\ntest \"$2\" = --dialogue || exit 11\ntest -s \"$3\" || exit 12\ncase \"$4\" in \"\"|--debug-tools) ;; *) exit 13;; esac\nprintf '%s\\n%s' \"$3\" \"$4\"\nexit 23\n").unwrap();
+    fs::write(&player, b"#!/bin/sh\ntest \"$2\" = --dialogue || exit 11\ntest -s \"$3\" || exit 12\ncase \"$4\" in \"\"|--debug-tools) ;; *) exit 13;; esac\nprintf '%s\\n%s\\n%s\\n%s' \"$3\" \"$4\" \"$5\" \"$6\"\nexit 23\n").unwrap();
     fs::set_permissions(&player, fs::Permissions::from_mode(0o755)).unwrap();
-    for debug_tools in [false, true] {
+    for flags in [
+        vec![],
+        vec!["--debug-tools"],
+        vec!["--debug-tools", "--start-node", "Start"],
+    ] {
         let mut command = weftora();
         command
             .env("WEFTORA_PLAYER", &player)
             .arg("run")
-            .arg(&story);
-        if debug_tools {
-            command.arg("--debug-tools");
-        }
+            .arg(&story)
+            .args(&flags);
         let output = command.output().unwrap();
         assert_eq!(output.status.code(), Some(23), "{}", stderr(&output));
         let stdout = String::from_utf8(output.stdout).unwrap();
@@ -607,7 +609,15 @@ fn preview_passes_a_live_artifact_and_cleans_it_without_story_writes() {
         let path = std::path::PathBuf::from(lines.next().unwrap());
         assert_eq!(
             lines.next().unwrap_or(""),
-            if debug_tools { "--debug-tools" } else { "" }
+            flags.first().copied().unwrap_or("")
+        );
+        assert_eq!(
+            lines.next().unwrap_or(""),
+            flags.get(1).copied().unwrap_or("")
+        );
+        assert_eq!(
+            lines.next().unwrap_or(""),
+            flags.get(2).copied().unwrap_or("")
         );
         assert!(!path.exists(), "preview artifact was not cleaned up");
         let after: Vec<_> = fs::read_dir(&story)
@@ -615,6 +625,40 @@ fn preview_passes_a_live_artifact_and_cleans_it_without_story_writes() {
             .map(|e| e.unwrap().file_name())
             .collect();
         assert_eq!(before, after);
+    }
+}
+
+#[test]
+fn node_preview_rejects_missing_case_mismatch_and_invalid_flag_combinations_before_player() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    for node in ["Missing", "start", "", "$Yarn.Internal.Start"] {
+        let out = weftora()
+            .env("WEFTORA_PLAYER", "missing-player")
+            .arg("run")
+            .arg(&story)
+            .args(["--debug-tools", "--start-node", node])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        assert!(stderr(&out).contains("does not exist"), "{}", stderr(&out));
+        assert!(!stderr(&out).contains("player executable not found"));
+    }
+    for flags in [
+        vec!["--start-node", "Start"],
+        vec!["--debug-tools", "--start-node"],
+        vec!["--start-node", "Start", "--debug-tools"],
+        vec!["--headless", "--debug-tools", "--start-node", "Start"],
+        vec!["--debug-tools", "--start-node", "Start", "--validate"],
+    ] {
+        let out = weftora()
+            .arg("run")
+            .arg(&story)
+            .args(flags)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
     }
 }
 

@@ -37,7 +37,7 @@ const ERROR_COLOR: Color = Color::srgb(1.0, 0.45, 0.45);
 
 /// Opens the game window and runs `story` until the window closes.
 pub fn run(story: Story, dialogue: CompiledDialogue, state: SharedState) -> Result<(), String> {
-    run_player(story, dialogue, state, false)
+    run_player(story, dialogue, state, false, None)
 }
 
 /// Opens the player with explicitly enabled developer state tools.
@@ -46,7 +46,19 @@ pub fn run_with_debug_tools(
     dialogue: CompiledDialogue,
     state: SharedState,
 ) -> Result<(), String> {
-    run_player(story, dialogue, state, true)
+    run_player(story, dialogue, state, true, None)
+}
+
+/// Starts a fresh developer session at an exact compiled node; save/load are disabled.
+pub fn run_at_node_with_debug_tools(
+    story: Story,
+    dialogue: CompiledDialogue,
+    node: &str,
+) -> Result<(), String> {
+    let state = Arc::new(std::sync::RwLock::new(
+        story.initial_state().map_err(|e| e.to_string())?,
+    ));
+    run_player(story, dialogue, state, true, Some(node))
 }
 
 fn run_player(
@@ -54,30 +66,19 @@ fn run_player(
     dialogue: CompiledDialogue,
     state: SharedState,
     debug_tools: bool,
+    node: Option<&str>,
 ) -> Result<(), String> {
     let title = if debug_tools {
         format!("{} — Developer tools (F12)", story.manifest().title)
     } else {
         story.manifest().title.clone()
     };
-    let mut runner = DialogueRunner::for_story(&dialogue, Arc::clone(&state), &story);
-    if debug_tools {
-        runner.enable_rule_trace();
-    }
-    if let Ok(mut state) = state.write() {
-        state.drain_changes();
-    }
-    let (presenter, actions) = Presenter::new(runner, &story.manifest().entrypoint.clone());
-    let player = Player {
-        presenter,
-        state,
-        save_store: saves::store(&story),
-        compiled: dialogue,
-        save_status: String::new(),
-        story,
-        pending: actions,
-        dirty: true,
+    let title = if let Some(node) = node {
+        format!("{title} — node: {node} — save/load disabled")
+    } else {
+        title
     };
+    let player = prepare_player(story, dialogue, state, debug_tools, node)?;
 
     let failure = RuntimeFailure::default();
     let outcome = failure.0.clone();
@@ -131,6 +132,45 @@ fn run_player(
 
 #[derive(Resource, Default)]
 struct RuntimeFailure(Arc<Mutex<Option<String>>>);
+
+fn prepare_player(
+    story: Story,
+    dialogue: CompiledDialogue,
+    state: SharedState,
+    debug_tools: bool,
+    node: Option<&str>,
+) -> Result<Player, String> {
+    if let Some(node) = node
+        && !dialogue.node_names().iter().any(|name| name == node)
+    {
+        return Err(weftora_yarn::DialogueError::MissingNode(node.into()).to_string());
+    }
+    let mut runner = DialogueRunner::for_story(&dialogue, Arc::clone(&state), &story);
+    if debug_tools {
+        runner.enable_rule_trace();
+    }
+    if let Ok(mut state) = state.write() {
+        state.drain_changes();
+    }
+    let (presenter, actions) = Presenter::new(runner, node.unwrap_or(&story.manifest().entrypoint));
+    Ok(Player {
+        presenter,
+        state,
+        save_store: if node.is_some() {
+            Some(Err(
+                "save/load is disabled for --start-node previews; relaunch without --start-node"
+                    .into(),
+            ))
+        } else {
+            saves::store(&story)
+        },
+        compiled: dialogue,
+        save_status: String::new(),
+        story,
+        pending: actions,
+        dirty: true,
+    })
+}
 
 fn remember_failure(player: NonSend<Player>, failure: Res<RuntimeFailure>) {
     if let Screen::Error(message) = player.presenter.screen() {
@@ -525,6 +565,8 @@ fn refresh_panel(
 fn refresh_save_status(player: NonSend<Player>, mut text: Single<&mut Text, With<SaveStatus>>) {
     let value = if !player.save_status.is_empty() {
         player.save_status.as_str()
+    } else if let Some(Err(message)) = &player.save_store {
+        message.as_str()
     } else if player.save_store.is_some() {
         "F5: save at checkpoint • F9: load"
     } else {
@@ -610,39 +652,26 @@ mod tests {
     }
     pub(super) fn app_for_debug(story: Story, compiled: CompiledDialogue, debug: bool) -> App {
         let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
-        let mut runner = DialogueRunner::for_story(&compiled, state.clone(), &story);
-        if debug {
-            runner.enable_rule_trace();
-        }
-        let (presenter, pending) = Presenter::new(runner, "Start");
+        let player = prepare_player(story, compiled, state, debug, None).unwrap();
         let mut app = App::new();
-        app.insert_non_send(Player {
-            save_store: saves::store(&story),
-            compiled,
-            save_status: String::new(),
-            story,
-            state,
-            presenter,
-            pending,
-            dirty: true,
-        })
-        .init_resource::<RuntimeFailure>()
-        .insert_resource(debug_tools::Inspector::new(debug))
-        .add_message::<bevy::input::keyboard::KeyboardInput>()
-        .init_resource::<Time>()
-        .init_resource::<ButtonInput<KeyCode>>()
-        .init_resource::<InputFocus>()
-        .init_resource::<InputFocusVisible>()
-        .init_resource::<Intents>()
-        .init_resource::<Ui>()
-        .init_resource::<media::Presentation>()
-        .init_resource::<Assets<Image>>()
-        .init_resource::<Assets<AudioSource>>()
-        .add_message::<AppExit>()
-        .add_systems(
-            Update,
-            (debug_tools::input, drive, remember_failure).chain(),
-        );
+        app.insert_non_send(player)
+            .init_resource::<RuntimeFailure>()
+            .insert_resource(debug_tools::Inspector::new(debug))
+            .add_message::<bevy::input::keyboard::KeyboardInput>()
+            .init_resource::<Time>()
+            .init_resource::<ButtonInput<KeyCode>>()
+            .init_resource::<InputFocus>()
+            .init_resource::<InputFocusVisible>()
+            .init_resource::<Intents>()
+            .init_resource::<Ui>()
+            .init_resource::<media::Presentation>()
+            .init_resource::<Assets<Image>>()
+            .init_resource::<Assets<AudioSource>>()
+            .add_message::<AppExit>()
+            .add_systems(
+                Update,
+                (debug_tools::input, drive, remember_failure).chain(),
+            );
         app
     }
     #[test]

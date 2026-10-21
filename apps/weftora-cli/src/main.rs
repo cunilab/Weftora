@@ -24,7 +24,7 @@ const USAGE: &str = "usage:
   weftora --tool-identity
   weftora new <story-dir>
   weftora check <story-dir>
-  weftora run <story-dir> [--debug-tools]
+  weftora run <story-dir> [--debug-tools [--start-node <node>]]
   weftora run <story-dir> --headless [--choices <id,id,...>] [--save-at <checkpoint>] [--load] [--save-dir <dir>]
   weftora export <story-dir> --out <dir>";
 
@@ -47,8 +47,11 @@ fn main() -> ExitCode {
         }
         ["new", dir] if !dir.starts_with('-') => scaffold::create(Path::new(dir)),
         ["check", dir] => check_command(Path::new(dir)),
-        ["run", dir] => run_command(Path::new(dir), false),
-        ["run", dir, "--debug-tools"] => run_command(Path::new(dir), true),
+        ["run", dir] => run_command(Path::new(dir), false, None),
+        ["run", dir, "--debug-tools"] => run_command(Path::new(dir), true, None),
+        ["run", dir, "--debug-tools", "--start-node", node] => {
+            run_command(Path::new(dir), true, Some(node))
+        }
         ["run", dir, "--headless", flags @ ..] => headless::parse_options(flags)
             .and_then(|options| headless::run(Path::new(dir), options)),
         ["export", dir, "--out", out] | ["export", "--out", out, dir] => {
@@ -161,8 +164,19 @@ fn player_path() -> Result<PathBuf, Failure> {
     }
 }
 
-fn run_command(dir: &Path, debug_tools: bool) -> CliResult {
+fn run_command(dir: &Path, debug_tools: bool, node: Option<&str>) -> CliResult {
     let checked = check(dir).map_err(Failure::Messages)?;
+    if let Some(node) = node
+        && !checked
+            .dialogue
+            .node_names()
+            .iter()
+            .any(|name| name == node)
+    {
+        return Err(Failure::one(
+            weftora_yarn::DialogueError::MissingNode(node.into()).to_string(),
+        ));
+    }
     let player = player_path()?;
     let preview = tempfile::tempdir()
         .map_err(|e| Failure::one(format!("cannot create dialogue preview: {e}")))?;
@@ -176,6 +190,9 @@ fn run_command(dir: &Path, debug_tools: bool) -> CliResult {
     command.arg(dir).arg("--dialogue").arg(&artifact);
     if debug_tools {
         command.arg("--debug-tools");
+    }
+    if let Some(node) = node {
+        command.arg("--start-node").arg(node);
     }
     let status = command
         .status()
