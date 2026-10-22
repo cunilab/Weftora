@@ -124,6 +124,8 @@ Goal: a stranger can make and ship a game on Windows.
 - [x] Publish the [current compatibility table](./docs/adr/0002-versioning-compatibility.md#current-compatibility-table) and verify ADR 0002 Phase 6 current-reader downgrade and mismatched-tool fixtures for both Stories. [Automated evidence](./docs/evidence/phase-6.md) covers API/schema refusal, compatible release rollback and actual build-pair checks. Release-profile reruns (P6-03) and native integration (P6-04) remain separate; no historical-binary guarantee is claimed.
 - [ ] Publish the compatibility table; tag the release. Pre-1.0 versions are fine.
 
+Draft-release preparation is implemented with default read-only preflight, exact main/tag/CI-attempt and artifact verification, and explicit unpublished-draft creation. See [release operations](docs/releasing.md#prepare-a-draft-with-verified-ci-artifacts). Real main-candidate dispatch, final licence/advisory review and native acceptance remain open; this does not complete P6.
+
 ## Phase 7 — Ports, one at a time (locked until Phase 6 passes)
 
 Each port has its own ADR and passes its own checks; see [platforms](./docs/platforms.md). Proposed order: Linux x64, macOS ARM64, then Android, iOS and Web.

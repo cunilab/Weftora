@@ -18,7 +18,7 @@ The existing long-running PR #19 remains open for maintainer review; this policy
 
 This document records the intended release process. Current CI runs on PRs and pushes to `main`; no tag-triggered release builder or publisher is implemented yet. Pushing a tag currently does not build or publish release assets. Debug previews and release-verification artifacts are development evidence, not approved foundation release assets.
 
-The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile, verifies baseline exports of all 12 checked-in examples against one frozen player, and collects the maintained starter, Story edit, A/B and Engine-independence proofs. The folder transport packager is implemented and CI exercises it for standalone Story A, life-sim and localisation games. Authoring-tools candidate staging, a licence-text review inventory and combined download checksum staging are implemented. Final licence/advisory review, remaining evidence recipes and draft-release publishing automation are still pending.
+The container decision is [ADR 0013](./adr/0013-folder-release-packages.md). The Windows release-verification CI job builds/tests the release profile, verifies baseline exports of all 12 checked-in examples against one frozen player, and collects the maintained starter, Story edit, A/B and Engine-independence proofs. The folder transport packager is implemented and CI exercises it for standalone Story A, life-sim and localisation games. Authoring-tools candidate staging, a licence-text review inventory and combined download checksum staging are implemented. Draft preparation automation is implemented below. Final licence/advisory review, remaining evidence recipes and an actual main-candidate workflow run are still pending.
 
 ## Prepare a candidate
 
@@ -124,7 +124,7 @@ python -B -O scripts/stage-release-assets.py --package <tools-transport-director
 
 Each `--package` selects a transport output directory containing exactly the one ZIP named by its `SHA256SUMS`. The stager checks the source hash before and after copying, verifies the copied bytes, then writes a sorted combined `SHA256SUMS` and `release-assets.json` with names, sizes, hashes and source-directory basenames as labels. It refuses duplicate case/Unicode aliases, unsafe names, linked inputs, changed ZIPs/checksums, existing destinations and outputs inside an input package. Limits are 16 packages, 2 GiB per ZIP, 4 GiB total and 4 KiB per input checksum file. Use quiescent inputs and an output parent controlled by the operator; failure can leave partial output, which must not be published. Rerun into a fresh directory.
 
-This helper verifies byte identity against the selected package checksums; it does not repeat transport extraction, authenticate the checksum author, establish a shared build identity or approve release contents. Keep the per-package transport reports and candidate-SHA evidence. Windows release CI retains a separate `weftora-windows-download-candidate-<SHA>` artifact with all four ZIPs, the combined checksums and inventory. Its artifact wrapper is for review; the contained ZIPs are the candidate download bytes. Later CI failure or any pending foundation criterion still prevents release approval.
+This helper verifies byte identity against the selected package checksums; it does not repeat transport extraction, authenticate the checksum author, establish a shared build identity or approve release contents. Keep the per-package transport reports and candidate-SHA evidence. Windows release CI retains a separate `weftora-windows-download-candidate-<SHA>-attempt-<N>` artifact with all four ZIPs, the combined checksums and inventory. Its artifact wrapper is for review; the contained ZIPs are the candidate download bytes. Later CI failure or any pending foundation criterion still prevents release approval.
 
 After extracting the candidate artifact wrapper, release operators can check its contained download folder from a reviewed Engine checkout without writing or extracting anything:
 
@@ -149,6 +149,27 @@ The [success criteria](./success-criteria.md#phase-6--windows-foundation-release
 - [ ] Native Windows matrix, independent author walkthrough and performance budgets pass (P6-04/P6-07/P6-08).
 - [ ] Licence/notices and advisory audit, compatibility fixtures, debug tools and localisation requirements pass (P6-06/P6-09/P6-10/P6-11). Existing advisory exceptions must be reviewed explicitly.
 - [ ] Release notes identify the full SHA, target/profile, tool identities/hashes, assets, evidence links, supported contracts and known limitations. Maintainer reviews the staged assets and authorizes publication (P6-12).
+
+## Prepare a draft with verified CI artifacts
+
+The manually dispatched `Prepare release draft` workflow runs only from `main` in this repository. Its default verifies inputs and retains a plan without creating a release. It needs an existing annotated version tag, a completed successful **push CI run from main** at that exact commit, and reviewed release notes. PR merge builds are ineligible. Create the tag using the reviewed recipe below only after the release checklist is satisfied.
+
+The helper requires Python 3.11 or newer and authenticated GitHub CLI/API access. From a reviewed checkout containing the candidate and current remote main/tag objects, a local preflight is:
+
+```sh
+git fetch origin main --tags
+python3.11 -I -B -O scripts/prepare-github-release.py \
+  --tag v0.1.0 --run-id <completed-main-CI-run-ID> \
+  --notes <reviewed-notes.md> --out <fresh-directory-outside-checkout>
+```
+
+It verifies tag/workspace/lockfile versions, ancestry on current remote main, the successful Windows/dependency/release-verification jobs and the current run attempt. It selects exact attempt-qualified build-provenance and download-candidate artifacts, checks their API SHA-256 digests, bounds downloads/extraction, compares the build's complete source manifest with raw Git blobs, and checks download checksums, tool identities, executable hashes and notice metadata. It refuses expired, ambiguous, mismatched or legacy artifacts. These new artifact names require this preparation change to merge and a fresh main push CI run; old PR evidence is not promoted. If CI needs a rerun, rerun all jobs so both artifacts and their provenance belong to the current attempt; partial reruns with only older artifacts refuse.
+
+Known missing notice-text/metadata flags block preflight and draft creation, including the current `constgebra` gap. Passing these automatic checks does not approve licence obligations, advisory exceptions, native behavior or clean-machine acceptance. All release-checklist evidence still needs maintainer review; `auditApproved` remains false in retained records.
+
+After completing that review, run the workflow from `main` with both `create_draft` and `checklist_reviewed` set to true, or add **both** `--create-draft --checklist-reviewed` to the local command using a fresh output directory. Creation rechecks remote inputs and local file hashes, requires the existing tag, and uploads only the four verified ZIPs plus `SHA256SUMS` to an unpublished draft with `--latest=false`. SemVer prereleases receive `--prerelease`. It then checks the draft's asset names, sizes and API digests before writing `draft-created.json`.
+
+An existing draft or published release for that tag refuses; there is no overwrite, tag creation or publication path. A failed upload/readback can leave a partial draft: inspect it manually before any retry; the helper never deletes or repairs it. The workflow retains the plan, notes and successful readback record for 14 days. Inspect and approve publication separately using the recipe below. The workflow itself has not yet been dispatched against a qualifying main candidate.
 
 ## Tag and stage a GitHub Release
 

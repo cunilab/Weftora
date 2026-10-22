@@ -418,7 +418,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
-          name: weftora-windows-download-candidate-${{ github.sha }}
+          name: weftora-windows-download-candidate-${{ github.sha }}-attempt-${{ github.run_attempt }}
           path: ${{ runner.temp }}/weftora-release-assets/
           retention-days: 14
       - name: Prove actual changed-build CLI refuses the frozen release player
