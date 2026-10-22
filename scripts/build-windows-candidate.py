@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import json
 import os
+import re
 from pathlib import Path
 import subprocess
 
@@ -98,8 +99,12 @@ def build(root, output, linker):
     for name, command in (("msvc-linker.txt", [str(linker), "/?"]), ("msvc-compiler.txt", [str(compiler), "/Bv"])):
         with (output / name).open("xb") as log:
             result = subprocess.run(command, cwd=root, env=env, stdout=log, stderr=subprocess.STDOUT, timeout=30)
-        require(result.returncode in ((0, 2) if name == "msvc-compiler.txt" else (0,)), "MSVC version capture failed")
-        require((output / name).stat().st_size > 0, "missing MSVC version output")
+        require(0 < (output / name).stat().st_size <= 1024 * 1024, "missing/oversized MSVC version output")
+        banner = r"Microsoft.*Linker Version [0-9]" if name == "msvc-linker.txt" else r"Microsoft.*C/C\+\+.*Compiler Version [0-9]"
+        require(re.search(banner, (output / name).read_text(encoding="utf-8", errors="replace")),
+                "missing MSVC version banner")
+        # Help/no-input probes can return nonzero; their status is evidence, not a build result.
+        versions[name] = {"returnCode": result.returncode, "rawOutput": name}
     commands = [[str(tools["cargo"]), "test-all", "--release", "--target", TARGET, "--target-dir", str(root / "target"),
                  "--config", 'build.build-dir="target"', "--", "--test-threads=1"],
                 [str(tools["cargo"]), "build", "--workspace", "--release", "--locked", "--target", TARGET, "--target-dir", str(root / "target"),

@@ -49,8 +49,10 @@ class BuildProvenanceTests(unittest.TestCase):
 
     def execute(self, command, **kwargs):
         self.assertIn(Path(command[0]).name, ("cl.exe", "link.exe"))
-        kwargs["stdout"].write(b"fixture MSVC version\n")
-        return subprocess.CompletedProcess(command, 2 if Path(command[0]).name == "cl.exe" else 0)
+        compiler = Path(command[0]).name == "cl.exe"
+        banner = b"Microsoft (R) C/C++ Optimizing Compiler Version 19.51.fixture" if compiler else b"Microsoft (R) Incremental Linker Version 14.51.fixture"
+        kwargs["stdout"].write(banner + b"\n")
+        return subprocess.CompletedProcess(command, 2 if compiler else 1100)
 
     def logged(self, command, root, output, name, env):
         self.commands.append(command)
@@ -72,6 +74,8 @@ class BuildProvenanceTests(unittest.TestCase):
     def test_success_records_source_tools_binaries_and_evidence_hashes(self):
         report = self.run_build()
         self.assertFalse(report["auditApproved"])
+        self.assertEqual(report["versions"]["msvc-linker.txt"]["returnCode"], 1100)
+        self.assertEqual(report["versions"]["msvc-compiler.txt"]["returnCode"], 2)
         self.assertTrue(report["freshTarget"])
         self.assertEqual(len(report["binaries"]), 2)
         self.assertEqual(len(self.commands), 2)
@@ -83,6 +87,15 @@ class BuildProvenanceTests(unittest.TestCase):
         self.assertEqual(sources["Cargo.lock"], provenance.fingerprint(self.root / "Cargo.lock"))
         self.assertEqual(report["evidenceFiles"]["source-files.json"], provenance.fingerprint(self.output / "source-files.json"))
         self.assertEqual(json.loads((self.output / "build-provenance.json").read_text()), report)
+
+    def test_missing_msvc_banner_never_produces_success_report(self):
+        def command(args, **kwargs):
+            kwargs["stdout"].write(b"tool failed without version evidence")
+            return subprocess.CompletedProcess(args, 1)
+        self.execute = command
+        with self.assertRaisesRegex(ValueError, "version banner"):
+            self.run_build()
+        self.assertFalse((self.output / "build-provenance.json").exists())
 
     def test_windows_uppercase_environment_preserves_developer_shell_context(self):
         self.env = {name.upper(): value for name, value in self.env.items()}
