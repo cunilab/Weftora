@@ -1,0 +1,197 @@
+{
+  "reviewedAtUtc": "2026-10-22T07:07:16.374105+00:00",
+  "inspectionDevice": "Andress-MacBook-Air",
+  "runId": 39730799367,
+  "runAttempt": 1,
+  "runUrl": "https://github.com/cunilab/Weftora/actions/runs/39730799367",
+  "sourceHead": "574f72d4e99819e52d005eb05cab09c881fb72f7",
+  "workflowRevision": "b3c37c4c36b333333e846970dbbd668740b0efd9",
+  "sourceTree": "c50e070ab00e41c5705dfad6d47cd08778eb85ff",
+  "allFourJobsPassed": true,
+  "sourceFilesMatchedToGit": 534,
+  "sourceBytesMatchedToGit": 20544605,
+  "buildEvidenceFileHashesChecked": {
+    "msvc-compiler.txt": {
+      "bytes": 1296,
+      "sha256": "39aa981e590edfadd5720777cabff793c70849f5089b699dec916787523c0f02"
+    },
+    "msvc-linker.txt": {
+      "bytes": 3764,
+      "sha256": "4f6862bd5986419eb413a6966d561bb176e9c1ed6eea28fc715265f272d18431"
+    },
+    "release-build.log": {
+      "bytes": 27289,
+      "sha256": "3f1da58871a6899030dac4ec9c939af64048ab821e5050f70fa067234acf7629"
+    },
+    "release-tests.log": {
+      "bytes": 82414,
+      "sha256": "1fad72f72d929edbba4feb8a94ab3506f93129cd33a42775a91613359b9c3722"
+    },
+    "source-files.json": {
+      "bytes": 88945,
+      "sha256": "5dcae4337147d0ab4fe1be22633be596efdcd5dbdc86f6d94fd1d51af2f7e698"
+    }
+  },
+  "sourceInputs": {
+    "Cargo.lock": {
+      "bytes": 170428,
+      "sha256": "d727a7872b4d3b5c4d5c09e928b095e69445303a3dac0d070336cd9d86e0d33e"
+    },
+    "Cargo.toml": {
+      "bytes": 1724,
+      "sha256": "764524ef3912004c22734bdfdb73b63e83d3ffe7411106258f59071e9d928cc8"
+    },
+    "rust-toolchain.toml": {
+      "bytes": 66,
+      "sha256": "07487db9d6b45de2f308f9fb578c9c46041381c3ee44ef782eca64150a394772"
+    },
+    ".cargo/config.toml": {
+      "bytes": 155,
+      "sha256": "fadab64da274adb87bde4d11a27b9e42f5cf01102dd223285cecaa8f33dcba2a"
+    }
+  },
+  "target": "x86_64-pc-windows-msvc",
+  "profile": "release",
+  "freshTarget": true,
+  "versions": {
+    "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)\nrelease: 1.98.0\ncommit-hash: 797e8a9bca276c1c9f9f738d2a20f484fa4eea9d\ncommit-date: 2026-08-05\nhost: x86_64-pc-windows-msvc\nlibgit2: 1.9.4 (sys:0.21.0 vendored)\nlibcurl: 8.21.0-DEV (sys:0.4.90+curl-8.21.0 vendored ssl:Schannel)\nos: Windows 10.0.26100 (Windows 11 ServerDatacenter) [64-bit]",
+    "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: x86_64-pc-windows-msvc\nrelease: 1.98.0\nLLVM version: 22.1.8",
+    "rustdoc": "rustdoc 1.98.0 (88d9e12ae 2026-08-18)\nbinary: rustdoc\ncommit-hash: 88d9e12ae178fab0fb5cc050a94da85685d449ea\ncommit-date: 2026-08-18\nhost: x86_64-pc-windows-msvc\nrelease: 1.98.0\nLLVM version: 22.1.8",
+    "msvc-linker.txt": {
+      "returnCode": 1100,
+      "rawOutput": "msvc-linker.txt"
+    },
+    "msvc-compiler.txt": {
+      "returnCode": 2,
+      "rawOutput": "msvc-compiler.txt"
+    }
+  },
+  "toolsSelfReported": {
+    "cargo": {
+      "path": "C:\\Users\\runneradmin\\.rustup\\toolchains\\1.98.0-x86_64-pc-windows-msvc\\bin\\cargo.exe",
+      "bytes": 31435264,
+      "sha256": "197c9f582da4994c585b13366abc12e810de2708ce14ddcf0873a8f377f3954e"
+    },
+    "rustc": {
+      "path": "C:\\Users\\runneradmin\\.rustup\\toolchains\\1.98.0-x86_64-pc-windows-msvc\\bin\\rustc.exe",
+      "bytes": 110592,
+      "sha256": "777119d5feeca3d9fc163dc0e0d8be896cfcb65c45255328cef214d833546c6a"
+    },
+    "rustdoc": {
+      "path": "C:\\Users\\runneradmin\\.rustup\\toolchains\\1.98.0-x86_64-pc-windows-msvc\\bin\\rustdoc.exe",
+      "bytes": 11116544,
+      "sha256": "32c5cafd22516ffd5c8d00166adfcb6487a43641dc053641eedc85524e75ab82"
+    },
+    "linker": {
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\link.exe",
+      "bytes": 3701088,
+      "sha256": "a8c42e25c91ca2453e1110540ac08f0fc12d7539454a11b9af8baeecb469837d"
+    },
+    "cCompiler": {
+      "path": "C:\\Program Files\\Microsoft Visual Studio\\18\\Enterprise\\VC\\Tools\\MSVC\\14.51.36231\\bin\\Hostx64\\x64\\cl.exe",
+      "bytes": 893288,
+      "sha256": "b0a1818ebae6da7f18230a84e76ce839212584ac4c2ab55b97a0d5268085da57"
+    }
+  },
+  "selectedEnvironment": {
+    "VCToolsVersion": "14.51.36231",
+    "WindowsSDKVersion": "10.0.26100.0\\",
+    "ImageOS": "win25-vs2026",
+    "ImageVersion": "20261007.264.1",
+    "GITHUB_RUN_ID": "39730799367",
+    "GITHUB_RUN_ATTEMPT": "1"
+  },
+  "binaries": {
+    "weftora.exe": {
+      "bytes": 8655872,
+      "sha256": "0df2184d70da05d721159d62d13b04699b32931e3f7516d780cfd457ec7386e9"
+    },
+    "weftora-player.exe": {
+      "bytes": 84034048,
+      "sha256": "143301ea27a0a3b95a1e6c382fcafcfec906be2ba7474eaa8288fe8df2f62a49"
+    }
+  },
+  "packages": [
+    {
+      "zip": "weftora-authoring-tools.zip",
+      "sha256": "761c29ebabe3baf845025493737437a0a84dd2173dd797d07b856697f82c7829",
+      "entries": 1418,
+      "folderInventorySha256": "b4da3d1b4b105feb218dc62135bea5657a14e2f8c77c7bbbe71c860c23a12828",
+      "peFiles": [
+        {
+          "path": "weftora-authoring-tools/weftora-player.exe",
+          "sha256": "143301ea27a0a3b95a1e6c382fcafcfec906be2ba7474eaa8288fe8df2f62a49",
+          "bytes": 84034048
+        },
+        {
+          "path": "weftora-authoring-tools/weftora.exe",
+          "sha256": "0df2184d70da05d721159d62d13b04699b32931e3f7516d780cfd457ec7386e9",
+          "bytes": 8655872
+        }
+      ]
+    },
+    {
+      "zip": "weftora-transport-life-sim.zip",
+      "sha256": "3e92e0577b479a2d82ffe4c72c883e44d306a1c8541ef51eaa8c3b52869695e6",
+      "entries": 1430,
+      "folderInventorySha256": "ef07d5125145e44eb37af142f68bab533e976f3cf99f8439d988109a56a3b03b",
+      "peFiles": [
+        {
+          "path": "weftora-transport-life-sim/weftora-player.exe",
+          "sha256": "143301ea27a0a3b95a1e6c382fcafcfec906be2ba7474eaa8288fe8df2f62a49",
+          "bytes": 84034048
+        }
+      ]
+    },
+    {
+      "zip": "weftora-transport-localization-demo.zip",
+      "sha256": "60f6346bddff49336eb2f78829c95a454c3012215e917dc84b96b0433b95c988",
+      "entries": 1436,
+      "folderInventorySha256": "fb46952f195204c46fa3e07dd07d1a772baaa9a2aa457854e668bc65eff852b1",
+      "peFiles": [
+        {
+          "path": "weftora-transport-localization-demo/weftora-player.exe",
+          "sha256": "143301ea27a0a3b95a1e6c382fcafcfec906be2ba7474eaa8288fe8df2f62a49",
+          "bytes": 84034048
+        }
+      ]
+    },
+    {
+      "zip": "weftora-transport-story-a.zip",
+      "sha256": "d5aeb0cc1e04623420544fe8fd1998452a1b51a7e6c7e1e495122fea863ce0b3",
+      "entries": 1439,
+      "folderInventorySha256": "ae5c0b784afdedc07ac7af18aa4401aeffc0037e1884207eec5d09553ae56e4f",
+      "peFiles": [
+        {
+          "path": "weftora-transport-story-a/weftora-player.exe",
+          "sha256": "143301ea27a0a3b95a1e6c382fcafcfec906be2ba7474eaa8288fe8df2f62a49",
+          "bytes": 84034048
+        }
+      ]
+    }
+  ],
+  "staticInspection": {
+    "llvmVersion": "LLVM version 20.1.8",
+    "ordinaryImportsMatchedRawLogs": true,
+    "uniqueBinaries": 2,
+    "host": "Windows CI",
+    "inspector": "LLVM objdump",
+    "rawOutputsReparsedOnMac": true
+  },
+  "rustReportedTestPasses": 422,
+  "changedBuildProof": {
+    "matchingControls": 4,
+    "refusals": 4,
+    "originalSourceAndToolsUnchanged": true
+  },
+  "engineIndependence": {
+    "sourceCommitMatched": true,
+    "originalSourceUnchanged": true,
+    "cargoProfile": "release",
+    "cargoTarget": "x86_64-pc-windows-msvc"
+  },
+  "auditApproved": false,
+  "scope": "CI self-reported build evidence cross-checked against fetched Git source, retained evidence hashes/logs and packaged bytes. Tool executable hashes/installed libraries are not independently authenticated; the full compiler DLL/sysroot/native inputs are not inventoried. No candidate Windows executable launched locally. This earlier source revision is separate from 9aed5a7 download inspection; no hermetic/reproducible-build, signed attestation, licence or native acceptance approval.",
+  "retainedEvidenceArtifact": "weftora-windows-release-evidence-b3c37c4c36b333333e846970dbbd668740b0efd9",
+  "buildEvidenceRelativeDirectory": "weftora-release-build (inside the CI artifact; raw files are not committed here)"
+}

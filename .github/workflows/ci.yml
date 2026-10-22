@@ -302,6 +302,14 @@ jobs:
           if (!(Test-Path -LiteralPath $linker)) { throw "Expected MSVC x64 linker" }
           & $python -B -O scripts/build-windows-candidate.py --linker $linker --out (Join-Path $env:RUNNER_TEMP "weftora-release-build")
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Retain build provenance before longer release proofs
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-windows-build-provenance-${{ github.sha }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/weftora-release-build/
+          retention-days: 14
       - name: Prove release starter and Story edits with matching frozen tools
         shell: pwsh
         run: |
