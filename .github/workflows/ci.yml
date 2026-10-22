@@ -286,19 +286,22 @@ jobs:
       - uses: actions/checkout@v4
       - name: Install pinned Rust toolchain
         run: rustup toolchain install
-      - uses: Swatinem/rust-cache@v2
-        with:
-          shared-key: windows-release
       - uses: actions/setup-python@v5
         with:
           python-version: '3.13'
-      - name: Run full release fixture suite
+      - name: Build and test fresh Windows tools with provenance
         shell: pwsh
         run: |
-          cargo test-all --release --target x86_64-pc-windows-msvc -- --test-threads=1 2>&1 | Tee-Object -FilePath (Join-Path $env:RUNNER_TEMP "weftora-release-tests.log")
+          $python = (Get-Command python -ErrorAction Stop).Source
+          $vswhere = Join-Path ${env:ProgramFiles(x86)} "Microsoft Visual Studio/Installer/vswhere.exe"
+          $vs = & $vswhere -latest -products '*' -requires Microsoft.VisualStudio.Component.VC.Tools.x86.x64 -property installationPath
+          if ($LASTEXITCODE -ne 0 -or !$vs) { throw "Visual Studio x64 build tools are required" }
+          & (Join-Path $vs "Common7/Tools/Launch-VsDevShell.ps1") -Arch amd64 -HostArch amd64 -SkipAutomaticLocation
+          if ($env:VSCMD_ARG_TGT_ARCH -ne "x64" -or $env:VSCMD_ARG_HOST_ARCH -ne "x64") { throw "Expected x64 host and target tools" }
+          $linker = Join-Path $env:VCToolsInstallDir "bin/Hostx64/x64/link.exe"
+          if (!(Test-Path -LiteralPath $linker)) { throw "Expected MSVC x64 linker" }
+          & $python -B -O scripts/build-windows-candidate.py --linker $linker --out (Join-Path $env:RUNNER_TEMP "weftora-release-build")
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-      - name: Build matching Windows release tools
-        run: cargo build --workspace --release --locked --target x86_64-pc-windows-msvc
       - name: Prove release starter and Story edits with matching frozen tools
         shell: pwsh
         run: |
@@ -376,6 +379,13 @@ jobs:
       - name: Stage combined release download verification candidate
         shell: pwsh
         run: |
+          $provenance = Get-Content (Join-Path $env:RUNNER_TEMP "weftora-release-build/build-provenance.json") -Raw | ConvertFrom-Json
+          $checkoutCommit = git rev-parse HEAD
+          if ($LASTEXITCODE -ne 0 -or $provenance.sourceCommit -ne $checkoutCommit) { throw "Build provenance checkout differs" }
+          foreach ($tool in @("weftora.exe", "weftora-player.exe")) {
+            $hash = (Get-FileHash "target/x86_64-pc-windows-msvc/release/$tool" -Algorithm SHA256).Hash.ToLowerInvariant()
+            if ($hash -ne $provenance.binaries.$tool.sha256) { throw "Candidate tool differs from build provenance: $tool" }
+          }
           $packages = @('--package', (Join-Path $env:RUNNER_TEMP "weftora-release-authoring-transport"))
           foreach ($story in @("story-a", "life-sim", "localization-demo")) {
             $packages += @('--package', (Join-Path $env:RUNNER_TEMP "weftora-release-transport-$story"))
@@ -418,7 +428,7 @@ jobs:
           if-no-files-found: ignore
           name: weftora-windows-release-evidence-${{ github.sha }}
           path: |
-            ${{ runner.temp }}/weftora-release-tests.log
+            ${{ runner.temp }}/weftora-release-build/
             ${{ runner.temp }}/weftora-release-example-exports.json
             ${{ runner.temp }}/weftora-release-windows-imports/windows-imports.json
             ${{ runner.temp }}/weftora-release-windows-imports/*.imports.txt
