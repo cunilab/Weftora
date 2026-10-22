@@ -23,9 +23,11 @@ fn collect(root: &Path, path: &Path, files: &mut Vec<std::path::PathBuf>) {
             collect(root, &entry.expect("read source entry").path(), files);
         }
     } else if path.extension().is_some_and(|ext| {
-        ["rs", "toml", "lock", "jsonc", "json", "yarn", "md"]
-            .iter()
-            .any(|allowed| ext == *allowed)
+        [
+            "rs", "toml", "lock", "jsonc", "json", "yarn", "md", "ttf", "otf",
+        ]
+        .iter()
+        .any(|allowed| ext == *allowed)
     }) {
         files.push(
             path.strip_prefix(root)
@@ -35,15 +37,7 @@ fn collect(root: &Path, path: &Path, files: &mut Vec<std::path::PathBuf>) {
     }
 }
 
-fn main() {
-    let manifest = std::path::PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
-    let root = manifest.parent().unwrap().parent().unwrap();
-    assert!(
-        fs::read_to_string(root.join("Cargo.toml"))
-            .expect("workspace manifest")
-            .contains("[workspace]"),
-        "tool identity requires the Engine workspace"
-    );
+pub(crate) fn engine_sources(root: &Path) -> Vec<std::path::PathBuf> {
     let mut files = Vec::new();
     for name in [
         "Cargo.toml",
@@ -60,13 +54,26 @@ fn main() {
         for entry in fs::read_dir(directory).expect("read workspace crates") {
             let path = entry.expect("read crate entry").path();
             if path.is_dir() {
-                for name in ["Cargo.toml", "build.rs", "src", "templates"] {
+                for name in ["Cargo.toml", "build.rs", "src", "templates", "assets"] {
                     collect(root, &path.join(name), &mut files);
                 }
             }
         }
     }
     files.sort();
+    files
+}
+
+fn main() {
+    let manifest = std::path::PathBuf::from(env::var_os("CARGO_MANIFEST_DIR").unwrap());
+    let root = manifest.parent().unwrap().parent().unwrap();
+    assert!(
+        fs::read_to_string(root.join("Cargo.toml"))
+            .expect("workspace manifest")
+            .contains("[workspace]"),
+        "tool identity requires the Engine workspace"
+    );
+    let files = engine_sources(root);
     let mut hash = Sha256::new();
     for name in files {
         let bytes = fs::read(root.join(&name)).expect("read Engine source");

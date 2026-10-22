@@ -182,7 +182,9 @@ def stage(cli, player, output):
     (output / "dependency-notices.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     lines = ["Third-party notice review inventory", "", "This candidate is not approved for release. See dependency-notices.json.",
              "Declared SPDX expressions are upstream metadata, not a legal determination. All available collected licence/notice texts are retained verbatim.",
-             "Paths below are relative to the folder containing this notice.", ""]
+             "Paths below are relative to the folder containing this notice.",
+             "The Weftora player embeds Fira Sans Regular from Bevy's bevy_feathers assets, separately from bevy_text's Fira Mono default font.",
+             "Both original font notices are retained under the bevy_text inventory entry as a collection anchor; this does not attribute Fira Sans to that crate.", ""]
     for record in records:
         lines.append(f"{record['name']} {record['version']}: {record['declaredLicense']}" + (" [MISSING TEXT OR LICENCE METADATA]" if record["missingTextOrMetadata"] else ""))
         lines.extend("  " + file["path"] for file in record["files"])

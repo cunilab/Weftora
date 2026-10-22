@@ -10,14 +10,14 @@
     "children": [
       {
         "type": "panel",
-        "background": "#0A0A14E0",
+        "background": "#0B1220F2",
         "layout": {
           "position": "absolute",
-          "left": 24,
-          "right": 24,
-          "bottom": 24,
-          "padding": 16,
-          "gap": 8
+          "left": "6%",
+          "right": "6%",
+          "bottom": 28,
+          "padding": 28,
+          "gap": 14
         },
         "children": [
           {
@@ -25,18 +25,25 @@
             "bind": {
               "dialogue": "speaker"
             },
-            "size": 22
+            "size": 18,
+            "color": "#F2BF6D"
           },
           {
             "type": "text",
             "bind": {
               "dialogue": "text"
             },
-            "size": 24
+            "size": 26,
+            "color": "#EDF2F8"
           },
           {
             "type": "choiceList",
-            "id": "choices"
+            "id": "choices",
+            "layout": {
+              "gap": 8
+            },
+            "size": 22,
+            "color": "#EDF2F8"
           },
           {
             "type": "list",
@@ -53,8 +60,11 @@
                   "do": "dialogue.advance"
                 },
                 "layout": {
-                  "padding": 8
-                }
+                  "padding": 12
+                },
+                "size": 20,
+                "background": "#F2BF6D",
+                "color": "#101723"
               },
               {
                 "type": "button",
@@ -65,8 +75,9 @@
                   "screen": "volume"
                 },
                 "layout": {
-                  "padding": 8
-                }
+                  "padding": 12
+                },
+                "size": 16
               }
             ]
           }

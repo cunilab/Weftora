@@ -29,7 +29,7 @@
             "background": "#1B3042",
             "layout": {
               "width": "25%",
-              "padding": 14,
+              "padding": 24,
               "gap": 8
             },
             "children": [
@@ -118,14 +118,17 @@
                 "bind": {
                   "dialogue": "text"
                 },
-                "size": 24,
-                "color": "#F4F1E8"
+                "size": 26,
+                "color": "#EDF2F8"
               },
               {
                 "type": "choiceList",
                 "id": "choices",
                 "size": 22,
-                "color": "#F2DDA4"
+                "color": "#EDF2F8",
+                "layout": {
+                  "gap": 8
+                }
               },
               {
                 "type": "button",
@@ -135,10 +138,11 @@
                   "do": "dialogue.advance"
                 },
                 "size": 20,
-                "background": "#304B60",
+                "background": "#F2BF6D",
                 "layout": {
-                  "padding": 10
-                }
+                  "padding": 12
+                },
+                "color": "#101723"
               },
               {
                 "type": "text",
@@ -170,7 +174,7 @@
             "size": 20,
             "background": "#304B60",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           },
           {
@@ -183,7 +187,7 @@
             "size": 20,
             "background": "#304B60",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           },
           {
@@ -196,7 +200,7 @@
             "size": 20,
             "background": "#304B60",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           }
         ]

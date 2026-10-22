@@ -11,13 +11,14 @@ mod localization_tests;
 mod media;
 pub mod presenter;
 mod saves;
+mod theme;
 
 use std::sync::{Arc, Mutex};
 
 use bevy::asset::RenderAssetUsages;
 use bevy::audio::AddAudioSource;
 use bevy::image::{CompressedImageFormats, ImageSampler, ImageType};
-use bevy::input_focus::{InputFocus, tab_navigation::TabNavigationPlugin};
+use bevy::input_focus::{InputFocus, InputFocusVisible, tab_navigation::TabNavigationPlugin};
 use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
 use bevy::ui_widgets::{Activate, Button, observe};
@@ -31,10 +32,9 @@ use weftora_yarn::{CompiledDialogue, DialogueRunner};
 use media::Media;
 use presenter::{Action, END_TEXT, Presenter, Screen};
 
-const PANEL_BG: Color = Color::srgba(0.04, 0.04, 0.08, 0.88);
-const BUTTON_BG: Color = Color::srgb(0.16, 0.18, 0.28);
-const BUTTON_HOVER: Color = Color::srgb(0.26, 0.30, 0.46);
-const SPEAKER_COLOR: Color = Color::srgb(0.95, 0.78, 0.35);
+const PANEL_BG: Color = theme::PANEL;
+const BUTTON_BG: Color = theme::BUTTON;
+const SPEAKER_COLOR: Color = theme::ACCENT;
 const ERROR_COLOR: Color = Color::srgb(1.0, 0.45, 0.45);
 
 /// Opens the game window and runs `story` until the window closes.
@@ -89,6 +89,11 @@ fn run_player(
             primary_window: Some(Window {
                 title,
                 resolution: WindowResolution::new(1280, 720),
+                resize_constraints: bevy::window::WindowResizeConstraints {
+                    min_width: 800.0,
+                    min_height: 600.0,
+                    ..default()
+                },
                 ..default()
             }),
             ..default()
@@ -96,8 +101,10 @@ fn run_player(
         .add_plugins(TabNavigationPlugin)
         .add_audio_source::<media::LoopAudio>()
         .insert_non_send(player)
+        .insert_resource(ClearColor(theme::PANEL))
         .insert_resource(failure)
         .insert_resource(debug_tools::Inspector::new(debug_tools))
+        .init_resource::<ExitConfirmation>()
         .init_resource::<Intents>()
         .init_resource::<Ui>()
         .init_resource::<media::Presentation>()
@@ -105,11 +112,13 @@ fn run_player(
         .add_systems(
             Update,
             (
+                debug_tools::scroll,
                 debug_tools::input,
                 drive,
                 media::sync_views,
                 declarative::sync_layers,
                 declarative::sync_choices,
+                declarative::sync_advance_buttons,
                 declarative::restore_focus,
                 declarative::update_bindings,
                 media::sync_audio,
@@ -206,18 +215,25 @@ enum PanelBinding {
 #[derive(Component)]
 struct SaveStatus;
 
+#[derive(Resource, Default)]
+struct ExitConfirmation(Option<std::time::Duration>);
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
     commands.spawn((
         SaveStatus,
-        label("", 16.0, Color::WHITE),
+        label("", 16.0, theme::MUTED),
         Node {
             position_type: PositionType::Absolute,
-            top: px(12),
+            top: px(16),
             left: px(24),
-            right: px(24),
+            max_width: percent(85),
+            padding: UiRect::axes(px(16), px(10)),
+            border_radius: BorderRadius::all(px(8)),
+            display: Display::None,
             ..default()
         },
+        BackgroundColor(theme::PANEL),
         GlobalZIndex(1000),
     ));
     commands.spawn((
@@ -243,16 +259,20 @@ fn setup(mut commands: Commands) {
         Pickable::IGNORE,
         Node {
             position_type: PositionType::Absolute,
-            left: px(24),
-            right: px(24),
-            bottom: px(24),
+            left: percent(5),
+            right: percent(5),
+            bottom: px(28),
             min_height: px(180),
-            padding: UiRect::all(px(20)),
+            padding: UiRect::all(px(28)),
+            border: UiRect::all(px(1)),
+            border_radius: BorderRadius::all(px(12)),
             flex_direction: FlexDirection::Column,
             row_gap: px(10),
             ..default()
         },
         BackgroundColor(PANEL_BG),
+        BorderColor::all(theme::BORDER),
+        Outline::default(),
     ));
 }
 
@@ -270,12 +290,28 @@ fn drive(
     mut exit: MessageWriter<AppExit>,
     mut media: Media,
     time: Res<Time>,
+    mut quit: ResMut<ExitConfirmation>,
 ) {
     if !inspector.captured && keys.just_pressed(KeyCode::Escape) {
-        exit.write(AppExit::Success);
+        if ui.modal() && !matches!(player.presenter.screen(), Screen::Error(_)) {
+            // Close only pops a validated layer; consume input before exposing the screen below.
+            let _ = ui.navigate(&UiAction::Close, &player.story, None);
+            intents.drain().for_each(drop);
+            quit.0 = None;
+        } else if matches!(player.presenter.screen(), Screen::Error(_))
+            || quit.0.is_some_and(|until| time.elapsed() <= until)
+        {
+            exit.write(AppExit::Success);
+        } else {
+            quit.0 = Some(time.elapsed() + std::time::Duration::from_secs(3));
+            intents.drain().for_each(drop);
+        }
         return;
     }
 
+    if keys.get_just_pressed().any(|key| *key != KeyCode::Escape) {
+        quit.0 = None;
+    }
     media.begin_frame(
         time.delta(),
         matches!(player.presenter.screen(), Screen::Error(_)),
@@ -310,6 +346,7 @@ fn drive(
     }
     let mut progressed = false;
     for intent in intents.drain() {
+        quit.0 = None;
         if inspector.captured {
             continue;
         }
@@ -586,9 +623,9 @@ fn refresh_panel(
                     label_with_font(text, 30.0, Color::WHITE, ui.default_font.clone()),
                 ));
                 p.spawn(label_with_font(
-                    "click / Space to continue",
+                    "CLICK  /  SPACE  /  ENTER    Continue",
                     16.0,
-                    Color::srgb(0.6, 0.6, 0.7),
+                    theme::MUTED,
                     ui.default_font.clone(),
                 ));
             });
@@ -600,11 +637,10 @@ fn refresh_panel(
                         Button,
                         Hovered::default(),
                         bevy::input_focus::tab_navigation::TabIndex(0),
-                        Node {
-                            padding: UiRect::axes(px(16), px(10)),
-                            ..default()
-                        },
+                        theme::button_node(),
                         BackgroundColor(BUTTON_BG),
+                        BorderColor::all(theme::BORDER),
+                        Outline::default(),
                         observe(move |_: On<Activate>, mut intents: ResMut<Intents>| {
                             intents.push(Intent::Select {
                                 layer: None,
@@ -651,7 +687,7 @@ fn refresh_panel(
                 p.spawn(label_with_font(
                     "press Esc to quit",
                     16.0,
-                    Color::srgb(0.6, 0.6, 0.7),
+                    theme::MUTED,
                     ui.default_font.clone(),
                 ));
             });
@@ -659,31 +695,78 @@ fn refresh_panel(
     }
 }
 
-fn refresh_save_status(player: NonSend<Player>, mut text: Single<&mut Text, With<SaveStatus>>) {
-    let value = if !player.save_status.is_empty() {
+fn refresh_save_status(
+    player: NonSend<Player>,
+    ui: Res<Ui>,
+    quit: Res<ExitConfirmation>,
+    time: Res<Time>,
+    mut text: Single<(&mut Text, &mut Node, &mut TextFont), With<SaveStatus>>,
+) {
+    let (ref mut text, ref mut node, ref mut font) = *text;
+    let source = ui.default_font.clone().map(Into::into).unwrap_or_default();
+    if font.font != source {
+        font.font = source;
+    }
+    let value = if quit.0.is_some_and(|until| time.elapsed() <= until) {
+        "Press Esc again to quit. Unsaved progress will be lost."
+    } else if !player.save_status.is_empty() {
         player.save_status.as_str()
     } else if let Some(Err(message)) = &player.save_store {
         message.as_str()
-    } else if player.save_store.is_some() {
-        "F5: save at checkpoint • F9: load"
     } else {
         ""
+    };
+    node.display = if value.is_empty() {
+        Display::None
+    } else {
+        Display::Flex
     };
     if text.0 != value {
         text.0 = value.into();
     }
 }
 
+#[allow(clippy::type_complexity)]
 fn hover_buttons(
     focus: Res<InputFocus>,
-    mut buttons: Query<(Entity, &Hovered, Option<&ButtonBase>, &mut BackgroundColor), With<Button>>,
+    visible: Res<InputFocusVisible>,
+    mut buttons: Query<
+        (
+            Entity,
+            &Hovered,
+            Option<&ButtonBase>,
+            Has<bevy::ui::Pressed>,
+            &mut BackgroundColor,
+            Option<&mut BorderColor>,
+            Option<&mut Outline>,
+        ),
+        With<Button>,
+    >,
 ) {
-    for (entity, hovered, base, mut background) in &mut buttons {
-        background.0 = if hovered.get() || focus.get() == Some(entity) {
-            BUTTON_HOVER
+    for (entity, hovered, base, pressed, mut background, border, outline) in &mut buttons {
+        let base = base.map_or(BUTTON_BG, |b| b.0);
+        let focused = visible.0 && focus.get() == Some(entity);
+        let fill = if pressed {
+            base.mix(&Color::BLACK, 0.20)
+        } else if hovered.get() {
+            base.mix(&Color::WHITE, 0.12)
         } else {
-            base.map_or(BUTTON_BG, |b| b.0)
+            base
         };
+        background.set_if_neq(BackgroundColor(fill));
+        if let Some(mut border) = border {
+            border.set_if_neq(BorderColor::all(if focused {
+                theme::ACCENT
+            } else {
+                theme::BORDER
+            }));
+        }
+        if let Some(mut outline) = outline {
+            let color = if focused { theme::ACCENT } else { Color::NONE };
+            if outline.color != color || outline.width != px(2) || outline.offset != px(2) {
+                *outline = Outline::new(px(2), px(2), color);
+            }
+        }
     }
 }
 
@@ -768,6 +851,7 @@ mod tests {
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<InputFocus>()
             .init_resource::<InputFocusVisible>()
+            .init_resource::<ExitConfirmation>()
             .init_resource::<Intents>()
             .init_resource::<Ui>()
             .init_resource::<media::Presentation>()
@@ -780,6 +864,77 @@ mod tests {
             );
         app
     }
+    #[test]
+    fn escape_requires_a_second_press_and_expires() {
+        let mut app = input_app();
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(std::time::Duration::from_secs(4));
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        assert!(
+            app.world().resource::<Messages<AppExit>>().is_empty(),
+            "expired confirmation must rearm"
+        );
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        assert_eq!(app.world().resource::<Messages<AppExit>>().len(), 1);
+    }
+
+    #[test]
+    fn themed_button_hover_preserves_base_and_keyboard_focus_has_its_own_border() {
+        use bevy::ecs::system::RunSystemOnce;
+        let mut app = input_app();
+        let base = Color::srgb(0.3, 0.1, 0.2);
+        let button = app
+            .world_mut()
+            .spawn((
+                Button,
+                Hovered::default(),
+                ButtonBase(base),
+                BackgroundColor(base),
+                BorderColor::all(theme::BORDER),
+                Outline::default(),
+            ))
+            .id();
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(button, bevy::input_focus::FocusCause::Navigated);
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = true;
+        app.world_mut().run_system_once(hover_buttons).unwrap();
+        assert_eq!(app.world().get::<BackgroundColor>(button).unwrap().0, base);
+        assert_eq!(
+            *app.world().get::<BorderColor>(button).unwrap(),
+            BorderColor::all(theme::ACCENT)
+        );
+        assert_eq!(
+            app.world().get::<Outline>(button).unwrap().color,
+            theme::ACCENT
+        );
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = false;
+        app.world_mut().run_system_once(hover_buttons).unwrap();
+        assert_eq!(
+            *app.world().get::<BorderColor>(button).unwrap(),
+            BorderColor::all(theme::BORDER)
+        );
+    }
+
     #[test]
     fn runtime_failure_survives_escape_and_keeps_the_first_error() {
         let mut app = input_app();

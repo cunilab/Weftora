@@ -91,7 +91,7 @@ def main():
     require(baseline["compiledDialogueSha256"] == edited["compiledDialogueSha256"], "compiled dialogue changed")
     require(baseline["headlessTraceSha256"] == edited["headlessTraceSha256"], "headless event trace changed")
     require(baseline["screensSha256"]["menu.jsonc"] != edited["screensSha256"]["menu.jsonc"], "menu edit missing")
-    require(baseline["menu"] == {"background": "#14251F", "padding": 32, "firstTarget": "activity"},
+    require(baseline["menu"] == {"background": "#0B1220", "padding": 32, "firstTarget": "activity"},
             "review baseline menu")
     require(edited["menu"] == {"background": "#302338", "padding": 48, "firstTarget": "dialogue"},
             "UI edit did not apply")

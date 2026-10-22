@@ -3,7 +3,7 @@
   "root": {
     "type": "screen",
     "id": "menu",
-    "background": "#14251F",
+    "background": "#0B1220",
     "layout": {
       "width": "100%",
       "height": "100%",
@@ -15,27 +15,30 @@
         "type": "text",
         "text": "STATION DESK",
         "size": 32,
-        "color": "#E8EEE7"
+        "color": "#EDF2F8"
       },
       {
         "type": "text",
         "text": "One Story, three workspaces. Switching screens keeps the current dialogue.",
         "size": 20,
-        "color": "#E8EEE7"
+        "color": "#EDF2F8"
       },
       {
         "type": "text",
         "bind": {
           "dialogue": "text"
         },
-        "size": 22,
-        "color": "#E8EEE7"
+        "size": 26,
+        "color": "#EDF2F8"
       },
       {
         "type": "choiceList",
         "id": "choices",
         "size": 22,
-        "color": "#E9C46A"
+        "color": "#EDF2F8",
+        "layout": {
+          "gap": 8
+        }
       },
       {
         "type": "list",
@@ -53,10 +56,10 @@
               "screen": "activity"
             },
             "size": 20,
-            "color": "#F8F1D7",
-            "background": "#344E41",
+            "color": "#EDF2F8",
+            "background": "#24374A",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           },
           {
@@ -68,10 +71,10 @@
               "screen": "dialogue"
             },
             "size": 20,
-            "color": "#F8F1D7",
-            "background": "#344E41",
+            "color": "#EDF2F8",
+            "background": "#24374A",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           },
           {
@@ -83,10 +86,10 @@
               "screen": "pause"
             },
             "size": 20,
-            "color": "#F8F1D7",
-            "background": "#344E41",
+            "color": "#EDF2F8",
+            "background": "#24374A",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           }
         ]

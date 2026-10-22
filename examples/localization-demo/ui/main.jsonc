@@ -3,7 +3,7 @@
   "root": {
     "type": "screen",
     "id": "main",
-    "background": "#14251F",
+    "background": "#0B1220",
     "layout": {
       "width": "100%",
       "height": "100%",
@@ -34,7 +34,7 @@
               "key": "ui.language",
               "value": "en"
             },
-            "size": 22,
+            "size": 20,
             "layout": {
               "padding": 12
             }
@@ -48,7 +48,7 @@
               "key": "ui.language",
               "value": "id"
             },
-            "size": 22,
+            "size": 20,
             "layout": {
               "padding": 12
             }
@@ -62,7 +62,7 @@
               "key": "ui.language",
               "value": "ja"
             },
-            "size": 22,
+            "size": 20,
             "layout": {
               "padding": 12
             }
@@ -74,19 +74,25 @@
         "bind": {
           "dialogue": "speaker"
         },
-        "size": 24
+        "size": 18,
+        "color": "#F2BF6D"
       },
       {
         "type": "text",
         "bind": {
           "dialogue": "text"
         },
-        "size": 28
+        "size": 26,
+        "color": "#EDF2F8"
       },
       {
         "type": "choiceList",
         "id": "choices",
-        "size": 26
+        "size": 22,
+        "layout": {
+          "gap": 8
+        },
+        "color": "#EDF2F8"
       },
       {
         "type": "button",
@@ -97,10 +103,12 @@
         "action": {
           "do": "dialogue.advance"
         },
-        "size": 24,
+        "size": 20,
         "layout": {
           "padding": 12
-        }
+        },
+        "background": "#F2BF6D",
+        "color": "#101723"
       }
     ]
   }

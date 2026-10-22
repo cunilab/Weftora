@@ -21,6 +21,16 @@ class UpstreamNoticeDataTests(unittest.TestCase):
         self.assertIn("The Mozilla Foundation and Telefonica S.A.", text)
         self.assertEqual(font["kind"], "embedded-asset-notice")
 
+    def test_embedded_interface_font_matches_pinned_source_and_shipped_notice(self):
+        repo = Path(__file__).resolve().parents[2]
+        assets = repo / "crates/weftora-render-bevy/assets"
+        self.assertEqual(hashlib.sha256((assets / "FiraSans-Regular.ttf").read_bytes()).hexdigest(), "3dabf3d48bf4599f95cffd92f99ea426a014d5311f52a5eb5ec3af265e97cd97")
+        index = json.loads((repo / "third-party/notices/index.json").read_text(encoding="utf-8"))
+        package = next(p for p in index["packages"] if p["name"] == "bevy_text")
+        notice = next(f for f in package["files"] if f["path"].endswith("FiraSans-License.txt"))
+        self.assertEqual((assets / "FiraSans-License.txt").read_bytes(), (repo / "third-party/notices" / notice["path"]).read_bytes())
+        self.assertEqual(notice["kind"], "embedded-asset-notice")
+
     def test_checked_in_texts_match_pinned_provenance_and_have_no_orphan_files(self):
         root = Path(__file__).resolve().parents[2] / "third-party/notices"
         index = json.loads((root / "index.json").read_text(encoding="utf-8"))

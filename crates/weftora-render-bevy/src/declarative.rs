@@ -11,7 +11,7 @@ use weftora_story::ui::{
     Binding, DialogueBinding, Direction, Length, Position, UiAction, Widget, WidgetKind,
 };
 
-use crate::{BUTTON_BG, END_TEXT, Player, Screen, decode_image, read_asset};
+use crate::{BUTTON_BG, END_TEXT, Player, Screen, decode_image, read_asset, theme};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Intent {
@@ -142,6 +142,9 @@ pub(crate) struct Choices {
     source: String,
 }
 #[derive(Component)]
+pub(crate) struct AdvanceButton;
+
+#[derive(Component)]
 pub(crate) struct ButtonBase(pub Color);
 
 pub(crate) fn setup(
@@ -154,6 +157,11 @@ pub(crate) fn setup(
     let initial = player.story.manifest().initial_screen.clone();
     let result = (|| {
         let mut asset_cost = 0u64;
+        ui.default_font = Some(fonts.add(decode_font(
+            "player.interface",
+            include_bytes!("../assets/FiraSans-Regular.ttf").to_vec(),
+            &mut font_cx,
+        )?));
         if let Some(id) = player
             .story
             .localization()
@@ -259,6 +267,27 @@ fn node(w: &Widget) -> Node {
         padding: UiRect::all(px(w.layout.padding.unwrap_or(0.0))),
         row_gap: px(w.layout.gap.unwrap_or(0.0)),
         column_gap: px(w.layout.gap.unwrap_or(0.0)),
+        border: if w.kind == WidgetKind::Panel && w.background.is_some() {
+            UiRect::all(px(1))
+        } else {
+            UiRect::ZERO
+        },
+        border_radius: if w.kind == WidgetKind::Panel {
+            BorderRadius::all(px(12))
+        } else {
+            BorderRadius::ZERO
+        },
+        min_width: px(0),
+        flex_wrap: if w.layout.direction == Direction::Row {
+            FlexWrap::Wrap
+        } else {
+            FlexWrap::NoWrap
+        },
+        align_items: if w.layout.direction == Direction::Row {
+            AlignItems::Center
+        } else {
+            AlignItems::Stretch
+        },
         flex_direction: if w.layout.direction == Direction::Row {
             FlexDirection::Row
         } else {
@@ -274,7 +303,7 @@ fn color(s: &Option<String>, fallback: Color) -> Color {
 }
 fn font(w: &Widget, ui: &Ui) -> TextFont {
     let mut font = TextFont {
-        font_size: FontSize::Px(w.size.unwrap_or(28.0)),
+        font_size: FontSize::Px(w.size.unwrap_or(20.0)),
         ..default()
     };
     if let Some(handle) = w
@@ -301,10 +330,26 @@ fn spawn_widget(
     if w.kind != WidgetKind::Button {
         commands.entity(entity).insert(Pickable::IGNORE);
     }
+    if w.kind == WidgetKind::List
+        && w.children
+            .iter()
+            .any(|child| child.kind == WidgetKind::Button)
+    {
+        // Gaps between toolbar buttons must not advance the dialogue behind the toolbar.
+        commands.entity(entity).insert(Pickable {
+            is_hoverable: false,
+            should_block_lower: true,
+        });
+    }
     if w.background.is_some() {
         commands
             .entity(entity)
             .insert(BackgroundColor(color(&w.background, Color::NONE)));
+        if w.kind == WidgetKind::Panel {
+            commands
+                .entity(entity)
+                .insert(BorderColor::all(theme::BORDER));
+        }
     }
     match w.kind {
         WidgetKind::Text | WidgetKind::Button => {
@@ -313,7 +358,8 @@ fn spawn_widget(
                 .spawn((
                     Text::new(w.text.clone().unwrap_or_default()),
                     font(w, ui),
-                    TextColor(color(&w.color, Color::WHITE)),
+                    TextColor(color(&w.color, theme::TEXT)),
+                    bevy::text::LineHeight::RelativeToFont(1.35),
                     Pickable::IGNORE,
                 ))
                 .id();
@@ -326,8 +372,25 @@ fn spawn_widget(
             }
             if w.kind == WidgetKind::Button {
                 let action = w.action.clone().expect("validated button");
+                if matches!(action, UiAction::Advance) {
+                    commands.entity(entity).insert(AdvanceButton);
+                }
                 let origin = Some(layer.to_string());
+                let mut button_layout = node(w);
+                let defaults = theme::button_node();
+                button_layout.min_height = defaults.min_height;
+                button_layout.min_width = defaults.min_width;
+                button_layout.border = defaults.border;
+                button_layout.border_radius = defaults.border_radius;
+                button_layout.align_items = defaults.align_items;
+                button_layout.flex_shrink = 0.0;
+                if w.layout.padding.is_none() {
+                    button_layout.padding = defaults.padding;
+                }
                 commands.entity(entity).insert((
+                    button_layout,
+                    BorderColor::all(theme::BORDER),
+                    Outline::default(),
                     Button,
                     Hovered::default(),
                     TabIndex(0),
@@ -510,10 +573,9 @@ pub(crate) fn sync_choices(
                         list.layer,
                         list.widget.id.as_ref().expect("validated ID")
                     )),
-                    Node {
-                        padding: UiRect::axes(px(16), px(10)),
-                        ..default()
-                    },
+                    theme::button_node(),
+                    BorderColor::all(theme::BORDER),
+                    Outline::default(),
                     BackgroundColor(BUTTON_BG),
                     ButtonBase(BUTTON_BG),
                     observe(move |_: On<Activate>, mut intents: ResMut<Intents>| {
@@ -544,9 +606,29 @@ pub(crate) fn sync_choices(
         }
     }
 }
+pub(crate) fn sync_advance_buttons(
+    player: NonSend<Player>,
+    mut buttons: Query<(Entity, &mut Node), With<AdvanceButton>>,
+    mut focus: ResMut<InputFocus>,
+) {
+    let display = if matches!(player.presenter.screen(), Screen::Line { .. }) {
+        Display::Flex
+    } else {
+        Display::None
+    };
+    for (entity, mut node) in &mut buttons {
+        if node.display != display {
+            node.display = display;
+        }
+        if display == Display::None && focus.get() == Some(entity) {
+            focus.clear();
+        }
+    }
+}
+
 pub(crate) fn restore_focus(
     mut ui: ResMut<Ui>,
-    keys: Query<(Entity, &FocusKey)>,
+    keys: Query<(Entity, &FocusKey, Option<&Node>)>,
     buttons: Query<(), With<Button>>,
     mut focus: ResMut<InputFocus>,
     focus_visible: Res<InputFocusVisible>,
@@ -556,7 +638,9 @@ pub(crate) fn restore_focus(
         ui.focus_first = true;
     }
     if let Some(key) = ui.restore.take()
-        && let Some((entity, _)) = keys.iter().find(|(_, k)| k.0 == key)
+        && let Some((entity, _, _)) = keys
+            .iter()
+            .find(|(_, k, n)| k.0 == key && n.is_none_or(|n| n.display != Display::None))
     {
         focus.set(entity, FocusCause::Auto);
         ui.focus_first = false;
@@ -564,7 +648,9 @@ pub(crate) fn restore_focus(
     if ui.focus_first
         && focus_visible.0
         && let Some(key) = &ui.first_key
-        && let Some((entity, _)) = keys.iter().find(|(_, k)| k.0 == *key)
+        && let Some((entity, _, _)) = keys
+            .iter()
+            .find(|(_, k, n)| k.0 == *key && n.is_none_or(|n| n.display != Display::None))
     {
         focus.set(entity, FocusCause::Auto);
     }
@@ -841,7 +927,13 @@ mod tests {
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (sync_layers, sync_choices, restore_focus, update_bindings)
+                (
+                    sync_layers,
+                    sync_choices,
+                    sync_advance_buttons,
+                    restore_focus,
+                    update_bindings,
+                )
                     .chain()
                     .after(crate::drive),
             );
@@ -870,7 +962,13 @@ mod tests {
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (sync_layers, sync_choices, restore_focus, update_bindings)
+                (
+                    sync_layers,
+                    sync_choices,
+                    sync_advance_buttons,
+                    restore_focus,
+                    update_bindings,
+                )
                     .chain()
                     .after(crate::drive),
             );
@@ -882,6 +980,104 @@ mod tests {
         player.presenter.advance();
         assert!(matches!(player.presenter.screen(), Screen::Choices(_)));
     }
+    #[test]
+    fn escape_closing_developer_tools_never_arms_quit_or_dismisses_story_overlay() {
+        for modal in [false, true] {
+            let mut app = screens_app();
+            app.insert_resource(crate::debug_tools::Inspector::new(true));
+            if modal {
+                activate(&mut app, "menu/pause");
+            }
+            let before = app.world().non_send::<Player>().presenter.screen().clone();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .reset_all();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::F12);
+            app.update();
+            assert!(app.world().resource::<crate::debug_tools::Inspector>().open);
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .reset_all();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Escape);
+            app.update();
+            assert!(!app.world().resource::<crate::debug_tools::Inspector>().open);
+            assert_eq!(app.world().resource::<Ui>().modal(), modal);
+            assert!(
+                app.world()
+                    .resource::<crate::ExitConfirmation>()
+                    .0
+                    .is_none()
+            );
+            assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+            assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        }
+    }
+
+    #[test]
+    fn continue_hides_during_choices_and_returns_for_the_next_line() {
+        let mut app = rendered_app();
+        app.update();
+        let next = {
+            let world = app.world_mut();
+            world
+                .query_filtered::<Entity, With<AdvanceButton>>()
+                .single(world)
+                .unwrap()
+        };
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(next, FocusCause::Navigated);
+        offer_choices(&mut app);
+        app.update();
+        assert_eq!(
+            app.world().get::<Node>(next).unwrap().display,
+            Display::None
+        );
+        assert_ne!(app.world().resource::<InputFocus>().get(), Some(next));
+        app.world_mut().non_send_mut::<Player>().presenter.select(0);
+        app.update();
+        assert_eq!(
+            app.world().get::<Node>(next).unwrap().display,
+            Display::Flex
+        );
+    }
+
+    #[test]
+    fn escape_dismisses_overlay_without_progression_or_quit_and_restores_focus() {
+        let mut app = screens_app();
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = true;
+        activate(&mut app, "menu/pause");
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: None,
+                action: UiAction::Advance,
+            });
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        assert!(!app.world().resource::<Ui>().modal());
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+        assert!(
+            app.world()
+                .resource::<crate::ExitConfirmation>()
+                .0
+                .is_none()
+        );
+        let focused = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<FocusKey>(focused).unwrap().0,
+            "menu/pause"
+        );
+    }
+
     #[test]
     fn space_after_choices_appear_does_not_select_without_keyboard_navigation() {
         let mut app = rendered_app();
@@ -1016,7 +1212,13 @@ mod tests {
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (sync_layers, sync_choices, restore_focus, update_bindings)
+                (
+                    sync_layers,
+                    sync_choices,
+                    sync_advance_buttons,
+                    restore_focus,
+                    update_bindings,
+                )
                     .chain()
                     .after(crate::drive),
             );
@@ -1083,7 +1285,7 @@ mod tests {
                 .query::<(&Node, &BackgroundColor)>()
                 .iter(world)
                 .any(|(node, bg)| {
-                    node.width == percent(45) && bg.0 == Color::from(Srgba::hex("243C32").unwrap())
+                    node.width == percent(45) && bg.0 == Color::from(Srgba::hex("152235").unwrap())
                 })
         };
         assert!(

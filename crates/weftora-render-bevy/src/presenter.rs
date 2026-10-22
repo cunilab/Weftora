@@ -41,7 +41,7 @@ pub enum Screen {
     Error(String),
 }
 
-pub const END_TEXT: &str = "The End \u{2014} press Esc to quit";
+pub const END_TEXT: &str = "The End \u{2014} press Esc twice to quit";
 
 pub struct Presenter<S: EventSource> {
     source: S,

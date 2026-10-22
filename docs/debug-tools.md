@@ -16,12 +16,13 @@ weftora run my-story --debug-tools
 
 For an already exported game, use `weftora-player.exe my-game/story --debug-tools`. From the game's folder, `weftora-player.exe --debug-tools` uses the adjacent `story/` folder. An explicit dialogue artifact may be selected before the flag: `weftora-player.exe my-story --dialogue compiled/dialogue.json --debug-tools`.
 
-The window title identifies developer mode. Press **F12** to open the inspector. Normal launches keep the inspector disabled. The option is available in release builds so authors can verify the actual release player. It is an explicit development mode, not a Story capability or a save-format change.
+The window title identifies developer mode. Press **F12** to open the inspector as a right-side drawer over the current scene. Click **State**, **Commands** or **Event trace** to switch tools, or use Tab. The underlying game remains visible while its input is captured. Normal launches keep the inspector disabled. The option is available in release builds so authors can verify the actual release player. It is an explicit development mode, not a Story capability or a save-format change.
 
 ## Inspect and edit
 
 | Control | Action |
 | --- | --- |
+| Mouse wheel / trackpad; Home / End | Scroll the tool content; jump to its top / bottom |
 | Tab | Cycle state → command → trace → state |
 | Up / Down | Select a state key in state mode |
 | PageUp / PageDown | Move by twelve keys |

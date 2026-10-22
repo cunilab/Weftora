@@ -3,7 +3,7 @@
   "root": {
     "type": "screen",
     "id": "dialogue",
-    "background": "#14251F",
+    "background": "#0B1220",
     "layout": {
       "width": "100%",
       "height": "100%",
@@ -15,14 +15,14 @@
         "type": "text",
         "text": "STATION LOG",
         "size": 32,
-        "color": "#E8EEE7"
+        "color": "#EDF2F8"
       },
       {
         "type": "panel",
-        "background": "#243C32",
+        "background": "#152235",
         "layout": {
           "width": "100%",
-          "padding": 20,
+          "padding": 24,
           "gap": 14
         },
         "children": [
@@ -31,14 +31,17 @@
             "bind": {
               "dialogue": "text"
             },
-            "size": 22,
-            "color": "#E8EEE7"
+            "size": 26,
+            "color": "#EDF2F8"
           },
           {
             "type": "choiceList",
             "id": "choices",
             "size": 22,
-            "color": "#E9C46A"
+            "color": "#EDF2F8",
+            "layout": {
+              "gap": 8
+            }
           },
           {
             "type": "button",
@@ -48,10 +51,10 @@
               "do": "dialogue.advance"
             },
             "size": 20,
-            "color": "#F8F1D7",
-            "background": "#344E41",
+            "color": "#101723",
+            "background": "#F2BF6D",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           }
         ]
@@ -72,10 +75,10 @@
               "screen": "menu"
             },
             "size": 20,
-            "color": "#F8F1D7",
-            "background": "#344E41",
+            "color": "#EDF2F8",
+            "background": "#24374A",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           },
           {
@@ -87,10 +90,10 @@
               "screen": "activity"
             },
             "size": 20,
-            "color": "#F8F1D7",
-            "background": "#344E41",
+            "color": "#EDF2F8",
+            "background": "#24374A",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           },
           {
@@ -102,10 +105,10 @@
               "screen": "pause"
             },
             "size": 20,
-            "color": "#F8F1D7",
-            "background": "#344E41",
+            "color": "#EDF2F8",
+            "background": "#24374A",
             "layout": {
-              "padding": 10
+              "padding": 12
             }
           }
         ]

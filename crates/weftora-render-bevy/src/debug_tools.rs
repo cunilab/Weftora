@@ -1,7 +1,9 @@
 //! Opt-in developer tools; edits and commands use the ordinary validated rule bridge.
 use bevy::input::keyboard::KeyboardInput;
 use bevy::input_focus::{FocusCause, InputFocus};
+use bevy::picking::hover::Hovered;
 use bevy::prelude::*;
+use bevy::ui_widgets::Button;
 use weftora_api::Value;
 use weftora_core::{Scope, State};
 use weftora_story::ui::UiAction;
@@ -11,8 +13,8 @@ use crate::{Player, Screen, declarative};
 const MAX_INPUT: usize = 16 * 1024;
 const PAGE_SIZE: usize = 12;
 
-#[derive(Default, PartialEq, Eq)]
-enum Mode {
+#[derive(Clone, Copy, Default, PartialEq, Eq)]
+pub(super) enum Mode {
     #[default]
     State,
     Command,
@@ -22,7 +24,7 @@ enum Mode {
 #[derive(Resource, Default)]
 pub(super) struct Inspector {
     enabled: bool,
-    open: bool,
+    pub(super) open: bool,
     pub captured: bool,
     selected: Option<String>,
     input: String,
@@ -37,6 +39,20 @@ impl Inspector {
         Self {
             enabled,
             ..default()
+        }
+    }
+    fn change_mode(&mut self, mode: Mode, player: &Player) {
+        if self.mode == mode {
+            return;
+        }
+        if self.mode == Mode::Command || mode == Mode::Command {
+            std::mem::swap(&mut self.input, &mut self.command_input);
+        }
+        self.mode = mode;
+        self.status.clear();
+        self.trace_offset = 0;
+        if mode == Mode::State {
+            self.select(player, 0);
         }
     }
     fn select(&mut self, player: &Player, movement: isize) {
@@ -185,24 +201,12 @@ pub(super) fn input(
     }
     focus.clear();
     if keys.just_pressed(KeyCode::Tab) {
-        if inspector.mode != Mode::Command {
-            let Inspector {
-                input,
-                command_input,
-                ..
-            } = &mut *inspector;
-            std::mem::swap(input, command_input);
-        }
-        inspector.mode = match inspector.mode {
+        let mode = match inspector.mode {
             Mode::State => Mode::Command,
             Mode::Command => Mode::Trace,
             Mode::Trace => Mode::State,
         };
-        inspector.status.clear();
-        inspector.trace_offset = 0;
-        if inspector.mode == Mode::State {
-            inspector.select(&player, 0);
-        }
+        inspector.change_mode(mode, &player);
         events.clear();
         return;
     }
@@ -292,65 +296,123 @@ pub(super) struct Overlay;
 #[derive(Component)]
 pub(super) struct Contents;
 
+#[derive(Component)]
+pub(super) struct ScrollBody;
+
+#[derive(Component)]
+pub(super) struct ModeButton(Mode);
+
 pub(super) fn setup(mut commands: Commands, inspector: Res<Inspector>) {
     if !inspector.enabled {
         return;
     }
-    commands
-        .spawn((
-            Overlay,
-            GlobalZIndex(1_000_000),
+    commands.spawn((
+        Overlay, GlobalZIndex(1_000_000),
+        Node {
+            position_type: PositionType::Absolute, width: percent(100), height: percent(100),
+            display: Display::None, ..default()
+        },
+        BackgroundColor(Color::srgba(0.0, 0.0, 0.0, 0.45)),
+    )).with_children(|parent| {
+        parent.spawn((
             Node {
-                position_type: PositionType::Absolute,
-                width: percent(100),
-                height: percent(100),
-                padding: UiRect::all(px(24)),
-                overflow: Overflow::clip(),
-                display: Display::None,
-                ..default()
+                position_type: PositionType::Absolute, right: px(0), top: px(0),
+                width: percent(65), min_width: px(520), max_width: px(960), height: percent(100),
+                padding: UiRect::all(px(24)), row_gap: px(16), flex_direction: FlexDirection::Column,
+                overflow: Overflow::clip(), ..default()
             },
-            BackgroundColor(Color::srgb(0.02, 0.02, 0.04)),
-        ))
-        .with_children(|parent| {
-            parent.spawn((
-                Contents,
-                crate::label("", 16.0, Color::WHITE),
-                TextLayout::default(),
-            ));
+            BackgroundColor(crate::theme::PANEL),
+        )).with_children(|drawer| {
+            drawer.spawn(crate::label("DEVELOPER WORKSPACE", 20.0, crate::theme::ACCENT));
+            drawer.spawn(crate::label("F12 / Esc  Close   Tab  Tool   Home / End  Scroll", 14.0, crate::theme::MUTED));
+            drawer.spawn(Node { flex_direction: FlexDirection::Row, column_gap: px(8), ..default() })
+                .with_children(|tabs| {
+                    for (mode, name) in [(Mode::State, "State"), (Mode::Command, "Commands"), (Mode::Trace, "Event trace")] {
+                        tabs.spawn((
+                            Button, ModeButton(mode), Hovered::default(), crate::theme::button_node(),
+                            BackgroundColor(crate::BUTTON_BG), crate::declarative::ButtonBase(crate::BUTTON_BG),
+                            BorderColor::all(crate::theme::BORDER), Outline::default(),
+                            bevy::ui_widgets::observe(move |_: On<bevy::ui_widgets::Activate>, mut inspector: ResMut<Inspector>, player: NonSend<Player>| {
+                                inspector.change_mode(mode, &player);
+                            }),
+                        )).with_children(|tab| { tab.spawn(crate::label(name, 16.0, crate::theme::TEXT)); });
+                    }
+                });
+            drawer.spawn((ScrollBody, bevy::ui_widgets::ScrollArea,
+                Node { flex_grow: 1.0, min_height: px(0), flex_direction: FlexDirection::Column, overflow: Overflow::scroll_y(), ..default() },
+            )).with_children(|body| {
+                body.spawn((Contents, crate::label("", 14.0, crate::theme::TEXT), TextLayout::linebreak(bevy::text::LineBreak::WordOrCharacter),
+                    Node { min_width: px(0), flex_shrink: 0.0, ..default() }));
+            });
         });
+    });
+}
+
+pub(super) fn scroll(
+    inspector: Res<Inspector>,
+    keys: Res<ButtonInput<KeyCode>>,
+    mut bodies: Query<(&ComputedNode, &mut ScrollPosition), With<ScrollBody>>,
+) {
+    if !inspector.enabled || !inspector.open {
+        return;
+    }
+    for (node, mut position) in &mut bodies {
+        if keys.just_pressed(KeyCode::Home) {
+            position.y = 0.0;
+        }
+        if keys.just_pressed(KeyCode::End) {
+            position.y =
+                ((node.content_size().y - node.size().y) * node.inverse_scale_factor).max(0.0);
+        }
+    }
 }
 
 pub(super) fn refresh(
     inspector: Res<Inspector>,
     player: NonSend<Player>,
     mut overlay: Query<&mut Node, With<Overlay>>,
-    mut contents: Query<(&mut Text, &mut TextLayout), With<Contents>>,
+    mut contents: Query<&mut Text, With<Contents>>,
+    mut tabs: Query<(&ModeButton, &mut crate::declarative::ButtonBase)>,
+    mut bodies: Query<&mut ScrollPosition, With<ScrollBody>>,
+    mut last_mode: Local<Option<Mode>>,
 ) {
     if !inspector.enabled {
         return;
     }
-    let (Ok(mut overlay), Ok((mut text, mut layout))) =
-        (overlay.single_mut(), contents.single_mut())
-    else {
+    let (Ok(mut overlay), Ok(mut text)) = (overlay.single_mut(), contents.single_mut()) else {
         return;
     };
-    overlay.display = if inspector.open {
+    let display = if inspector.open {
         Display::Flex
     } else {
         Display::None
     };
+    if overlay.display != display {
+        overlay.display = display;
+    }
     if !inspector.open {
         return;
     }
-    *layout = if inspector.mode == Mode::Trace {
-        TextLayout::no_wrap()
-    } else {
-        TextLayout::default()
-    };
+    if *last_mode != Some(inspector.mode) {
+        for mut position in &mut bodies {
+            position.0 = Vec2::ZERO;
+        }
+        *last_mode = Some(inspector.mode);
+    }
+    for (tab, mut base) in &mut tabs {
+        let color = if tab.0 == inspector.mode {
+            Color::srgb(0.23, 0.30, 0.40)
+        } else {
+            crate::BUTTON_BG
+        };
+        if base.0 != color {
+            base.0 = color;
+        }
+    }
     if inspector.mode == Mode::Trace {
         let mut lines = vec![
-            "DEVELOPER SIGNAL / EVENT TRACE — F12 / Esc: close".to_string(),
-            "Tab: state • Up/Down: scroll • PageUp/PageDown: page • Delete: clear history".into(),
+            "EVENT TRACE".to_string(),
+            "Up/Down: scroll | PageUp/PageDown: page | Delete: clear".into(),
             "128 recent rows; each preview is limited to 256 characters. Not saved; load starts a fresh trace.".into(),
         ];
         if let Some(trace) = player.presenter.source().rule_trace() {
@@ -361,7 +423,7 @@ pub(super) fn refresh(
             );
             let start = end.saturating_sub(PAGE_SIZE);
             lines.push(format!(
-                "Rows {}–{} of {} • {} older rows dropped",
+                "Rows {}-{} of {} | {} older rows dropped",
                 if end == 0 { 0 } else { start + 1 },
                 end,
                 trace.rows.len(),
@@ -371,11 +433,11 @@ pub(super) fn refresh(
         } else {
             lines.push("Tracing disabled for this runner".into());
         }
-        text.0 = lines.join("\n");
+        text.set_if_neq(Text::new(lines.join("\n")));
         return;
     }
     let Ok(state) = player.state.read() else {
-        text.0 = "State lock poisoned".into();
+        text.set_if_neq(Text::new("State lock poisoned"));
         return;
     };
     let keys = state_keys(&state);
@@ -385,11 +447,14 @@ pub(super) fn refresh(
         .and_then(|key| keys.iter().position(|k| k == key))
         .unwrap_or(0);
     let start = selected / PAGE_SIZE * PAGE_SIZE;
-    let mut lines = vec!["DEVELOPER STATE INSPECTOR — F12 / Esc: close".to_string(),
-        "Tab: state / command / trace • Up/Down: select • PageUp/PageDown: page • Ctrl+A: replace • Backspace: delete • Enter: apply JSON".into(),
-        "Story input is captured. Displayed dialogue remains unchanged until normal progression.".into(), String::new()];
+    let mut lines = vec![
+        "STATE EDITOR".to_string(),
+        "Up/Down: select | PageUp/PageDown: page".into(),
+        "Ctrl+A: replace | Enter: apply JSON".into(),
+        String::new(),
+    ];
     if inspector.mode == Mode::Command {
-        lines[0] = "DEVELOPER COMMAND RUNNER — F12 / Esc: close".into();
+        lines[0] = "COMMAND RUNNER".into();
         lines.push(
             r#"Enter a Story rules action: {"do":"command.call","command":"name","args":[]}"#
                 .into(),
@@ -423,7 +488,7 @@ pub(super) fn refresh(
     }
     if inspector.mode == Mode::State {
         lines.push(format!(
-            "\nKeys {}–{} of {}\nSelected: {}",
+            "\nKeys {}-{} of {}\nSelected: {}",
             if keys.is_empty() { 0 } else { start + 1 },
             (start + PAGE_SIZE).min(keys.len()),
             keys.len(),
@@ -431,7 +496,7 @@ pub(super) fn refresh(
         ));
     }
     lines.push(format!(
-        "\nJSON: {}\n\n{}",
+        "\nJSON > {}_\n\n{}",
         inspector
             .input
             .chars()
@@ -443,7 +508,7 @@ pub(super) fn refresh(
             .collect::<String>(),
         inspector.status.chars().take(1024).collect::<String>()
     ));
-    text.0 = lines.join("\n");
+    text.set_if_neq(Text::new(lines.join("\n")));
 }
 
 #[cfg(test)]
@@ -503,14 +568,59 @@ mod tests {
                 tap(&mut app, KeyCode::F12);
                 assert_eq!(overlays.single(app.world()).unwrap().display, Display::Flex);
                 let mut text = app.world_mut().query_filtered::<&Text, With<Contents>>();
-                assert!(
-                    text.single(app.world())
-                        .unwrap()
-                        .0
-                        .contains("DEVELOPER STATE INSPECTOR")
-                );
+                assert!(text.single(app.world()).unwrap().0.contains("STATE EDITOR"));
             }
         }
+    }
+
+    #[test]
+    fn pointer_tool_tabs_change_mode_without_mutating_story_state() {
+        let (_temp, mut app) = fixture_traced(true);
+        app.add_systems(Startup, setup);
+        app.add_systems(Update, refresh.after(crate::drive));
+        app.update();
+        tap(&mut app, KeyCode::F12);
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        let button = {
+            let world = app.world_mut();
+            world
+                .query::<(Entity, &ModeButton)>()
+                .iter(world)
+                .find(|(_, tab)| tab.0 == Mode::Command)
+                .unwrap()
+                .0
+        };
+        app.world_mut()
+            .trigger(bevy::ui_widgets::Activate { entity: button });
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        app.update();
+        assert!(app.world().resource::<Inspector>().mode == Mode::Command);
+        assert!(app.world().resource::<Inspector>().captured);
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert!(app.world().non_send::<Player>().save_status.is_empty());
+        let body = {
+            let world = app.world_mut();
+            world
+                .query_filtered::<Entity, With<ScrollBody>>()
+                .single(world)
+                .unwrap()
+        };
+        assert_eq!(
+            app.world().get::<Node>(body).unwrap().overflow,
+            Overflow::scroll_y()
+        );
+        app.world_mut().get_mut::<ScrollPosition>(body).unwrap().y = 200.0;
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Home);
+        use bevy::ecs::system::RunSystemOnce;
+        app.world_mut().run_system_once(scroll).unwrap();
+        assert_eq!(app.world().get::<ScrollPosition>(body).unwrap().y, 0.0);
     }
 
     #[test]
@@ -871,7 +981,7 @@ mod tests {
             text.single(app.world())
                 .unwrap()
                 .0
-                .contains("Rows 105–116 of 128")
+                .contains("Rows 105-116 of 128")
         );
         tap(&mut app, KeyCode::PageDown);
         assert_eq!(app.world().resource::<Inspector>().trace_offset, 0);

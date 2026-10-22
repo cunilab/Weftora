@@ -21,14 +21,14 @@
       },
       {
         "type": "panel",
-        "background": "#101D2EF0",
+        "background": "#0B1220F2",
         "layout": {
           "position": "absolute",
-          "left": 24,
-          "right": 24,
-          "bottom": 20,
-          "padding": 20,
-          "gap": 10
+          "left": "6%",
+          "right": "6%",
+          "bottom": 28,
+          "padding": 28,
+          "gap": 14
         },
         "children": [
           {
@@ -36,22 +36,25 @@
             "bind": {
               "dialogue": "speaker"
             },
-            "size": 22,
-            "color": "#F3C778"
+            "size": 18,
+            "color": "#F2BF6D"
           },
           {
             "type": "text",
             "bind": {
               "dialogue": "text"
             },
-            "size": 24,
-            "color": "#F4F1E8"
+            "size": 26,
+            "color": "#EDF2F8"
           },
           {
             "type": "choiceList",
             "id": "choices",
-            "size": 24,
-            "color": "#F3C778"
+            "size": 22,
+            "color": "#EDF2F8",
+            "layout": {
+              "gap": 8
+            }
           },
           {
             "type": "list",
@@ -68,8 +71,11 @@
                   "do": "dialogue.advance"
                 },
                 "layout": {
-                  "padding": 8
-                }
+                  "padding": 12
+                },
+                "size": 20,
+                "background": "#F2BF6D",
+                "color": "#101723"
               },
               {
                 "type": "button",
@@ -80,8 +86,9 @@
                   "screen": "volume"
                 },
                 "layout": {
-                  "padding": 8
-                }
+                  "padding": 12
+                },
+                "size": 16
               },
               {
                 "type": "button",
@@ -91,8 +98,9 @@
                   "do": "save"
                 },
                 "layout": {
-                  "padding": 8
-                }
+                  "padding": 12
+                },
+                "size": 16
               },
               {
                 "type": "button",
@@ -102,8 +110,9 @@
                   "do": "load"
                 },
                 "layout": {
-                  "padding": 8
-                }
+                  "padding": 12
+                },
+                "size": 16
               }
             ]
           },
@@ -130,7 +139,7 @@
               },
               {
                 "type": "text",
-                "text": "\u2022 Signal sent:",
+                "text": "• Signal sent:",
                 "size": 16,
                 "color": "#9FB3C5"
               },

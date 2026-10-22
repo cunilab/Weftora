@@ -8,7 +8,7 @@ weftora preview examples/life-sim
 weftora run examples/life-sim --headless --choices 0,0,0,0
 ```
 
-Use Continue/Space for lines, displayed choice numbers for activities, Tab/Shift+Tab and Enter/Space for buttons. Journal opens a modal help panel; close it to resume. Esc quits. Choice numbers on screen are 1-based; headless option IDs are 0-based, including unavailable options.
+Use Continue/Space for lines, displayed choice numbers for activities, Tab/Shift+Tab and Enter/Space for buttons. Journal opens a modal help panel; close it to resume. Esc closes an overlay; otherwise press Esc twice within three seconds to quit. Choice numbers on screen are 1-based; headless option IDs are 0-based, including unavailable options.
 
 ## A day
 
