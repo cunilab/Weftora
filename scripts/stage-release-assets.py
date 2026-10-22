@@ -95,15 +95,81 @@ def stage(packages, output):
     return output
 
 
+
+def metadata_bytes(path):
+    info = transport.plain_stat(path)
+    require(stat.S_ISREG(info.st_mode) and info.st_size <= 128 * 1024, "invalid release metadata size/type")
+    with path.open("rb") as source:
+        data = source.read(128 * 1024 + 1)
+    require(len(data) == info.st_size and signature(transport.plain_stat(path)) == signature(info),
+            "release metadata changed while reading")
+    return data
+
+
+def verify(folder):
+    """Check downloaded bytes against their inventory; this does not authenticate the inventory."""
+    require(stat.S_ISDIR(transport.plain_stat(folder).st_mode), "release assets must be a plain directory")
+    folder = folder.resolve(strict=True)
+    metadata = {name: metadata_bytes(folder / name) for name in ("release-assets.json", "SHA256SUMS")}
+    records = json.loads(metadata["release-assets.json"])
+    require(isinstance(records, list) and 0 < len(records) <= MAX_PACKAGES, "invalid release asset inventory")
+    names, aliases, total = [], set(), 0
+    for row in records:
+        require(isinstance(row, dict) and set(row) == {"name", "size", "sha256", "sourcePackage"},
+                "invalid release asset record")
+        name, size, checksum = row["name"], row["size"], row["sha256"]
+        require(isinstance(name, str), "invalid release asset name")
+        transport.safe_name(name)
+        require("/" not in name and name.endswith(".zip"), "release asset must name one ZIP basename")
+        require(type(size) is int and 0 < size <= MAX_ASSET_BYTES, "invalid release asset size")
+        require(isinstance(checksum, str) and re.fullmatch(r"[0-9a-f]{64}", checksum), "invalid release asset checksum")
+        require(isinstance(row["sourcePackage"], str) and 0 < len(row["sourcePackage"]) <= 1024,
+                "invalid source package label")
+        alias = unicodedata.normalize("NFC", name).casefold()
+        require(alias not in aliases, "duplicate/aliased release asset names")
+        aliases.add(alias)
+        names.append(name)
+        total += size
+    require(total <= MAX_TOTAL_BYTES, "total release asset bytes exceed limit")
+    require(names == sorted(names), "release inventory must be sorted")
+    expected = "".join(f'{row["sha256"]}  {row["name"]}\n' for row in records).encode("utf-8")
+    require(metadata["SHA256SUMS"] == expected, "combined checksums and inventory disagree")
+    expected_names = set(names) | set(metadata)
+    require({path.name for path in folder.iterdir()} == expected_names, "unexpected/missing release download entries")
+    snapshots = {}
+    for row in records:
+        path = folder / row["name"]
+        info = transport.plain_stat(path)
+        require(stat.S_ISREG(info.st_mode) and info.st_size == row["size"], "release ZIP size/type mismatch")
+        snapshots[path.name] = signature(info)
+        require(transport.file_hash(path, row["size"]) == row["sha256"], "release ZIP checksum mismatch")
+    require(all(signature(transport.plain_stat(folder / name)) == snapshot for name, snapshot in snapshots.items()),
+            "release ZIP changed during verification")
+    require({path.name for path in folder.iterdir()} == expected_names and
+            all(metadata_bytes(folder / name) == data for name, data in metadata.items()),
+            "release inventory changed during verification")
+    return records
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--package", required=True, action="append", type=Path)
-    parser.add_argument("--out", required=True, type=Path)
+    parser.add_argument("--package", action="append", type=Path)
+    parser.add_argument("--out", type=Path)
+    parser.add_argument("--verify", type=Path, help="verify an extracted combined download folder without writing")
     args = parser.parse_args()
+    if args.verify is not None:
+        if args.package is not None or args.out is not None:
+            parser.error("--verify cannot be combined with --package/--out")
+    elif not args.package or args.out is None:
+        parser.error("staging requires --package and --out")
     try:
-        print(stage(args.package, args.out))
-    except (ValueError, OSError) as error:
-        parser.exit(1, f"release asset staging refused: {error}\n")
+        if args.verify is not None:
+            verify(args.verify)
+            print("Release download checksums and inventory verified; approval/authenticity not established.")
+        else:
+            print(stage(args.package, args.out))
+    except (ValueError, OSError, RecursionError) as error:
+        parser.exit(1, f"release assets refused: {error}\n")
 
 
 if __name__ == "__main__":

@@ -185,6 +185,98 @@ class ReleaseAssetTests(unittest.TestCase):
             source.write_bytes(archive_bytes)
             sums.write_bytes(sums_bytes)
 
+    def test_download_verification_cli_checks_without_modifying_inputs(self):
+        assets.stage(self.packages, self.output)
+        before = {p.name: p.read_bytes() for p in self.output.iterdir()}
+        records = assets.verify(self.output)
+        self.assertEqual(len(records), 4)
+        command = [sys.executable, "-B", "-O", str(Path(assets.__file__)), "--verify", str(self.output)]
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        self.assertIn("approval/authenticity not established", result.stdout)
+        self.assertEqual(before, {p.name: p.read_bytes() for p in self.output.iterdir()})
+        refused = self.root / "never-created"
+        result = subprocess.run(command + ["--out", str(refused)], capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertFalse(refused.exists())
+        archive = self.output / "tools.zip"
+        data = archive.read_bytes()
+        archive.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+        result = subprocess.run(command, capture_output=True, text=True)
+        self.assertNotEqual(result.returncode, 0)
+        self.assertIn("checksum mismatch", result.stderr)
+        self.assertEqual(result.stdout, "")
+
+    def test_download_tampering_extra_missing_and_linked_entries_refuse(self):
+        for change in ("zip", "sums", "missing", "extra", "linked"):
+            with self.subTest(change=change):
+                output = self.root / ("verify-" + change)
+                assets.stage(self.packages, output)
+                archive = output / "tools.zip"
+                if change == "zip":
+                    data = archive.read_bytes()
+                    archive.write_bytes(bytes([data[0] ^ 1]) + data[1:])
+                elif change == "sums":
+                    (output / "SHA256SUMS").write_bytes(b"0" * 64 + b"  tools.zip\n")
+                elif change == "missing":
+                    archive.unlink()
+                elif change == "extra":
+                    (output / "unexpected.txt").write_text("not a release asset")
+                elif os.name != "nt":
+                    archive.unlink()
+                    archive.symlink_to(self.packages[0] / "tools.zip")
+                else:
+                    continue
+                with self.assertRaises((ValueError, OSError)):
+                    assets.verify(output)
+
+    def test_download_inventory_rejects_invalid_shapes_aliases_paths_and_sizes(self):
+        assets.stage(self.packages, self.output)
+        path = self.output / "release-assets.json"
+        baseline = json.loads(path.read_text())
+        changes = [(None, "invalid release asset inventory"), ([], "invalid release asset inventory"),
+                   ({}, "invalid release asset inventory"), ([None], "invalid release asset record"),
+                   ([dict(baseline[0], size=True)], "invalid release asset size"),
+                   ([dict(baseline[0], size=assets.MAX_ASSET_BYTES + 1)], "invalid release asset size"),
+                   ([dict(baseline[0], name="../outside.zip")], "unsafe member name"),
+                   ([dict(baseline[0], name="line\nbreak.zip")], "unsafe member name"),
+                   ([dict(baseline[0], sha256="wrong")], "invalid release asset checksum"),
+                   ([dict(baseline[0], sourcePackage=None)], "invalid source package label"),
+                   ([baseline[0], dict(baseline[0], name=baseline[0]["name"].upper().replace(".ZIP", ".zip"))], "aliased"),
+                   ([dict(baseline[0], name="café.zip"), dict(baseline[0], name="cafe\u0301.zip")], "aliased"),
+                   ([baseline[0]] * (assets.MAX_PACKAGES + 1), "invalid release asset inventory"),
+                   ([dict(baseline[0], name=f"large-{i}.zip", size=assets.MAX_ASSET_BYTES) for i in range(3)], "total release asset bytes"),
+                   (list(reversed(baseline)), "must be sorted")]
+        for records, message in changes:
+            with self.subTest(records=records):
+                path.write_text(json.dumps(records))
+                with self.assertRaisesRegex(ValueError, message):
+                    assets.verify(self.output)
+        for data in (b"{broken", b"\xff"):
+            path.write_bytes(data)
+            with self.assertRaises(ValueError):
+                assets.verify(self.output)
+        path.write_bytes(b"x" * (128 * 1024 + 1))
+        with self.assertRaisesRegex(ValueError, "metadata size/type"):
+            assets.verify(self.output)
+
+    def test_download_mutation_during_hashing_never_passes(self):
+        original = assets.transport.file_hash
+        for change in ("zip", "SHA256SUMS", "release-assets.json"):
+            output = self.root / ("during-" + change)
+            assets.stage(self.packages, output)
+            changed = False
+            def mutate(path, size):
+                nonlocal changed
+                digest = original(path, size)
+                if not changed:
+                    changed = True
+                    target = path if change == "zip" else output / change
+                    target.write_bytes(target.read_bytes() + b" ")
+                return digest
+            with mock.patch.object(assets.transport, "file_hash", side_effect=mutate), self.assertRaisesRegex(ValueError, "changed during verification"):
+                assets.verify(output)
+
     @unittest.skipUnless(os.name == "nt", "native Windows junction")
     def test_windows_junction_input_is_rejected(self):
         junction = self.root / "junction"
@@ -192,6 +284,8 @@ class ReleaseAssetTests(unittest.TestCase):
         try:
             with self.assertRaisesRegex(ValueError, "links/reparse"):
                 assets.stage([junction], self.output)
+            with self.assertRaisesRegex(ValueError, "links/reparse"):
+                assets.verify(junction)
         finally:
             junction.rmdir()
         self.assertFalse(self.output.exists())

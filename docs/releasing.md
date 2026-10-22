@@ -124,7 +124,17 @@ Each `--package` selects a transport output directory containing exactly the one
 
 This helper verifies byte identity against the selected package checksums; it does not repeat transport extraction, authenticate the checksum author, establish a shared build identity or approve release contents. Keep the per-package transport reports and candidate-SHA evidence. Windows release CI retains a separate `weftora-windows-download-candidate-<SHA>` artifact with all four ZIPs, the combined checksums and inventory. Its artifact wrapper is for review; the contained ZIPs are the candidate download bytes. Later CI failure or any pending foundation criterion still prevents release approval.
 
-For independent verification after extracting the artifact wrapper, run `sha256sum --check SHA256SUMS` where available. On Windows, compare each selected ZIP's `Get-FileHash -Algorithm SHA256` result with its entry. Use the exact staged paths in the draft-release recipe below, including the localisation demo when selected. Keep `release-assets.json` with the review evidence; the published `SHA256SUMS` covers ZIP downloads only.
+After extracting the candidate artifact wrapper, release operators can check its contained download folder from a reviewed Engine checkout without writing or extracting anything:
+
+```text
+python -B -O scripts/stage-release-assets.py --verify <download-directory>
+```
+
+This mode requires exactly the ZIPs named by `release-assets.json`, plus that inventory and `SHA256SUMS`. It checks bounded plain metadata/files, record types, portable ZIP names, case/Unicode aliases, sorted checksum/inventory agreement, per-ZIP size and SHA-256, and unchanged metadata/files through the end of verification. Limits match staging (16 ZIPs, 2 GiB each, 4 GiB total); each metadata file is limited to 128 KiB. It rejects extra or missing entries, links/reparse points and mixing `--verify` with staging arguments. CI also runs it on the combined staged folder before upload. Failure never modifies the input folder.
+
+This checks consistency and corruption, not authenticity: a matching inventory and ZIP can both have been replaced. Independently establish the selected source commit, successful CI run/attempt and trusted evidence before promoting bytes. This does not repeat ZIP extraction, establish binary provenance, approve licences or create a tag/draft/release. Use quiescent inputs controlled by the operator.
+
+For a separate checksum-only check, run `sha256sum --check SHA256SUMS` where available. On Windows, compare each selected ZIP's `Get-FileHash -Algorithm SHA256` result with its entry. Use the exact staged paths in the draft-release recipe below, including the localisation demo when selected. Keep `release-assets.json` with the review evidence; the published `SHA256SUMS` covers ZIP downloads only.
 
 ## Release checklist
 

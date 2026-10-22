@@ -392,6 +392,8 @@ jobs:
           }
           python -B -O scripts/stage-release-assets.py @packages --out (Join-Path $env:RUNNER_TEMP "weftora-release-assets")
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -B -O scripts/stage-release-assets.py --verify (Join-Path $env:RUNNER_TEMP "weftora-release-assets")
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - name: Record static DLL imports from extracted candidate packages
         shell: pwsh
         run: |
