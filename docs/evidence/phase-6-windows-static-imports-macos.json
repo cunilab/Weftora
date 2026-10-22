@@ -1,0 +1,163 @@
+{
+  "inspectionHost": "Darwin",
+  "llvmVersion": "Apple LLVM version 21.0.0",
+  "packages": [
+    {
+      "package": "weftora-transport-localization-demo",
+      "fileCount": 882,
+      "folderInventorySha256": "7d8e28b1c7a6f1ea6c94e7c68cd54ffc299c5b8f934b5cdfa0445376b3177bfc",
+      "peFiles": [
+        {
+          "path": "weftora-transport-localization-demo/weftora-player.exe",
+          "sha256": "5b136c942f2d22d0300614cd9c61df0b8cc35f723fd31c0cdeccc265323a805a",
+          "bytes": 84034048
+        }
+      ]
+    },
+    {
+      "package": "weftora-transport-story-a",
+      "fileCount": 886,
+      "folderInventorySha256": "831be58b640ee5dee06230f3e784ee737d5df90d9f6f56433ba52801872adba9",
+      "peFiles": [
+        {
+          "path": "weftora-transport-story-a/weftora-player.exe",
+          "sha256": "5b136c942f2d22d0300614cd9c61df0b8cc35f723fd31c0cdeccc265323a805a",
+          "bytes": 84034048
+        }
+      ]
+    },
+    {
+      "package": "weftora-transport-life-sim",
+      "fileCount": 878,
+      "folderInventorySha256": "1bfe9968702d68f17db8920dba8e5804e5e2b39ebda5f180dbde59a6d743cd75",
+      "peFiles": [
+        {
+          "path": "weftora-transport-life-sim/weftora-player.exe",
+          "sha256": "5b136c942f2d22d0300614cd9c61df0b8cc35f723fd31c0cdeccc265323a805a",
+          "bytes": 84034048
+        }
+      ]
+    },
+    {
+      "package": "weftora-authoring-tools",
+      "fileCount": 870,
+      "folderInventorySha256": "bb09bc4a4b837df4c6017e548534f129269130c0cd48872089ac7263e074f205",
+      "peFiles": [
+        {
+          "path": "weftora-authoring-tools/weftora-player.exe",
+          "sha256": "5b136c942f2d22d0300614cd9c61df0b8cc35f723fd31c0cdeccc265323a805a",
+          "bytes": 84034048
+        },
+        {
+          "path": "weftora-authoring-tools/weftora.exe",
+          "sha256": "9385892cef43d1e0f20a5b91e4ccc38d5a88a9ad2403c19d30d9984436a7c4e4",
+          "bytes": 8655872
+        }
+      ]
+    }
+  ],
+  "binaries": [
+    {
+      "sha256": "5b136c942f2d22d0300614cd9c61df0b8cc35f723fd31c0cdeccc265323a805a",
+      "ordinaryImports": [
+        "advapi32.dll",
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "api-ms-win-core-winrt-l1-1-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "api-ms-win-crt-string-l1-1-0.dll",
+        "bcryptprimitives.dll",
+        "combase.dll",
+        "dwmapi.dll",
+        "dxgi.dll",
+        "gdi32.dll",
+        "imm32.dll",
+        "kernel32.dll",
+        "ntdll.dll",
+        "ole32.dll",
+        "oleaut32.dll",
+        "pdh.dll",
+        "powrprof.dll",
+        "psapi.dll",
+        "setupapi.dll",
+        "shell32.dll",
+        "uiautomationcore.dll",
+        "user32.dll",
+        "uxtheme.dll",
+        "vcruntime140.dll"
+      ],
+      "rawOutput": "5b136c942f2d22d0300614cd9c61df0b8cc35f723fd31c0cdeccc265323a805a.imports.txt",
+      "delayImportDirectoryAbsent": true
+    },
+    {
+      "sha256": "9385892cef43d1e0f20a5b91e4ccc38d5a88a9ad2403c19d30d9984436a7c4e4",
+      "ordinaryImports": [
+        "api-ms-win-core-synch-l1-2-0.dll",
+        "api-ms-win-crt-heap-l1-1-0.dll",
+        "api-ms-win-crt-locale-l1-1-0.dll",
+        "api-ms-win-crt-math-l1-1-0.dll",
+        "api-ms-win-crt-runtime-l1-1-0.dll",
+        "api-ms-win-crt-stdio-l1-1-0.dll",
+        "bcryptprimitives.dll",
+        "kernel32.dll",
+        "ntdll.dll",
+        "vcruntime140.dll"
+      ],
+      "rawOutput": "9385892cef43d1e0f20a5b91e4ccc38d5a88a9ad2403c19d30d9984436a7c4e4.imports.txt",
+      "delayImportDirectoryAbsent": true
+    }
+  ],
+  "auditApproved": false,
+  "scope": "Static ordinary-import evidence for MZ/AMD64 PE files in these frozen folders. No candidate executable is launched. Nonzero delay-import directories refuse. Does not resolve transitive imports, LoadLibrary/runtime-loaded modules, host availability, redistribution rights or native/clean-machine acceptance.",
+  "candidateEvidence": {
+    "sourceHeadCommit": "1d6c65cc57d319e9f322c89a4c5ad202eec339b0",
+    "workflowMergeCommit": "cd44c34c2b24dbcdc3b0dae6e56bd2ab5f348b3b",
+    "runUrl": "https://github.com/cunilab/Weftora/actions/runs/39652463655",
+    "artifactId": 12370058862,
+    "downloadChecksumsVerified": true,
+    "zipPackages": [
+      {
+        "name": "weftora-authoring-tools.zip",
+        "size": 32893310,
+        "sha256": "bbd147634bf28d4d03ffef21ebce16f41056be8f1eb5a84bc10a014aa1d247e9",
+        "sourcePackage": "weftora-release-authoring-transport"
+      },
+      {
+        "name": "weftora-transport-life-sim.zip",
+        "size": 29814460,
+        "sha256": "b63efb7c568ff40fb6cf8e735abda6e452cfef074ccc5a2b09d4cbdd0e7ef3ee",
+        "sourcePackage": "weftora-release-transport-life-sim"
+      },
+      {
+        "name": "weftora-transport-localization-demo.zip",
+        "size": 35702703,
+        "sha256": "b173d1bb0957f0a167bf07bde7ee3036d037988856bca87d4f4b5de963ffe575",
+        "sourcePackage": "weftora-release-transport-localization-demo"
+      },
+      {
+        "name": "weftora-transport-story-a.zip",
+        "size": 29822277,
+        "sha256": "92d34d269903a572bf7623c1cb6597a7a32d22d93b61cb1161e7322eea147d7f",
+        "sourcePackage": "weftora-release-transport-story-a"
+      }
+    ],
+    "toolMetadata": {
+      "target": "x86_64-pc-windows-msvc",
+      "profile": "release",
+      "cliSha256": "9385892cef43d1e0f20a5b91e4ccc38d5a88a9ad2403c19d30d9984436a7c4e4",
+      "playerSha256": "5b136c942f2d22d0300614cd9c61df0b8cc35f723fd31c0cdeccc265323a805a",
+      "matchesAllExportMetadata": true
+    }
+  },
+  "prerequisiteNoticeProof": {
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "requirementsSha256": "e69cfd94216fcee8a73c93834bc7b7088310895a99960399cb3d8c7967e1cc00",
+    "toolkitAndGameZipRoundTrips": true,
+    "extractedPlayerExplicitArtifactValidate": true,
+    "auditApproved": false
+  }
+}

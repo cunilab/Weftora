@@ -8,6 +8,8 @@ status: proposed
 
 Use a matching `weftora` CLI and `weftora-player` pair from the same build, placed together in one folder. Add that folder to PATH or invoke the CLI by its full path. These are development tools; a supported Windows foundation release is still pending. Story authors do not need Rust to use the tools.
 
+The Windows MSVC tools/player need the Microsoft Visual C++ v14 x64 runtime. Read `WINDOWS-REQUIREMENTS.txt` in the toolkit (or a staged game's `notices/` folder); if needed, use [Microsoft's official Redistributable](https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist). This is separate from installing Rust.
+
 From an existing writable parent folder, run:
 
 ```text
@@ -29,7 +31,7 @@ Export to a fresh sibling folder outside the Story:
 weftora export my-story --out my-game
 ```
 
-Run `my-game/weftora-player.exe` on Windows (or the corresponding player executable on a development host). Keep the exported folder together. Re-export after editing the source. For validation without a window, run `my-game/weftora-player.exe my-game/story --validate` from the parent folder.
+Run `my-game/weftora-player.exe` on Windows (or the corresponding player executable on a development host). Keep the exported folder together. Before sharing, attach the matching [Engine notices and Windows requirements](./releasing.md#include-notices-in-standalone-game-candidates); raw export does not attach them automatically. Re-export after editing the source. For validation without a window, run `my-game/weftora-player.exe my-game/story --validate` from the parent folder.
 
 The CLI finds the player beside itself; `WEFTORA_PLAYER` can select an explicit player path. Export refuses mismatched tool identities before creating output. `weftora --tool-identity` and `weftora-player --tool-identity` show the build and supported compiler/format contract. Install both executables from the same build; there is no force option. Export currently targets the host platform. Automated starter checks and their limits are recorded in [Phase 6 evidence](./evidence/phase-6.md). Native Windows preview and clean-machine acceptance remain tracked in [issue #5](https://github.com/cunilab/Weftora/issues/5).
 

@@ -382,6 +382,19 @@ jobs:
           }
           python -B -O scripts/stage-release-assets.py @packages --out (Join-Path $env:RUNNER_TEMP "weftora-release-assets")
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Record static DLL imports from extracted candidate packages
+        shell: pwsh
+        run: |
+          $llvmCommand = Get-Command llvm-objdump.exe -ErrorAction SilentlyContinue
+          $llvm = if ($llvmCommand) { $llvmCommand.Source } else { Join-Path $env:ProgramFiles "LLVM/bin/llvm-objdump.exe" }
+          if (!(Test-Path -LiteralPath $llvm)) { throw "LLVM objdump is required for candidate import evidence" }
+          $auditArgs = @('--objdump', $llvm, '--out', (Join-Path $env:RUNNER_TEMP "weftora-release-windows-imports"),
+            '--package', (Join-Path $env:RUNNER_TEMP "weftora-release-authoring-transport/verified/weftora-authoring-tools"))
+          foreach ($story in @("story-a", "life-sim", "localization-demo")) {
+            $auditArgs += @('--package', (Join-Path $env:RUNNER_TEMP "weftora-release-transport-$story/verified/weftora-transport-$story"))
+          }
+          python -B -O scripts/audit-windows-imports.py @auditArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
       - uses: actions/upload-artifact@v4
         with:
           if-no-files-found: error
@@ -407,6 +420,8 @@ jobs:
           path: |
             ${{ runner.temp }}/weftora-release-tests.log
             ${{ runner.temp }}/weftora-release-example-exports.json
+            ${{ runner.temp }}/weftora-release-windows-imports/windows-imports.json
+            ${{ runner.temp }}/weftora-release-windows-imports/*.imports.txt
             ${{ runner.temp }}/weftora-release-tool-drift/tool-drift-proof.json
             ${{ runner.temp }}/weftora-release-tool-drift/*.log
             ${{ runner.temp }}/weftora-release-new-story/

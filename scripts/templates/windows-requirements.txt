@@ -1,0 +1,23 @@
+Weftora Windows x64 verification candidate — runtime prerequisites
+
+The MSVC-built CLI and player import VCRUNTIME140.dll and Windows runtime APIs.
+Rust, Cargo and Visual Studio are not needed to run the prebuilt tools or games.
+The Microsoft Visual C++ v14 x64 runtime must be available. Microsoft
+requires a runtime version at least as recent as the MSVC build tools used for
+the candidate; if needed, install or repair it with Microsoft's latest supported
+x64 Redistributable:
+
+  https://learn.microsoft.com/en-us/cpp/windows/latest-supported-vc-redist
+  https://aka.ms/vc14/vc_redist.x64.exe
+
+If startup reports VCRUNTIME140.dll missing, install or repair that official
+Redistributable, then retry. Do not obtain individual DLLs from download sites
+or copy runtime files out of a development machine.
+
+This package does not include the Redistributable installer or loose runtime
+DLLs. Keep Windows updated and use a working GPU driver for the player. Native
+startup, supported device/OS baselines and clean-machine acceptance remain
+under verification; this notice does not establish them.
+
+When sharing a game candidate, retain this file under its notices directory
+alongside the complete Engine licence/source notices and your Story's notices.

@@ -11,7 +11,7 @@ spec = importlib.util.spec_from_file_location("transport", Path(__file__).with_n
 transport = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(transport)
 require = transport.require
-ROOT_FILES = ("LICENSE-MIT", "LICENSE-APACHE", "THIRD-PARTY-NOTICES.txt", "dependency-notices.json")
+ROOT_FILES = ("LICENSE-MIT", "LICENSE-APACHE", "THIRD-PARTY-NOTICES.txt", "dependency-notices.json", "WINDOWS-REQUIREMENTS.txt")
 MAX_DOCUMENT_BYTES = 4 * 1024 * 1024
 
 

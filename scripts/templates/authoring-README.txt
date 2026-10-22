@@ -1,7 +1,12 @@
 Weftora authoring tools — verification candidate
 
 Keep weftora.exe and weftora-player.exe together. This Windows toolkit does not
-need Rust or Cargo. In PowerShell, open this folder and try:
+need Rust or Cargo.
+
+Read WINDOWS-REQUIREMENTS.txt first. The Windows tools/player require the
+Microsoft Visual C++ v14 x64 runtime; its official download is linked there.
+
+In PowerShell, open this folder and try:
 
   .\weftora.exe new "My Story"
   .\weftora.exe check "My Story"
@@ -15,9 +20,9 @@ The CLI must stay beside its matching player when creating another export.
 
 Export does not automatically copy Engine dependency notices. Before sharing an
 export, create My Game\notices and copy this toolkit's LICENSE-MIT, LICENSE-APACHE,
-THIRD-PARTY-NOTICES.txt, dependency-notices.json and complete licenses directory
-into it. Keep your Story's font/media/content notices too. This toolkit inventory
-is a conservative superset including authoring-only dependencies; copying notices
+THIRD-PARTY-NOTICES.txt, dependency-notices.json, WINDOWS-REQUIREMENTS.txt and
+the complete licenses directory into it. Keep your Story's font/media/content
+notices too. This toolkit inventory is a conservative superset including authoring-only dependencies; copying notices
 does not put the compiler in your game or complete the pending release audit.
 
 For the opt-in developer tools:

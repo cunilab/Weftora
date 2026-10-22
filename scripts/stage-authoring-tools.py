@@ -196,8 +196,8 @@ def stage(cli, player, output):
                     "  The archive retains the upstream source, licence and attribution; see its licence file.",
                 ])
     (output / "THIRD-PARTY-NOTICES.txt").write_text("\n".join(lines) + "\n", encoding="utf-8")
-    readme = (repository / "scripts" / "templates" / "authoring-README.txt").read_text(encoding="utf-8")
-    (output / "README.txt").write_text(readme, encoding="utf-8")
+    for source, name in (("authoring-README.txt", "README.txt"), ("windows-requirements.txt", "WINDOWS-REQUIREMENTS.txt")):
+        shutil.copyfile(repository / "scripts" / "templates" / source, output / name)
     require(tool_identity(output / cli.name) == cli_id and tool_identity(output / player.name) == player_id, "staged tool identity changed")
     require(digest(cli) == cli_hash and digest(player) == player_hash, "original tools changed")
     return report
