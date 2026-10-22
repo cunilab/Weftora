@@ -82,7 +82,8 @@ def build(root, output, linker):
                      "INCLUDE", "LIB", "LIBPATH", "ImageOS", "ImageVersion", "RUNNER_OS", "RUNNER_ARCH",
                      "UCRTVersion", "VSCMD_VER", "VSCMD_ARG_TGT_ARCH", "VSCMD_ARG_HOST_ARCH", "RUSTUP_TOOLCHAIN",
                      "GITHUB_EVENT_NAME", "GITHUB_REPOSITORY", "GITHUB_SHA", "GITHUB_REF", "GITHUB_RUN_ID", "GITHUB_RUN_ATTEMPT")
-    context = {name: env[name] for name in context_names if name in env}
+    environment = {name.upper(): value for name, value in env.items()}
+    context = {name: environment[name.upper()] for name in context_names if name.upper() in environment}
     require(all(context.get(name, "").strip() for name in ("VCToolsVersion", "WindowsSDKVersion", "LIB", "INCLUDE")),
             "initialize the x64 Visual Studio developer shell first")
     # Hash local Cargo config without copying configuration values that may contain credentials.

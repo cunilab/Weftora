@@ -84,6 +84,12 @@ class BuildProvenanceTests(unittest.TestCase):
         self.assertEqual(report["evidenceFiles"]["source-files.json"], provenance.fingerprint(self.output / "source-files.json"))
         self.assertEqual(json.loads((self.output / "build-provenance.json").read_text()), report)
 
+    def test_windows_uppercase_environment_preserves_developer_shell_context(self):
+        self.env = {name.upper(): value for name, value in self.env.items()}
+        report = self.run_build()
+        self.assertEqual(report["environment"]["VCToolsVersion"], "14.fixture")
+        self.assertEqual(report["environment"]["WindowsSDKVersion"], "fixture")
+
     def test_dirty_checkout_target_existing_output_and_overrides_refuse(self):
         for refusal in ("dirty", "ignored", "target", "output", "override", "external-config"):
             with self.subTest(refusal=refusal):
