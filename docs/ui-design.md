@@ -6,6 +6,8 @@ status: proposed
 
 # Player interface design
 
+The visual pass below is implemented; overall player UX remains unaccepted. The [Ren'Py workflow review](./renpy-ux-review.md) identifies the missing title/game-menu lifecycle, decision context and progress-safety flows, and defines the next behavioral acceptance checks. Current Escape behavior below is an implementation record, not the target interaction.
+
 The player uses a modern game interface: deep navy surfaces, warm gold accents, proportional dialogue text and bordered controls. The story remains the visual focus. The examples share these defaults while keeping their authored layouts, state bindings and navigation.
 
 ## Reading and interaction

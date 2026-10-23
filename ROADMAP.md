@@ -126,6 +126,8 @@ Goal: a stranger can make and ship a game on Windows.
 
 The [player UI redesign](./docs/ui-design.md) improves shared controls, example screens, overlays and developer tools; Windows visual/behavior acceptance remains queued in issue #5.
 
+- [ ] Player UX acceptance: implement the [Ren'Py-informed lifecycle and game-menu plan](./docs/renpy-ux-review.md), including resumable navigation, honest checkpoint-save availability, destructive-action confirmations and decision context. Styling alone does not close this item; portable development continues while Windows checks wait in issue #5.
+
 Draft-release preparation is implemented with default read-only preflight, exact main/tag/CI-attempt and artifact verification, and explicit unpublished-draft creation. See [release operations](docs/releasing.md#prepare-a-draft-with-verified-ci-artifacts). Real main-candidate dispatch, final licence/advisory review and native acceptance remain open; this does not complete P6.
 
 ## Phase 7 — Ports, one at a time (locked until Phase 6 passes)
