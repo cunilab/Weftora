@@ -5,7 +5,7 @@ import importlib.util
 import io
 import json
 import os
-from pathlib import Path
+from pathlib import Path, PurePosixPath, PureWindowsPath
 import shutil
 import subprocess
 import tempfile
@@ -283,6 +283,15 @@ class DraftReleaseTests(unittest.TestCase):
 
 
 class DraftBoundaryTests(unittest.TestCase):
+    def test_snapshot_keys_are_portable_for_windows_and_posix_paths(self):
+        row = {"bytes": 8, "sha256": "0" * 64}
+        for output in (PureWindowsPath("C:/release"), PurePosixPath("/release")):
+            files = [output / "downloads/SHA256SUMS", output / "build/source-files.json"]
+            with self.subTest(output=output), patch.object(draft, "fingerprint", return_value=row):
+                snapshots = draft.snapshot_files(output, files)
+            self.assertEqual(snapshots, {"downloads/SHA256SUMS": row, "build/source-files.json": row})
+            self.assertEqual(output / "downloads/SHA256SUMS", output / next(iter(snapshots)))
+
     def test_release_listing_checks_later_pages(self):
         client = draft.GitHub.__new__(draft.GitHub)
         first = [{"tag_name": "v0.0." + str(i)} for i in range(100)]

@@ -282,6 +282,10 @@ def check_payload(root, state, version, output):
     return records, build["binaries"]
 
 
+def snapshot_files(output, files):
+    return {path.relative_to(output).as_posix(): fingerprint(path) for path in files}
+
+
 def prepare(root, client, tag, run_id, notes, output, create=False, reviewed=False):
     require(tomllib is not None, "draft preparation requires Python 3.11 or newer")
     version, prerelease = release_version(tag)
@@ -310,7 +314,7 @@ def prepare(root, client, tag, run_id, notes, output, create=False, reviewed=Fal
     for role, row in binaries.items():note_text += f"- {role} SHA-256: `{row['sha256']}`\n"
     note_copy = output / "release-notes.md";note_copy.write_text(note_text, encoding="utf-8")
     files = paths + [note_copy] + [output / "build" / name for name in BUILD_FILES] + [output / "downloads/release-assets.json"]
-    snapshots = {str(path.relative_to(output)): fingerprint(path) for path in files}
+    snapshots = snapshot_files(output, files)
     command = ["gh", "release", "create", tag, "--repo", REPO, "--verify-tag", "--draft", "--latest=false", "--title", "Weftora " + tag, "--notes-file", str(note_copy)]
     if prerelease:command.append("--prerelease")
     command += [str(path) for path in paths]

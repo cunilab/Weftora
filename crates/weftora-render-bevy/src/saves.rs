@@ -688,6 +688,119 @@ mod tests {
     }
 
     #[test]
+    fn save_feedback_expires_restarts_for_repeated_success_and_keeps_refusals() {
+        let (temp, mut app) = fixture(SCRIPT);
+        app.add_systems(Update, crate::refresh_save_status.after(crate::drive));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        let status = {
+            let world = app.world_mut();
+            world
+                .query_filtered::<Entity, With<crate::SaveStatus>>()
+                .single(world)
+                .unwrap()
+        };
+        assert_eq!(app.world().get::<Text>(status).unwrap().0, "Saved.");
+        assert_eq!(
+            app.world().get::<TextColor>(status).unwrap().0,
+            crate::theme::SUCCESS
+        );
+        assert!(
+            app.world()
+                .get::<Pickable>(status)
+                .unwrap()
+                .should_block_lower
+        );
+        let slot = std::fs::read(temp.path().join("data/save.json")).unwrap();
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_secs(4));
+        app.update();
+        assert_eq!(
+            app.world().get::<Node>(status).unwrap().display,
+            Display::None
+        );
+        assert!(app.world().get::<Text>(status).unwrap().0.is_empty());
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        assert_eq!(
+            app.world().get::<Node>(status).unwrap().display,
+            Display::Flex
+        );
+        assert_eq!(app.world().get::<Text>(status).unwrap().0, "Saved.");
+        app.world_mut().non_send_mut::<Player>().save_store =
+            Some(Err("Storage unavailable".into()));
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_secs(4));
+        app.update();
+        assert_eq!(
+            app.world().get::<Text>(status).unwrap().0,
+            "Storage unavailable"
+        );
+        assert_eq!(
+            app.world().get::<TextColor>(status).unwrap().0,
+            crate::ERROR_COLOR
+        );
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        request(&mut app, weftora_story::ui::UiAction::Load);
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_secs(20));
+        app.update();
+        assert_eq!(
+            app.world().get::<Text>(status).unwrap().0,
+            "Couldn't load: Storage unavailable"
+        );
+        assert_eq!(
+            app.world().get::<TextColor>(status).unwrap().0,
+            crate::theme::ACCENT
+        );
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert_eq!(
+            std::fs::read(temp.path().join("data/save.json")).unwrap(),
+            slot
+        );
+    }
+
+    #[test]
+    fn quit_warning_temporarily_overrides_a_save_refusal_without_clearing_it() {
+        let (_temp, mut app) = fixture(SCRIPT);
+        app.add_systems(Update, crate::refresh_save_status.after(crate::drive));
+        app.world_mut().non_send_mut::<Player>().save_store =
+            Some(Err("Storage unavailable".into()));
+        request(&mut app, weftora_story::ui::UiAction::Save);
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        let status = {
+            let world = app.world_mut();
+            world
+                .query_filtered::<Entity, With<crate::SaveStatus>>()
+                .single(world)
+                .unwrap()
+        };
+        assert!(
+            app.world()
+                .get::<Text>(status)
+                .unwrap()
+                .0
+                .contains("Press Esc again")
+        );
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        app.world_mut()
+            .resource_mut::<Time>()
+            .advance_by(Duration::from_secs(4));
+        app.update();
+        assert_eq!(
+            app.world().get::<Text>(status).unwrap().0,
+            "Couldn't save: Storage unavailable"
+        );
+        assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+    }
+
+    #[test]
     fn player_load_keeps_settings_resets_session_and_rebuilds_audio_with_new_tokens() {
         let (temp, mut app) = fixture(SCRIPT);
         request(&mut app, weftora_story::ui::UiAction::Save);

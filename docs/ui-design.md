@@ -15,7 +15,7 @@ The player uses a modern game interface: deep navy surfaces, warm gold accents, 
 - Continue appears only when a line can advance. Choices retain their IDs, order and numeric shortcuts. Switching languages preserves the current offer and keyboard focus.
 - Rows wrap at smaller widths. The player has an 800 × 600 logical-pixel minimum; authored absolute layouts still need testing with their actual content.
 - Escape closes the top Story overlay and restores focus. Otherwise a first press warns about unsaved progress; a second within three seconds quits. Story errors still allow immediate exit. Closing the operating-system window remains an explicit exit.
-- Save/load feedback has its own backed notification. Permanent shortcut instructions no longer cover the scene. Checkpoint requirements and save-file validation remain the existing contract.
+- Save/load feedback has its own backed notification: green successes clear after four seconds; amber refusals name the failed action and remain until the next request. Notifications block accidental click-through. Permanent shortcut instructions no longer cover the scene. Checkpoint requirements and save-file validation remain the existing contract.
 
 ## Author tools
 

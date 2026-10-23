@@ -105,6 +105,7 @@ fn run_player(
         .insert_resource(failure)
         .insert_resource(debug_tools::Inspector::new(debug_tools))
         .init_resource::<ExitConfirmation>()
+        .init_resource::<SaveFeedback>()
         .init_resource::<Intents>()
         .init_resource::<Ui>()
         .init_resource::<media::Presentation>()
@@ -218,24 +219,35 @@ struct SaveStatus;
 #[derive(Resource, Default)]
 struct ExitConfirmation(Option<std::time::Duration>);
 
+#[derive(Resource, Default)]
+struct SaveFeedback {
+    until: Option<std::time::Duration>,
+    failed: bool,
+}
+
 fn setup(mut commands: Commands) {
     commands.spawn(Camera2d);
-    commands.spawn((
-        SaveStatus,
-        label("", 16.0, theme::MUTED),
-        Node {
-            position_type: PositionType::Absolute,
-            top: px(16),
-            left: px(24),
-            max_width: percent(85),
-            padding: UiRect::axes(px(16), px(10)),
-            border_radius: BorderRadius::all(px(8)),
-            display: Display::None,
-            ..default()
-        },
-        BackgroundColor(theme::PANEL),
-        GlobalZIndex(1000),
-    ));
+    commands
+        .spawn((
+            SaveStatus,
+            label("", 16.0, theme::MUTED),
+            Node {
+                position_type: PositionType::Absolute,
+                top: px(16),
+                left: px(24),
+                max_width: percent(85),
+                padding: UiRect::axes(px(16), px(10)),
+                border_radius: BorderRadius::all(px(8)),
+                display: Display::None,
+                ..default()
+            },
+            BackgroundColor(theme::PANEL),
+            GlobalZIndex(1000),
+        ))
+        .insert(Pickable {
+            is_hoverable: false,
+            should_block_lower: true,
+        });
     commands.spawn((
         Node {
             position_type: PositionType::Absolute,
@@ -291,6 +303,7 @@ fn drive(
     mut media: Media,
     time: Res<Time>,
     mut quit: ResMut<ExitConfirmation>,
+    mut feedback: ResMut<SaveFeedback>,
 ) {
     if !inspector.captured && keys.just_pressed(KeyCode::Escape) {
         if ui.modal() && !matches!(player.presenter.screen(), Screen::Error(_)) {
@@ -444,9 +457,20 @@ fn drive(
                 _ => unreachable!("save/load request"),
             }
         })();
+        feedback.failed = result.is_err();
+        feedback.until = result
+            .is_ok()
+            .then(|| time.elapsed() + std::time::Duration::from_secs(4));
         player.save_status = match result {
             Ok(message) => message,
-            Err(message) => format!("Save/load: {message}"),
+            Err(message) => format!(
+                "Couldn't {}: {message}",
+                if matches!(request, UiAction::Save) {
+                    "save"
+                } else {
+                    "load"
+                }
+            ),
         };
     }
 
@@ -700,27 +724,46 @@ fn refresh_save_status(
     ui: Res<Ui>,
     quit: Res<ExitConfirmation>,
     time: Res<Time>,
-    mut text: Single<(&mut Text, &mut Node, &mut TextFont), With<SaveStatus>>,
+    feedback: Res<SaveFeedback>,
+    mut text: Single<(&mut Text, &mut Node, &mut TextFont, &mut TextColor), With<SaveStatus>>,
 ) {
-    let (ref mut text, ref mut node, ref mut font) = *text;
+    let (ref mut text, ref mut node, ref mut font, ref mut color) = *text;
     let source = ui.default_font.clone().map(Into::into).unwrap_or_default();
     if font.font != source {
         font.font = source;
     }
-    let value = if quit.0.is_some_and(|until| time.elapsed() <= until) {
-        "Press Esc again to quit. Unsaved progress will be lost."
-    } else if !player.save_status.is_empty() {
-        player.save_status.as_str()
+    let (value, tone) = if quit.0.is_some_and(|until| time.elapsed() <= until) {
+        (
+            "Press Esc again to quit. Unsaved progress will be lost.",
+            theme::ACCENT,
+        )
+    } else if !player.save_status.is_empty()
+        && !feedback.until.is_some_and(|until| time.elapsed() >= until)
+    {
+        (
+            player.save_status.as_str(),
+            if feedback.failed {
+                theme::ACCENT
+            } else {
+                theme::SUCCESS
+            },
+        )
     } else if let Some(Err(message)) = &player.save_store {
-        message.as_str()
+        (message.as_str(), ERROR_COLOR)
     } else {
-        ""
+        ("", theme::MUTED)
     };
-    node.display = if value.is_empty() {
+    let display = if value.is_empty() {
         Display::None
     } else {
         Display::Flex
     };
+    if node.display != display {
+        node.display = display;
+    }
+    if color.0 != tone {
+        color.0 = tone;
+    }
     if text.0 != value {
         text.0 = value.into();
     }
@@ -852,6 +895,7 @@ mod tests {
             .init_resource::<InputFocus>()
             .init_resource::<InputFocusVisible>()
             .init_resource::<ExitConfirmation>()
+            .init_resource::<SaveFeedback>()
             .init_resource::<Intents>()
             .init_resource::<Ui>()
             .init_resource::<media::Presentation>()
