@@ -371,6 +371,7 @@ fn story_matrix_failed_loads_preserve_live_state_dialogue_ui_audio_and_files() {
             app.world_mut()
                 .resource_mut::<ButtonInput<KeyCode>>()
                 .reset_all();
+            crate::shell::accept_and_return(&mut app);
             let player = app.world().non_send::<Player>();
             assert!(
                 player.save_status.contains(expected),
@@ -417,6 +418,7 @@ fn story_matrix_failed_loads_preserve_live_state_dialogue_ui_audio_and_files() {
             app.world_mut()
                 .resource_mut::<ButtonInput<KeyCode>>()
                 .reset_all();
+            crate::shell::accept_and_return(&mut app);
             let player = app.world().non_send::<Player>();
             assert_eq!(player.save_status, "Loaded.");
             assert!(!Arc::ptr_eq(&live, &player.state));

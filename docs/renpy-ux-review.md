@@ -65,6 +65,12 @@ Acceptance checks:
 4. Save availability matches checkpoint, pending-command, storage and overlay conditions; execution revalidates. Canceling overwrite/load/main-menu/quit leaves the session and save unchanged. Failed load remains transactional.
 5. Reading chrome contains no debug state or volume presets. A decision retains useful context, including after language switching, without changing choice identity/order or showing stale text from another scene.
 
+## Implementation checkpoint — 2026-10-24
+
+The engine-default title and game menu now exist without a schema change. Normal launch defers entrypoint execution; New Game retains Settings while creating fresh Story progress. Return preserves the current offer/focus, Escape/right-click never quits, and destructive operations require confirmation. Menu Save shows checkpoint eligibility; the existing single-slot restore remains transactional. Relevant choice context now survives language switching through source-line retranslation. Story A's diagnostic Route/Signal row has been removed from reading chrome.
+
+This is partial acceptance: preferences/history, title-menu migration, final visual composition, actual pointer/keyboard feel and performance evidence remain. Existing authored title choices deliberately remain after New Game; the shipped title exposes only working New Game, Load checkpoint, Controls and Quit actions. No Continue alias, file-slot browser, rollback or placeholder controls are shown. Fades/music continue while the menu suspends Story input. See [implementation evidence](./evidence/phase-6.md#player-title-and-game-menu).
+
 ## Following slices and verification
 
 1. Complete the lifecycle/menu slice above, including save availability and choice context. Keep the existing single-slot storage until a separate slot design is implemented.

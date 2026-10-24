@@ -732,6 +732,7 @@ mod tests {
                 action: UiAction::Load,
             });
         app.update();
+        crate::shell::accept_and_return(&mut app);
         assert_eq!(app.world().non_send::<Player>().save_status, "Loaded.");
         assert!(!Arc::ptr_eq(&old, &app.world().non_send::<Player>().state));
         app.world_mut().resource_mut::<Inspector>().selected = Some("n".into());
@@ -1153,6 +1154,9 @@ Finish {$n} start {visited_count("Start")} later {visited_count("Later")}
         normal.save_store = Some(Ok(weftora_save::storage::Store::new(
             temp.path().join("saves"),
         )));
+        let candidate = normal.fresh_candidate(true).unwrap();
+        normal.state = candidate.state;
+        normal.presenter = candidate.presenter;
         normal.write_save().unwrap();
         normal.write_save().unwrap();
         let slot = std::fs::read(temp.path().join("saves/save.json")).unwrap();

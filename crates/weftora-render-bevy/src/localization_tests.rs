@@ -143,6 +143,15 @@ fn switching_a_line_preserves_capture_progress_trace_and_current_settings_on_loa
 fn offered_choices_keep_availability_ids_and_target_after_language_change() {
     let (_temp, mut app) = fixture();
     app.world_mut().non_send_mut::<Player>().presenter.advance();
+    assert_eq!(
+        app.world()
+            .non_send::<Player>()
+            .presenter
+            .decision_context()
+            .unwrap()
+            .1,
+        "Hello Ada 1"
+    );
     let choices = match app.world().non_send::<Player>().presenter.screen() {
         Screen::Choices(v) => v.clone(),
         s => panic!("{s:?}"),
@@ -413,4 +422,25 @@ fn fallback_panel_retranslates_existing_line_and_choice_entities() {
             .iter(world)
             .any(|text| text.0 == "1. Pergi Ada")
     );
+}
+
+#[test]
+fn decision_prompt_retranslates_with_choices_without_replaying_state() {
+    let (_temp, mut app) = fixture();
+    app.world_mut().non_send_mut::<Player>().presenter.advance();
+    let revision = app.world().non_send::<Player>().presenter.revision();
+    for (language, expected) in [
+        ("id", "Halo Ada 1"),
+        ("ja", "こんにちは Ada 1"),
+        ("en", "Hello Ada 1"),
+    ] {
+        switch(&mut app, language);
+        let player = app.world().non_send::<Player>();
+        assert_eq!(player.presenter.decision_context().unwrap().1, expected);
+        assert_eq!(player.presenter.revision(), revision);
+        assert_eq!(
+            player.state.read().unwrap().get("n"),
+            Ok(&Value::Float(1.0))
+        );
+    }
 }

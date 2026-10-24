@@ -8,9 +8,16 @@ pub trait EventSource {
     fn start(&mut self, node: &str) -> Result<(), DialogueError>;
     fn next_event(&mut self) -> Result<DialogueEvent, DialogueError>;
     fn choose(&mut self, index: usize) -> Result<(), DialogueError>;
+    /// Sources with scene boundaries must change this token when crossing one.
+    fn presentation_context(&self) -> u64 {
+        0
+    }
 }
 
 impl EventSource for DialogueRunner {
+    fn presentation_context(&self) -> u64 {
+        DialogueRunner::presentation_context(self)
+    }
     fn start(&mut self, node: &str) -> Result<(), DialogueError> {
         DialogueRunner::start(self, node)
     }
@@ -41,12 +48,13 @@ pub enum Screen {
     Error(String),
 }
 
-pub const END_TEXT: &str = "The End \u{2014} press Esc twice to quit";
+pub const END_TEXT: &str = "The End \u{2014} open the game menu to return to title or quit";
 
 pub struct Presenter<S: EventSource> {
     source: S,
     screen: Screen,
     revision: u64,
+    decision_context: Option<(Option<String>, String)>,
 }
 
 fn visible_choices(choices: Vec<weftora_yarn::Choice>) -> Vec<ChoiceView> {
@@ -66,11 +74,28 @@ impl Presenter<DialogueRunner> {
             return;
         }
         let screen = match self.source.refresh_localization() {
-            Ok(Some(DialogueEvent::Line { character, text })) => Screen::Line {
-                speaker: character,
-                text,
-            },
-            Ok(Some(DialogueEvent::Choices(choices))) => Screen::Choices(visible_choices(choices)),
+            Ok(Some(DialogueEvent::Line { character, text })) => {
+                self.decision_context = Some((character.clone(), text.clone()));
+                Screen::Line {
+                    speaker: character,
+                    text,
+                }
+            }
+            Ok(Some(DialogueEvent::Choices(choices))) => {
+                if self.decision_context.is_some() {
+                    match self.source.retranslate_previous_line() {
+                        Ok(Some(DialogueEvent::Line { character, text })) => {
+                            self.decision_context = Some((character, text));
+                        }
+                        Ok(_) => self.decision_context = None,
+                        Err(error) => {
+                            self.fail(error.to_string());
+                            return;
+                        }
+                    }
+                }
+                Screen::Choices(visible_choices(choices))
+            }
             Ok(_) => return,
             Err(error) => {
                 self.fail(error.to_string());
@@ -83,14 +108,20 @@ impl Presenter<DialogueRunner> {
 }
 
 impl<S: EventSource> Presenter<S> {
-    /// Starts the dialogue at `entrypoint` and runs to the first thing worth showing.
-    pub fn new(mut source: S, entrypoint: &str) -> (Self, Vec<Action>) {
-        let started = source.start(entrypoint);
-        let mut presenter = Self {
+    /// Holds an unstarted runner while the player shows its title screen.
+    pub fn dormant(source: S) -> Self {
+        Self {
             source,
             screen: Screen::End,
             revision: 0,
-        };
+            decision_context: None,
+        }
+    }
+
+    /// Starts the dialogue at `entrypoint` and runs to the first thing worth showing.
+    pub fn new(mut source: S, entrypoint: &str) -> (Self, Vec<Action>) {
+        let started = source.start(entrypoint);
+        let mut presenter = Self::dormant(source);
         let actions = match started {
             Ok(()) => presenter.run(),
             Err(err) => {
@@ -117,6 +148,16 @@ impl<S: EventSource> Presenter<S> {
         &self.screen
     }
 
+    /// The preceding line for this decision, when it belongs to the same scene context.
+    pub fn decision_context(&self) -> Option<(Option<&str>, &str)> {
+        if !matches!(self.screen, Screen::Choices(_)) {
+            return None;
+        }
+        self.decision_context
+            .as_ref()
+            .map(|(speaker, text)| (speaker.as_deref(), text.as_str()))
+    }
+
     /// The user asked to move on (click / Space / Enter). Only meaningful while a line is showing.
     pub fn advance(&mut self) -> Vec<Action> {
         if matches!(self.screen, Screen::Line { .. }) {
@@ -134,6 +175,7 @@ impl<S: EventSource> Presenter<S> {
         let Some(choice) = choices.get(position) else {
             return Vec::new();
         };
+        self.decision_context = None;
         match self.source.choose(choice.index) {
             Ok(()) => self.run(),
             Err(err) => {
@@ -148,6 +190,7 @@ impl<S: EventSource> Presenter<S> {
         if matches!(self.screen, Screen::Error(_)) {
             return;
         }
+        self.decision_context = None;
         self.screen = Screen::Error(message);
         self.revision = self.revision.wrapping_add(1);
     }
@@ -156,8 +199,14 @@ impl<S: EventSource> Presenter<S> {
     fn run(&mut self) -> Vec<Action> {
         let mut actions = Vec::new();
         loop {
-            match self.source.next_event() {
+            let context = self.source.presentation_context();
+            let event = self.source.next_event();
+            if context != self.source.presentation_context() {
+                self.decision_context = None;
+            }
+            match event {
                 Ok(DialogueEvent::Line { character, text }) => {
+                    self.decision_context = Some((character.clone(), text.clone()));
                     self.screen = Screen::Line {
                         speaker: character,
                         text,
@@ -173,12 +222,29 @@ impl<S: EventSource> Presenter<S> {
                 }
                 Ok(DialogueEvent::Command(command)) => match Action::parse(&command) {
                     Ok(action) => {
+                        if matches!(
+                            action,
+                            Action::Background(_)
+                                | Action::Show {
+                                    slot: weftora_core::presentation::Slot::Background,
+                                    ..
+                                }
+                                | Action::Hide {
+                                    slot: weftora_core::presentation::Slot::Background,
+                                    ..
+                                }
+                        ) {
+                            self.decision_context = None;
+                        }
                         actions.push(action);
                         continue;
                     }
                     Err(message) => self.fail(message),
                 },
-                Ok(DialogueEvent::End) => self.screen = Screen::End,
+                Ok(DialogueEvent::End) => {
+                    self.decision_context = None;
+                    self.screen = Screen::End;
+                }
                 Err(err) => self.fail(err.to_string()),
             }
             self.revision = self.revision.wrapping_add(1);
@@ -252,6 +318,75 @@ mod tests {
         }
     }
 
+    fn runner(script: &str) -> DialogueRunner {
+        let compiled = weftora_yarn_compiler::compile(&[weftora_story::DialogueSource {
+            file: "main.yarn".into(),
+            contents: script.into(),
+        }])
+        .unwrap();
+        DialogueRunner::new(
+            &compiled,
+            std::sync::Arc::new(std::sync::RwLock::new(weftora_core::State::new())),
+        )
+    }
+
+    #[test]
+    fn choices_retain_prompt_and_speaker_but_next_offer_does_not_reuse_it() {
+        let (mut presenter, _) = Presenter::new(
+            fake(vec![
+                line(Some("Guide"), "Which path?"),
+                cmd("sound", &["sfx.chime"]),
+                DialogueEvent::Choices(vec![choice(0, "Left", true)]),
+                DialogueEvent::Choices(vec![choice(0, "Again", true)]),
+            ]),
+            "Start",
+        );
+        assert!(presenter.decision_context().is_none());
+        presenter.advance();
+        assert_eq!(
+            presenter.decision_context(),
+            Some((Some("Guide"), "Which path?"))
+        );
+        presenter.select(0);
+        assert!(presenter.decision_context().is_none());
+    }
+
+    #[test]
+    fn node_and_checkpoint_boundaries_clear_prior_prompt() {
+        for checkpoint in ["", "<<checkpoint next>>\n"] {
+            let script = format!(
+                "title: Start\n---\nGuide: Old scene\n<<jump Decision>>\n===\ntitle: Decision\n---\n{checkpoint}-> Begin\n===\n"
+            );
+            let (mut presenter, _) = Presenter::new(runner(&script), "Start");
+            presenter.advance();
+            assert!(matches!(presenter.screen(), Screen::Choices(_)));
+            assert!(presenter.decision_context().is_none(), "{checkpoint}");
+        }
+    }
+
+    #[test]
+    fn background_change_clears_prior_prompt_even_inside_the_same_node() {
+        for command in [
+            cmd("background", &["bg.next"]),
+            cmd("show", &["background", "bg.next", "0"]),
+            cmd("hide", &["background", "0"]),
+        ] {
+            let (mut presenter, _) = Presenter::new(
+                fake(vec![
+                    line(None, "Old scene"),
+                    command,
+                    DialogueEvent::Choices(vec![choice(0, "Begin", true)]),
+                ]),
+                "Start",
+            );
+            presenter.advance();
+            assert!(matches!(presenter.screen(), Screen::Choices(_)));
+            assert!(presenter.decision_context().is_none());
+            presenter.fail("failed".into());
+            assert!(presenter.decision_context().is_none());
+        }
+    }
+
     #[test]
     fn commands_run_before_first_line_and_line_waits() {
         let (p, actions) = Presenter::new(
@@ -277,6 +412,15 @@ mod tests {
                 text: "Hi".into()
             }
         );
+    }
+
+    #[test]
+    fn dormant_presenter_does_not_start_or_consume_the_story() {
+        let presenter = Presenter::dormant(fake(vec![line(None, "First")]));
+        assert!(presenter.source.started.is_empty());
+        assert_eq!(presenter.source.events.len(), 1);
+        assert_eq!(presenter.screen(), &Screen::End);
+        assert_eq!(presenter.revision(), 0);
     }
 
     #[test]

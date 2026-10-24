@@ -115,43 +115,6 @@
                 "size": 16
               }
             ]
-          },
-          {
-            "type": "list",
-            "layout": {
-              "direction": "row",
-              "gap": 8
-            },
-            "children": [
-              {
-                "type": "text",
-                "text": "Route:",
-                "size": 16,
-                "color": "#9FB3C5"
-              },
-              {
-                "type": "text",
-                "bind": {
-                  "state": "story.route"
-                },
-                "size": 16,
-                "color": "#F3C778"
-              },
-              {
-                "type": "text",
-                "text": "• Signal sent:",
-                "size": 16,
-                "color": "#9FB3C5"
-              },
-              {
-                "type": "text",
-                "bind": {
-                  "state": "story.signal"
-                },
-                "size": 16,
-                "color": "#F3C778"
-              }
-            ]
           }
         ]
       }

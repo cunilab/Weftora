@@ -9,9 +9,9 @@ From the repository, use a matching prebuilt CLI/player or development binaries:
 
 No Rust is inside this Story. Hello Story remains the original golden-test fixture; Story A is separate so those earlier traces remain stable.
 
-Continue, Space or a background click advances a line. Digits 1–2 choose; Tab/Shift+Tab and Enter navigate buttons. Volume opens the channel controls; close it before saving. Save/Load buttons and F5/F9 use one slot for this Story ID. Saving works only at the first line or choices of a checkpoint, after fades finish. A refused operation appears in the top status line and leaves the game active.
+Normal launch first shows the engine title; New Game then enters this Story’s existing Begin/About choices. Escape/right-click opens the engine game menu and Return resumes the same interaction. Continue, Space or a background click advances a line. Digits 1–2 choose; Tab/Shift+Tab and Enter navigate buttons. Volume opens the channel controls; close it before saving. Save/Load buttons and F5/F9 request confirmed operations on one slot for this Story ID. Saving works only at the first line or choices of a checkpoint, after fades finish. A refused operation appears in the top status line and leaves the game active.
 
-Checkpoint IDs: scene.menu, scene.arrival, scene.decision, scene.repair, scene.roof and scene.dawn. At Repair/Roof, the opening increments story.attempts once; saving and reloading that display must still show one attempt. The route and sent-signal bindings show canonical state. Compatible dialogue/image edits retain saveSchema 1 and these IDs.
+Checkpoint IDs: scene.menu, scene.arrival, scene.decision, scene.repair, scene.roof and scene.dawn. At Repair/Roof, the opening increments story.attempts once; saving and reloading that display must still show one attempt. Route and sent-signal state remain available in developer tools rather than player reading chrome. Compatible dialogue/image edits retain saveSchema 1 and these IDs.
 
 Headless branch and checkpoint examples:
 

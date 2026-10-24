@@ -309,6 +309,7 @@ pub struct DialogueRunner {
     writes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     write_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     current_node: String,
+    presentation_context: u64,
     consecutive_commands: usize,
     consecutive_continues: usize,
     instructions_since_blocking: usize,
@@ -316,6 +317,7 @@ pub struct DialogueRunner {
     localization: Option<weftora_story::localization::Catalogs>,
     active_language: Option<String>,
     display: Option<localization::Display>,
+    previous_line: Option<yarnspinner_runtime::prelude::Line>,
     /// `(id, available)` of the choices offered by the last `Choices` event that was not yet answered.
     pending_choices: Option<Vec<(usize, bool)>>,
     started: bool,
@@ -371,6 +373,7 @@ impl DialogueRunner {
             writes,
             write_bytes,
             current_node: String::new(),
+            presentation_context: 0,
             consecutive_commands: 0,
             consecutive_continues: 0,
             instructions_since_blocking: 0,
@@ -378,6 +381,7 @@ impl DialogueRunner {
             localization: None,
             active_language: None,
             display: None,
+            previous_line: None,
             pending_choices: None,
             started: false,
             ended: false,
@@ -429,6 +433,11 @@ impl DialogueRunner {
         runner
     }
 
+    /// Changes at node and checkpoint boundaries, including re-entry into the same node.
+    pub fn presentation_context(&self) -> u64 {
+        self.presentation_context
+    }
+
     /// Starts (or restarts) the dialogue at `node`.
     pub fn start(&mut self, node: &str) -> Result<(), DialogueError> {
         self.ensure_healthy()?;
@@ -455,6 +464,7 @@ impl DialogueRunner {
         })?;
         self.queue.clear();
         self.display = None;
+        self.previous_line = None;
         self.pending_choices = None;
         self.capture = None;
         self.current_node = node.to_string();
@@ -527,6 +537,8 @@ impl DialogueRunner {
             if let DialogueEvent::Command(command) = &event
                 && command.name == "checkpoint"
             {
+                self.presentation_context = self.presentation_context.wrapping_add(1);
+                self.previous_line = None;
                 self.capture_checkpoint(&command.args[0]);
                 continue;
             }
@@ -671,6 +683,8 @@ impl DialogueRunner {
                         .push_back(localization::QueuedEvent::Event(DialogueEvent::End));
                 }
                 yarnspinner_runtime::prelude::DialogueEvent::NodeStart(node) => {
+                    self.presentation_context = self.presentation_context.wrapping_add(1);
+                    self.previous_line = None;
                     self.current_node = node;
                 }
                 yarnspinner_runtime::prelude::DialogueEvent::NodeComplete(_)
@@ -699,6 +713,7 @@ impl DialogueRunner {
         self.runtime_call(|dialogue| dialogue.set_selected_option(OptionId(index)).map(|_| ()))?;
         self.pending_choices = None;
         self.display = None;
+        self.previous_line = None;
         Ok(())
     }
 
@@ -719,6 +734,7 @@ impl DialogueRunner {
             localization::QueuedEvent::Event(event) => {
                 if matches!(event, DialogueEvent::End) {
                     self.display = None;
+                    self.previous_line = None;
                 }
                 event
             }
@@ -727,6 +743,9 @@ impl DialogueRunner {
                     Ok(event) => event,
                     Err(error) => return self.fail_with_context(error),
                 };
+                if let localization::Display::Line(line) = &display {
+                    self.previous_line = Some(line.clone());
+                }
                 self.display = Some(display);
                 event
             }
@@ -764,6 +783,7 @@ impl DialogueRunner {
         self.failure = Some(error.to_string());
         self.queue.clear();
         self.display = None;
+        self.previous_line = None;
         self.pending_choices = None;
         Err(error)
     }

@@ -20,7 +20,7 @@ pub(super) fn store(story: &weftora_story::Story) -> Option<Result<Store, String
 }
 
 impl Player {
-    fn store(&self) -> Result<&Store, String> {
+    pub(super) fn store(&self) -> Result<&Store, String> {
         self.save_store
             .as_ref()
             .ok_or("Story does not support saves")?
@@ -28,8 +28,8 @@ impl Player {
             .map_err(Clone::clone)
     }
 
-    pub(super) fn write_save(&self) -> Result<(), String> {
-        let store = self.store()?;
+    pub(super) fn save_game(&self) -> Result<SavedGame, String> {
+        self.store()?;
         let context = weftora_yarn::save_context(&self.story, &self.compiled)
             .map_err(|error| error.to_string())?;
         let snapshot = self
@@ -48,7 +48,68 @@ impl Player {
                 weftora_core::presentation::volumes(&state)?;
             }
         }
-        store.write(&game).map_err(|error| error.to_string())
+        Ok(game)
+    }
+
+    pub(super) fn write_save(&self) -> Result<(), String> {
+        self.store()?
+            .write(&self.save_game()?)
+            .map_err(|error| error.to_string())
+    }
+
+    pub(super) fn load_available(&self) -> Result<(), String> {
+        if matches!(self.presenter.screen(), Screen::Error(_)) {
+            return Err("save/load is unavailable after a Story error".into());
+        }
+        let context = weftora_yarn::save_context(&self.story, &self.compiled)
+            .map_err(|error| error.to_string())?;
+        self.store()?
+            .load(&context)
+            .map(|_| ())
+            .map_err(|error| match error {
+                weftora_save::Error::Missing => "No checkpoint saved yet.".into(),
+                other => other.to_string(),
+            })
+    }
+
+    pub(super) fn fresh_candidate(&self, start: bool) -> Result<Candidate, String> {
+        if let Some(error) = &self.startup_error {
+            return Err(error.clone());
+        }
+        let mut initial = self.story.initial_state().map_err(|e| e.to_string())?;
+        let settings = self
+            .state
+            .read()
+            .map_err(|_| "canonical state lock poisoned")?
+            .snapshot_entries(weftora_core::Scope::Settings);
+        initial
+            .apply_snapshot(weftora_core::Scope::Settings, &settings)
+            .map_err(|e| e.to_string())?;
+        let state = Arc::new(RwLock::new(initial));
+        let mut runner = DialogueRunner::for_story(&self.compiled, state.clone(), &self.story);
+        if self.presenter.source().rule_trace().is_some() {
+            runner.enable_rule_trace();
+        }
+        let (presenter, actions) = if start {
+            Presenter::new(runner, &self.story.manifest().entrypoint)
+        } else {
+            (Presenter::dormant(runner), Vec::new())
+        };
+        if let Screen::Error(error) = presenter.screen() {
+            return Err(error.clone());
+        }
+        {
+            let state = state.read().map_err(|_| "candidate state lock poisoned")?;
+            declarative::validate_display(&self.story, &state, presenter.screen())?;
+            if weftora_yarn::media_enabled(&self.story) {
+                weftora_core::presentation::volumes(&state)?;
+            }
+        }
+        Ok(Candidate {
+            state,
+            presenter,
+            actions,
+        })
     }
 
     pub(super) fn prepare_load(&self) -> Result<Candidate, String> {
@@ -194,6 +255,8 @@ mod tests {
                 action,
             });
         app.update();
+        // Existing storage scenarios now explicitly accept the player confirmation.
+        crate::shell::accept_and_return(app);
     }
     fn set(app: &App, key: &str, value: Value) {
         app.world()
@@ -762,7 +825,7 @@ mod tests {
     }
 
     #[test]
-    fn quit_warning_temporarily_overrides_a_save_refusal_without_clearing_it() {
+    fn opening_menu_preserves_save_refusal_and_never_quits() {
         let (_temp, mut app) = fixture(SCRIPT);
         app.add_systems(Update, crate::refresh_save_status.after(crate::drive));
         app.world_mut().non_send_mut::<Player>().save_store =
@@ -772,29 +835,9 @@ mod tests {
             .resource_mut::<ButtonInput<KeyCode>>()
             .press(KeyCode::Escape);
         app.update();
-        let status = {
-            let world = app.world_mut();
-            world
-                .query_filtered::<Entity, With<crate::SaveStatus>>()
-                .single(world)
-                .unwrap()
-        };
-        assert!(
-            app.world()
-                .get::<Text>(status)
-                .unwrap()
-                .0
-                .contains("Press Esc again")
-        );
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .reset_all();
-        app.world_mut()
-            .resource_mut::<Time>()
-            .advance_by(Duration::from_secs(4));
-        app.update();
+        assert!(!app.world().resource::<crate::shell::Shell>().is_playing());
         assert_eq!(
-            app.world().get::<Text>(status).unwrap().0,
+            app.world().non_send::<Player>().save_status,
             "Couldn't save: Storage unavailable"
         );
         assert!(app.world().resource::<Messages<AppExit>>().is_empty());
@@ -823,7 +866,8 @@ mod tests {
         app.update();
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
-            .clear();
+            .reset_all();
+        crate::shell::accept_and_return(&mut app);
         assert!(
             app.world()
                 .resource::<Ui>()
@@ -1054,7 +1098,8 @@ mod tests {
         app.update();
         app.world_mut()
             .resource_mut::<ButtonInput<KeyCode>>()
-            .clear();
+            .reset_all();
+        crate::shell::accept_and_return(&mut app);
         assert_eq!(app.world().non_send::<Player>().save_status, "Saved.");
         set(&app, "n", Value::Float(99.0));
         for key in [KeyCode::F9, KeyCode::Space] {
@@ -1063,6 +1108,10 @@ mod tests {
                 .press(key);
         }
         app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .reset_all();
+        crate::shell::accept_and_return(&mut app);
         assert_eq!(app.world().non_send::<Player>().save_status, "Loaded.");
         assert!(
             matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Line { text, .. } if text=="First 1")
@@ -1381,7 +1430,8 @@ mod tests {
                 app.update();
                 app.world_mut()
                     .resource_mut::<ButtonInput<KeyCode>>()
-                    .clear();
+                    .reset_all();
+                crate::shell::accept_and_return(&mut app);
                 assert_eq!(app.world().non_send::<Player>().save_status, "Loaded.");
                 assert!(app.world().resource::<Ui>().at_initial_base(&story));
             }

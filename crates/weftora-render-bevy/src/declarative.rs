@@ -226,6 +226,7 @@ pub(crate) fn setup(
             }
         }
         Err(e) => {
+            player.startup_error = Some(e.clone());
             player.presenter.fail(e);
             player.dirty = true;
         }
@@ -778,6 +779,17 @@ pub(crate) fn update_bindings(
                     (DialogueBinding::Speaker, Screen::Line { speaker, .. }) => {
                         speaker.clone().unwrap_or_default()
                     }
+                    (DialogueBinding::Text, Screen::Choices(_)) => player
+                        .presenter
+                        .decision_context()
+                        .map(|(_, text)| text.to_owned())
+                        .unwrap_or_default(),
+                    (DialogueBinding::Speaker, Screen::Choices(_)) => player
+                        .presenter
+                        .decision_context()
+                        .and_then(|(speaker, _)| speaker)
+                        .unwrap_or_default()
+                        .to_owned(),
                     (DialogueBinding::Text, Screen::End) => END_TEXT.into(),
                     _ => String::new(),
                 },
@@ -1006,12 +1018,7 @@ mod tests {
             app.update();
             assert!(!app.world().resource::<crate::debug_tools::Inspector>().open);
             assert_eq!(app.world().resource::<Ui>().modal(), modal);
-            assert!(
-                app.world()
-                    .resource::<crate::ExitConfirmation>()
-                    .0
-                    .is_none()
-            );
+            assert!(app.world().resource::<crate::shell::Shell>().is_playing());
             assert!(app.world().resource::<Messages<AppExit>>().is_empty());
             assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
         }
@@ -1065,12 +1072,7 @@ mod tests {
         assert!(!app.world().resource::<Ui>().modal());
         assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
         assert!(app.world().resource::<Messages<AppExit>>().is_empty());
-        assert!(
-            app.world()
-                .resource::<crate::ExitConfirmation>()
-                .0
-                .is_none()
-        );
+        assert!(app.world().resource::<crate::shell::Shell>().is_playing());
         let focused = app.world().resource::<InputFocus>().get().unwrap();
         assert_eq!(
             app.world().get::<FocusKey>(focused).unwrap().0,

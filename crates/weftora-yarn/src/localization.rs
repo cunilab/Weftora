@@ -92,6 +92,19 @@ impl DialogueRunner {
         })
     }
 
+    /// Retranslates the last emitted source line without advancing or reevaluating substitutions.
+    /// Callers decide whether that line is still relevant to their current choice display.
+    pub fn retranslate_previous_line(&mut self) -> Result<Option<DialogueEvent>, DialogueError> {
+        self.ensure_healthy()?;
+        let Some(line) = self.previous_line.clone() else {
+            return Ok(None);
+        };
+        match self.render_display(&Display::Line(line)) {
+            Ok(event) => Ok(Some(event)),
+            Err(error) => self.fail_with_context(error),
+        }
+    }
+
     /// Retranslates the current blocking snapshot only when the Settings language changes.
     /// No instructions, conditions or host functions are executed; checkpoint capture is retained.
     pub fn refresh_localization(&mut self) -> Result<Option<DialogueEvent>, DialogueError> {
@@ -356,6 +369,17 @@ mod tests {
             matches!(runner.next_event().unwrap(),DialogueEvent::Line{text,..} if text=="最初")
         );
         assert_eq!(runner.dialogue.last_instruction_count(), 0);
+        state
+            .write()
+            .unwrap()
+            .set("locale", Value::String("id".into()))
+            .unwrap();
+        assert!(matches!(
+            runner.retranslate_previous_line().unwrap(),
+            Some(DialogueEvent::Line { text, .. }) if text == "Pertama"
+        ));
+        assert_eq!(runner.dialogue.last_instruction_count(), 0);
+        assert!(runner.queue.is_empty());
         runner
             .queue
             .push_back(QueuedEvent::Event(DialogueEvent::Command(
@@ -377,9 +401,11 @@ mod tests {
         assert!(runner.refresh_localization().unwrap().is_none());
         runner.start("Start").unwrap();
         assert!(runner.display.is_none());
+        assert!(runner.retranslate_previous_line().unwrap().is_none());
         let _: Result<(), _> = runner.fail(DialogueError::Runtime("test failure".into()));
         assert!(runner.display.is_none());
         assert!(runner.refresh_localization().is_err());
+        assert!(runner.retranslate_previous_line().is_err());
     }
 
     #[test]

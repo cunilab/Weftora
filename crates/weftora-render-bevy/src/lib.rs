@@ -11,6 +11,7 @@ mod localization_tests;
 mod media;
 pub mod presenter;
 mod saves;
+mod shell;
 mod theme;
 
 use std::sync::{Arc, Mutex};
@@ -86,6 +87,7 @@ fn run_player(
     let outcome = failure.0.clone();
     App::new()
         .add_plugins(DefaultPlugins.set(WindowPlugin {
+            close_when_requested: false,
             primary_window: Some(Window {
                 title,
                 resolution: WindowResolution::new(1280, 720),
@@ -104,7 +106,7 @@ fn run_player(
         .insert_resource(ClearColor(theme::PANEL))
         .insert_resource(failure)
         .insert_resource(debug_tools::Inspector::new(debug_tools))
-        .init_resource::<ExitConfirmation>()
+        .insert_resource(shell::Shell::new(node.is_some()))
         .init_resource::<SaveFeedback>()
         .init_resource::<Intents>()
         .init_resource::<Ui>()
@@ -120,11 +122,12 @@ fn run_player(
                 declarative::sync_layers,
                 declarative::sync_choices,
                 declarative::sync_advance_buttons,
-                declarative::restore_focus,
+                declarative::restore_focus.run_if(shell::playing),
                 declarative::update_bindings,
                 media::sync_audio,
                 refresh_panel,
                 refresh_save_status,
+                shell::refresh,
                 hover_buttons,
                 debug_tools::refresh,
                 remember_failure,
@@ -164,7 +167,11 @@ fn prepare_player(
     if let Ok(mut state) = state.write() {
         state.drain_changes();
     }
-    let (presenter, actions) = Presenter::new(runner, node.unwrap_or(&story.manifest().entrypoint));
+    let (presenter, actions) = if let Some(node) = node {
+        Presenter::new(runner, node)
+    } else {
+        (Presenter::dormant(runner), Vec::new())
+    };
     Ok(Player {
         presenter,
         state,
@@ -178,6 +185,7 @@ fn prepare_player(
         },
         compiled: dialogue,
         save_status: String::new(),
+        startup_error: None,
         story,
         pending: actions,
         dirty: true,
@@ -201,6 +209,7 @@ struct Player {
     compiled: CompiledDialogue,
     save_store: Option<Result<weftora_save::storage::Store, String>>,
     save_status: String,
+    startup_error: Option<String>,
 }
 
 #[derive(Component)]
@@ -215,9 +224,6 @@ enum PanelBinding {
 
 #[derive(Component)]
 struct SaveStatus;
-
-#[derive(Resource, Default)]
-struct ExitConfirmation(Option<std::time::Duration>);
 
 #[derive(Resource, Default)]
 struct SaveFeedback {
@@ -242,7 +248,7 @@ fn setup(mut commands: Commands) {
                 ..default()
             },
             BackgroundColor(theme::PANEL),
-            GlobalZIndex(1000),
+            GlobalZIndex(500000),
         ))
         .insert(Pickable {
             is_hoverable: false,
@@ -292,55 +298,53 @@ fn setup(mut commands: Commands) {
 #[allow(clippy::too_many_arguments)]
 fn drive(
     mut player: NonSendMut<Player>,
-    inspector: Res<debug_tools::Inspector>,
+    mut inspector: ResMut<debug_tools::Inspector>,
     keys: Res<ButtonInput<KeyCode>>,
     mut intents: ResMut<Intents>,
     mut ui: ResMut<Ui>,
-    focus: Res<InputFocus>,
+    mut focus: ResMut<InputFocus>,
     buttons: Query<(), With<Button>>,
     focus_keys: Query<&FocusKey>,
     mut exit: MessageWriter<AppExit>,
     mut media: Media,
     time: Res<Time>,
-    mut quit: ResMut<ExitConfirmation>,
+    mut shell_input: shell::Input,
     mut feedback: ResMut<SaveFeedback>,
 ) {
-    if !inspector.captured && keys.just_pressed(KeyCode::Escape) {
-        if ui.modal() && !matches!(player.presenter.screen(), Screen::Error(_)) {
-            // Close only pops a validated layer; consume input before exposing the screen below.
-            let _ = ui.navigate(&UiAction::Close, &player.story, None);
-            intents.drain().for_each(drop);
-            quit.0 = None;
-        } else if matches!(player.presenter.screen(), Screen::Error(_))
-            || quit.0.is_some_and(|until| time.elapsed() <= until)
-        {
-            exit.write(AppExit::Success);
-        } else {
-            quit.0 = Some(time.elapsed() + std::time::Duration::from_secs(3));
-            intents.drain().for_each(drop);
-        }
-        return;
-    }
-
-    if keys.get_just_pressed().any(|key| *key != KeyCode::Escape) {
-        quit.0 = None;
-    }
+    // Menu navigation blocks Story input; fades and music continue without replaying commands.
     media.begin_frame(
         time.delta(),
         matches!(player.presenter.screen(), Screen::Error(_)),
     );
+    let previous_status = player.save_status.clone();
+    let route = shell_input.route(
+        &mut player,
+        &mut ui,
+        &mut media,
+        &keys,
+        &mut inspector,
+        &mut focus,
+        &mut exit,
+    );
+    if player.save_status != previous_status {
+        feedback.until = None;
+        feedback.failed = !player.save_status.is_empty();
+    }
+    if route.blocked {
+        intents.drain().for_each(drop);
+    }
     let before = player.presenter.screen().clone();
     let before_revision = player.presenter.revision();
     let mut actions = std::mem::take(&mut player.pending);
-    let mut requested = None;
+    let mut requested = route.request;
 
     let focused_button = focus.get().is_some_and(|e| buttons.contains(e));
-    if !inspector.captured && keys.just_pressed(KeyCode::F9) {
+    if !route.blocked && !inspector.captured && keys.just_pressed(KeyCode::F9) {
         requested = Some(UiAction::Load);
-    } else if !inspector.captured && keys.just_pressed(KeyCode::F5) {
+    } else if !route.blocked && !inspector.captured && keys.just_pressed(KeyCode::F5) {
         requested = Some(UiAction::Save);
     }
-    if !inspector.captured && !ui.modal() && requested.is_none() {
+    if !route.blocked && !inspector.captured && !ui.modal() && requested.is_none() {
         if let Some(position) = DIGIT_KEYS.iter().position(|k| keys.just_pressed(*k)) {
             intents.push(Intent::Select {
                 layer: None,
@@ -359,8 +363,7 @@ fn drive(
     }
     let mut progressed = false;
     for intent in intents.drain() {
-        quit.0 = None;
-        if inspector.captured {
+        if inspector.captured || route.blocked {
             continue;
         }
         if matches!(player.presenter.screen(), Screen::Error(_)) {
@@ -423,6 +426,41 @@ fn drive(
         }
     }
 
+    if let Some(request) = requested.as_ref()
+        && !route.confirmed
+        && !progressed
+        && !commands_ran
+    {
+        let available = if matches!(request, UiAction::Save) {
+            shell::save_available(&player, &ui, &media.presentation)
+        } else {
+            player.load_available()
+        };
+        if let Err(reason) = available {
+            player.save_status = format!(
+                "Couldn't {}: {reason}",
+                if matches!(request, UiAction::Save) {
+                    "save"
+                } else {
+                    "load"
+                }
+            );
+            feedback.failed = true;
+            feedback.until = None;
+            requested = None;
+        }
+    }
+    if let Some(request) = requested.as_ref()
+        && !route.confirmed
+        && !progressed
+        && !commands_ran
+        && !matches!(player.presenter.screen(), Screen::Error(_))
+    {
+        shell_input
+            .shell
+            .confirm_request(request.clone(), &mut focus);
+        requested = None;
+    }
     if let Some(request) = requested {
         let result: Result<String, String> = (|| {
             if progressed || commands_ran {
@@ -452,11 +490,13 @@ fn drive(
                     player.pending.clear();
                     player.dirty = true;
                     ui.reset(&player.story);
+                    shell_input.shell.loaded(&mut focus);
                     Ok("Loaded.".to_string())
                 }
                 _ => unreachable!("save/load request"),
             }
         })();
+        shell_input.shell.invalidate_load();
         feedback.failed = result.is_err();
         feedback.until = result
             .is_ok()
@@ -561,10 +601,12 @@ fn refresh_panel(
     mut texts: Query<(&PanelBinding, &mut Text, &mut Node)>,
     mut commands: Commands,
     ui: Res<Ui>,
+    shell: Res<shell::Shell>,
 ) {
     let (panel, mut visibility, mut cached) = panel.into_inner();
-    let show = player.story.manifest().initial_screen.is_none()
-        || matches!(player.presenter.screen(), Screen::Error(_));
+    let show = shell.is_playing()
+        && (player.story.manifest().initial_screen.is_none()
+            || matches!(player.presenter.screen(), Screen::Error(_)));
     *visibility = if show {
         Visibility::Inherited
     } else {
@@ -582,10 +624,19 @@ fn refresh_panel(
                     .all(|(b, _, _)| matches!(b, PanelBinding::Speaker | PanelBinding::Text))
         }
         Screen::Choices(choices) => {
-            texts.iter().count() == choices.len()
-                && texts
-                    .iter()
-                    .all(|(b, _, _)| matches!(b, PanelBinding::Choice(i) if *i < choices.len()))
+            texts.iter().count()
+                == choices.len()
+                    + if player.presenter.decision_context().is_some() {
+                        2
+                    } else {
+                        0
+                    }
+                && texts.iter().all(|(b, _, _)| match b {
+                    PanelBinding::Choice(i) => *i < choices.len(),
+                    PanelBinding::Speaker | PanelBinding::Text => {
+                        player.presenter.decision_context().is_some()
+                    }
+                })
         }
         _ => false,
     };
@@ -612,6 +663,18 @@ fn refresh_panel(
                 (PanelBinding::Choice(i), Screen::Choices(choices)) => {
                     format!("{}. {}", i + 1, choices[*i].text)
                 }
+                (PanelBinding::Speaker, Screen::Choices(_)) => player
+                    .presenter
+                    .decision_context()
+                    .and_then(|(speaker, _)| speaker)
+                    .unwrap_or_default()
+                    .into(),
+                (PanelBinding::Text, Screen::Choices(_)) => player
+                    .presenter
+                    .decision_context()
+                    .map(|(_, text)| text)
+                    .unwrap_or_default()
+                    .into(),
                 _ => unreachable!("shape checked"),
             };
         }
@@ -655,7 +718,26 @@ fn refresh_panel(
             });
         }
         Screen::Choices(choices) => {
+            let context = player
+                .presenter
+                .decision_context()
+                .map(|(speaker, text)| (speaker.map(str::to_owned), text.to_owned()));
             commands.entity(panel).with_children(|p| {
+                if let Some((speaker, text)) = context {
+                    p.spawn((
+                        PanelBinding::Speaker,
+                        label_with_font(
+                            speaker.unwrap_or_default(),
+                            22.0,
+                            SPEAKER_COLOR,
+                            ui.default_font.clone(),
+                        ),
+                    ));
+                    p.spawn((
+                        PanelBinding::Text,
+                        label_with_font(text, 28.0, theme::TEXT, ui.default_font.clone()),
+                    ));
+                }
                 for (position, choice) in choices.into_iter().enumerate() {
                     p.spawn((
                         Button,
@@ -709,7 +791,7 @@ fn refresh_panel(
                     ui.default_font.clone(),
                 ));
                 p.spawn(label_with_font(
-                    "press Esc to quit",
+                    "Esc / right-click opens the game menu",
                     16.0,
                     theme::MUTED,
                     ui.default_font.clone(),
@@ -722,7 +804,6 @@ fn refresh_panel(
 fn refresh_save_status(
     player: NonSend<Player>,
     ui: Res<Ui>,
-    quit: Res<ExitConfirmation>,
     time: Res<Time>,
     feedback: Res<SaveFeedback>,
     mut text: Single<(&mut Text, &mut Node, &mut TextFont, &mut TextColor), With<SaveStatus>>,
@@ -732,12 +813,7 @@ fn refresh_save_status(
     if font.font != source {
         font.font = source;
     }
-    let (value, tone) = if quit.0.is_some_and(|until| time.elapsed() <= until) {
-        (
-            "Press Esc again to quit. Unsaved progress will be lost.",
-            theme::ACCENT,
-        )
-    } else if !player.save_status.is_empty()
+    let (value, tone) = if !player.save_status.is_empty()
         && !feedback.until.is_some_and(|until| time.elapsed() >= until)
     {
         (
@@ -884,7 +960,15 @@ mod tests {
     }
     pub(super) fn app_for_debug(story: Story, compiled: CompiledDialogue, debug: bool) -> App {
         let state = Arc::new(std::sync::RwLock::new(story.initial_state().unwrap()));
-        let player = prepare_player(story, compiled, state, debug, None).unwrap();
+        let mut player = prepare_player(story, compiled, state, debug, None).unwrap();
+        let mut runner =
+            DialogueRunner::for_story(&player.compiled, player.state.clone(), &player.story);
+        if debug {
+            runner.enable_rule_trace();
+        }
+        let (presenter, pending) = Presenter::new(runner, &player.story.manifest().entrypoint);
+        player.presenter = presenter;
+        player.pending = pending;
         let mut app = App::new();
         app.insert_non_send(player)
             .init_resource::<RuntimeFailure>()
@@ -894,7 +978,9 @@ mod tests {
             .init_resource::<ButtonInput<KeyCode>>()
             .init_resource::<InputFocus>()
             .init_resource::<InputFocusVisible>()
-            .init_resource::<ExitConfirmation>()
+            .insert_resource(shell::Shell::new(true))
+            .init_resource::<ButtonInput<MouseButton>>()
+            .add_message::<bevy::window::WindowCloseRequested>()
             .init_resource::<SaveFeedback>()
             .init_resource::<Intents>()
             .init_resource::<Ui>()
@@ -909,36 +995,24 @@ mod tests {
         app
     }
     #[test]
-    fn escape_requires_a_second_press_and_expires() {
+    fn repeated_escape_toggles_menu_without_quitting_or_progressing() {
         let mut app = input_app();
         app.update();
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .press(KeyCode::Escape);
-        app.update();
-        assert!(app.world().resource::<Messages<AppExit>>().is_empty());
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .reset_all();
-        app.world_mut()
-            .resource_mut::<Time>()
-            .advance_by(std::time::Duration::from_secs(4));
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .press(KeyCode::Escape);
-        app.update();
-        assert!(
-            app.world().resource::<Messages<AppExit>>().is_empty(),
-            "expired confirmation must rearm"
-        );
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .reset_all();
-        app.world_mut()
-            .resource_mut::<ButtonInput<KeyCode>>()
-            .press(KeyCode::Escape);
-        app.update();
-        assert_eq!(app.world().resource::<Messages<AppExit>>().len(), 1);
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        for _ in 0..6 {
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .reset_all();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Escape);
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Space);
+            app.update();
+            assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+            assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        }
     }
 
     #[test]
