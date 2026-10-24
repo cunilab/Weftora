@@ -1,0 +1,88 @@
+{
+  "check": "P6-11 live localisation implementation; native Windows release-build acceptance remains open",
+  "baseCommit": "dc4f744caddf6a7d82941ae8b251124e0cf816b8",
+  "workingTreeDirty": true,
+  "platform": "MacBookAir development host",
+  "capabilities": [
+    "localization.catalog/1",
+    "localization.text/1"
+  ],
+  "fixture": "examples/localization-demo (en, id, ja)",
+  "rustTestsPassed": 435,
+  "newRustTests": 18,
+  "localizationTestsTotal": 26,
+  "semantics": [
+    "one configured canonical Settings string; known locale required for default, initialState and UI actions; fresh launches use initial/default locale",
+    "locale reads/writes denied in Yarn, rules and Rhai; generic/keyed locale change watchers denied; UI state.set is selection path",
+    "evaluated string substitutions captured once, raw lines/options translated at emission and language refresh without VM continuation, conditions, host functions or progress changes",
+    "choice IDs/order/availability, offer revision, entities/focus, checkpoint eligibility, progress save bytes and rule trace retained",
+    "current in-process language retained by isolated load candidate; rejected edits/loads preserve live view/state and save file",
+    "common typed font is default for declarative widgets and fallback panel; explicit author overrides remain possible",
+    "catalog shape/coverage/language validation shared by check_story and Story-aware runner; syntax-only markup validation does not evaluate select/plural cases",
+    "captured substitutions capped at64 values and16KiB aggregate bytes; old compiled-operand/expanded-text bounds remain",
+    "no save/artifact/API version bump or new dependency packages; Bevy0.20 existing complex_script_segmentation enabled"
+  ],
+  "covered": [
+    "six renderer tests: live lines/options, frozen variables/conditions, once-only prefix effects, nonempty rule trace and byte-identical saves, retained locale after load, candidate/edit/file preservation, actual UI action ordering, entity/focus retention and unchanged Text ticks, fallback panel, font registration/glyph coverage/Japanese word boundaries",
+    "four adapter tests: provider/plural round trips, zero-instruction rerender, queued snapshot emission/cache clearing, retained-value bounds and syntax-only word selectors",
+    "seven additional Story tests: runtime schema/settings/font/bindings/actions/rule and script isolation",
+    "one additional CLI scenario: en/id/ja headless gameplay equivalence and Yarn locale access/bad-markup refusal; previous catalog suite remains passing"
+  ],
+  "validation": {
+    "fullSuite": "cargo test-all:435 passed,0 failed after segmentation feature fix",
+    "defaultAndStoryClippy": "both passed with warnings denied",
+    "formatting": "cargo fmt and shared vendor rustfmt passed",
+    "dependencyDirection": "passed offline",
+    "docsAndDiff": "passed",
+    "matchingTools": "final frozen-source cargo build --workspace --locked passed; exported identities verified"
+  },
+  "exportAndNativeProof": {
+    "platform": "MacBookAir development host",
+    "scope": "matching debug tools, three locale exports, compiler-free validation and native startup only",
+    "languages": {
+      "en": {
+        "headlessGreeting": "Hello, Mira. You have 7 coins.",
+        "gameplayEqual": true,
+        "exportedFontNoticeCatalogHashesVerified": true,
+        "playerValidate": "passed",
+        "nativeMacStartup": "alive 2 seconds after window creation; own process terminated; no visual/input assessment"
+      },
+      "id": {
+        "headlessGreeting": "Hai, Mira. Kamu punya 7 koin.",
+        "gameplayEqual": true,
+        "exportedFontNoticeCatalogHashesVerified": true,
+        "playerValidate": "passed",
+        "nativeMacStartup": "alive 2 seconds after window creation; own process terminated; no visual/input assessment"
+      },
+      "ja": {
+        "headlessGreeting": "Miraさん、こんにちは。コインは7枚です。",
+        "gameplayEqual": true,
+        "exportedFontNoticeCatalogHashesVerified": true,
+        "playerValidate": "passed",
+        "nativeMacStartup": "alive 2 seconds after window creation; own process terminated; no visual/input assessment"
+      }
+    },
+    "windowsNativeAcceptance": "pending issue #5",
+    "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+    "compiledArtifactSha256": "d54bdea092dd913b33317f39f0aab33ab8e23542d437fdb417d0643de64f83be",
+    "samePlayerAndArtifactAcrossLanguages": true,
+    "missingChoiceTranslationRefusedAndRepairAccepted": true,
+    "zipRoundTripAndExtractedValidate": true
+  },
+  "nativeSegmentationFix": {
+    "observedBefore": "native startup emitted ICU4X missing Chinese/Japanese segmentation-model errors",
+    "cause": "Parley0.11.1 non-complex-script segmenters selected by default Bevy features",
+    "fix": "enable Bevy0.20.0 complex_script_segmentation to select existing ICU2.3 dictionary data",
+    "regression": "Japanese dictionary word-boundary assertion passes; allthreefinalnative logs show window creation with no ERROR, panic or missing-model message"
+  },
+  "advisor": "Claude Opus5.5 medium challenged and reviewed implementation read-only; word-selector preflight and unchanged-text concerns corrected. Final runtime verdict PASS with limits, followed by targeted confirmation of the segmentation feature fix. Main ran all checks.",
+  "windowsCi": "release ZIP/extraction loop now includes localization-demo; first head run pending",
+  "limits": [
+    "Mac native evidence is startup only: alive2seconds after window creation, ownprocess terminated; no screenshot/input assessment",
+    "Windows release-build native rendering/input/focus/DPI/save walkthrough remains issue#5, P6-11 unchecked",
+    "no persisted Settings file or OS language detection; Engine chrome may remain English",
+    "syntax checks cannot prove every runtime value/markup branch; dynamic failures remain terminal Story errors",
+    "translations need fluent-speaker review; author font overrides/dynamic user text need suitable glyph coverage",
+    "no tag, merge or release publication"
+  ]
+}

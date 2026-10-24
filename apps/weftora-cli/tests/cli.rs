@@ -1,3 +1,5 @@
+mod support;
+
 use std::fs;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Output};
@@ -127,8 +129,7 @@ fn export_skips_unreferenced_hidden_content_and_keeps_references() {
     fs::write(story.join(".notes"), "private notes").unwrap();
     fs::create_dir(story.join(".cache")).unwrap();
     fs::write(story.join(".cache/file"), "cached content").unwrap();
-    let player = tmp.path().join("fake-player");
-    fs::write(&player, "player").unwrap();
+    let player = support::player(tmp.path());
     let export = tmp.path().join("export");
     let out = weftora()
         .env("WEFTORA_PLAYER", &player)
@@ -325,8 +326,7 @@ fn export_refuses_symlinked_output_without_touching_target() {
 #[test]
 fn export_copies_player_and_story() {
     let tmp = tempfile::tempdir().unwrap();
-    let fake_player = tmp.path().join("fake-player");
-    fs::write(&fake_player, b"not a real player").unwrap();
+    let fake_player = support::player(tmp.path());
     let out_dir = tmp.path().join("missing/nested/export");
 
     let out = weftora()
@@ -342,7 +342,7 @@ fn export_copies_player_and_story() {
     let player_name = format!("weftora-player{}", std::env::consts::EXE_SUFFIX);
     assert_eq!(
         fs::read(out_dir.join(player_name)).unwrap(),
-        b"not a real player"
+        fs::read(&fake_player).unwrap()
     );
     assert!(out_dir.join("story/manifest.jsonc").is_file());
     assert!(out_dir.join("story/dialogue/intro.yarn").is_file());
@@ -351,6 +351,14 @@ fn export_copies_player_and_story() {
     let report: serde_json::Value =
         serde_json::from_slice(&fs::read(out_dir.join("weftora-export.json")).unwrap()).unwrap();
     assert_eq!(report["exportFormat"], 1);
+    assert_eq!(
+        report["player"]["identity"],
+        serde_json::to_value(weftora_yarn::ToolIdentity::current("weftora-player")).unwrap()
+    );
+    assert_eq!(
+        report["cli"]["identity"],
+        serde_json::to_value(weftora_yarn::ToolIdentity::current("weftora")).unwrap()
+    );
     let artifact = out_dir.join(weftora_yarn::ARTIFACT_FILE);
     let bytes = fs::read(&artifact).unwrap();
     let mut compiled = weftora_yarn::CompiledDialogue::from_artifact_bytes(&bytes).unwrap();
@@ -581,22 +589,77 @@ fn preview_passes_a_live_artifact_and_cleans_it_without_story_writes() {
         .map(|e| e.unwrap().file_name())
         .collect();
     let player = tmp.path().join("inspect-player");
-    fs::write(&player, b"#!/bin/sh\ntest \"$2\" = --dialogue || exit 11\ntest -s \"$3\" || exit 12\nprintf '%s' \"$3\"\nexit 23\n").unwrap();
+    fs::write(&player, b"#!/bin/sh\ntest \"$2\" = --dialogue || exit 11\ntest -s \"$3\" || exit 12\ncase \"$4\" in \"\"|--debug-tools) ;; *) exit 13;; esac\nprintf '%s\\n%s\\n%s\\n%s' \"$3\" \"$4\" \"$5\" \"$6\"\nexit 23\n").unwrap();
     fs::set_permissions(&player, fs::Permissions::from_mode(0o755)).unwrap();
-    let output = weftora()
-        .env("WEFTORA_PLAYER", &player)
-        .arg("run")
-        .arg(&story)
-        .output()
-        .unwrap();
-    assert_eq!(output.status.code(), Some(23), "{}", stderr(&output));
-    let path = std::path::PathBuf::from(String::from_utf8(output.stdout).unwrap());
-    assert!(!path.exists(), "preview artifact was not cleaned up");
-    let after: Vec<_> = fs::read_dir(&story)
-        .unwrap()
-        .map(|e| e.unwrap().file_name())
-        .collect();
-    assert_eq!(before, after);
+    for flags in [
+        vec![],
+        vec!["--debug-tools"],
+        vec!["--debug-tools", "--start-node", "Start"],
+    ] {
+        let mut command = weftora();
+        command
+            .env("WEFTORA_PLAYER", &player)
+            .arg("run")
+            .arg(&story)
+            .args(&flags);
+        let output = command.output().unwrap();
+        assert_eq!(output.status.code(), Some(23), "{}", stderr(&output));
+        let stdout = String::from_utf8(output.stdout).unwrap();
+        let mut lines = stdout.lines();
+        let path = std::path::PathBuf::from(lines.next().unwrap());
+        assert_eq!(
+            lines.next().unwrap_or(""),
+            flags.first().copied().unwrap_or("")
+        );
+        assert_eq!(
+            lines.next().unwrap_or(""),
+            flags.get(1).copied().unwrap_or("")
+        );
+        assert_eq!(
+            lines.next().unwrap_or(""),
+            flags.get(2).copied().unwrap_or("")
+        );
+        assert!(!path.exists(), "preview artifact was not cleaned up");
+        let after: Vec<_> = fs::read_dir(&story)
+            .unwrap()
+            .map(|e| e.unwrap().file_name())
+            .collect();
+        assert_eq!(before, after);
+    }
+}
+
+#[test]
+fn node_preview_rejects_missing_case_mismatch_and_invalid_flag_combinations_before_player() {
+    let tmp = tempfile::tempdir().unwrap();
+    let story = tmp.path().join("story");
+    minimal_story(&story, "intro.yarn");
+    for node in ["Missing", "start", "", "$Yarn.Internal.Start"] {
+        let out = weftora()
+            .env("WEFTORA_PLAYER", "missing-player")
+            .arg("run")
+            .arg(&story)
+            .args(["--debug-tools", "--start-node", node])
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(1));
+        assert!(stderr(&out).contains("does not exist"), "{}", stderr(&out));
+        assert!(!stderr(&out).contains("player executable not found"));
+    }
+    for flags in [
+        vec!["--start-node", "Start"],
+        vec!["--debug-tools", "--start-node"],
+        vec!["--start-node", "Start", "--debug-tools"],
+        vec!["--headless", "--debug-tools", "--start-node", "Start"],
+        vec!["--debug-tools", "--start-node", "Start", "--validate"],
+    ] {
+        let out = weftora()
+            .arg("run")
+            .arg(&story)
+            .args(flags)
+            .output()
+            .unwrap();
+        assert_eq!(out.status.code(), Some(2), "{}", stderr(&out));
+    }
 }
 
 #[test]
@@ -799,8 +862,7 @@ fn media_demo_replays_identically_and_exported_artifact_validates() {
         }
     }
     let tmp = tempfile::tempdir().unwrap();
-    let player = tmp.path().join("player");
-    fs::write(&player, b"export fixture only").unwrap();
+    let player = support::player(tmp.path());
     let export = tmp.path().join("export");
     let output = weftora()
         .env("WEFTORA_PLAYER", player)

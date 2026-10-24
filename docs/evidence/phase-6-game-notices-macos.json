@@ -1,0 +1,78 @@
+{
+  "baseCommit": "91e3229e1374386a2d25d54668526b6078fdfad3",
+  "device": "Andress-MacBook-Air.local",
+  "scope": "Mac debug candidate notice/transport proof only; no Windows/native/legal release approval.",
+  "toolkitPackages": 457,
+  "missingTexts": [
+    "block2 0.6.2",
+    "constgebra 0.1.4",
+    "dispatch 0.2.0",
+    "dispatch2 0.3.1",
+    "objc2 0.6.5",
+    "objc2-app-kit 0.3.2",
+    "objc2-audio-toolbox 0.3.2",
+    "objc2-core-audio 0.3.2",
+    "objc2-core-audio-types 0.3.2",
+    "objc2-core-foundation 0.3.2",
+    "objc2-core-graphics 0.3.2",
+    "objc2-encode 4.1.0",
+    "objc2-foundation 0.3.2",
+    "objc2-io-kit 0.3.2",
+    "objc2-io-surface 0.3.2",
+    "objc2-metal 0.3.2",
+    "objc2-quartz-core 0.3.2"
+  ],
+  "noticeProvenance": {
+    "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+    "toolkitReportSha256": "709c63044a80248e9c247d4976ce414b311a88723d8f770fd37759b7ddb2524b",
+    "exportMetadataSha256": "390b3b326c752e886d63f9a96b56d85355bcb6ac972e26f7eebcc593e2473903",
+    "auditApproved": false,
+    "scope": "Conservative matching authoring-tool notice superset; no compiler copied. Story/media terms, missing texts, native libraries and final audit remain separate."
+  },
+  "storyAndExportMetadataUnchanged": true,
+  "fontOflHashVerified": true,
+  "archiveSha256": "5965618c4efb10c951f6b1436f598209ee85026441fe94f85ceb9bb602f92472",
+  "transportRoundTripVerified": true,
+  "extractedPlayerValidationExit": 0,
+  "auditApproved": false,
+  "workingTreeDirty": true,
+  "check": "P6-06 standalone game notice propagation, automated slice; final audit remains open",
+  "windowsTargetMetadata": {
+    "target": "x86_64-pc-windows-msvc",
+    "packages": 445,
+    "files": 859,
+    "missing": [
+      "constgebra 0.1.4"
+    ],
+    "scope": "Local Windows-target Cargo metadata collection, not Windows execution or audit approval."
+  },
+  "pythonTestsRun": 52,
+  "pythonTestsPassed": 49,
+  "pythonTestsSkipped": [
+    "transport native Windows junction",
+    "release-assets native Windows junction",
+    "game-notices native Windows junction"
+  ],
+  "focusedTestsRun": 10,
+  "focusedTestsPassed": 9,
+  "focusedTestsSkipped": 1,
+  "advisories": "cargo deny check advisories passed with existing deny.toml exceptions unchanged",
+  "constgebraSource": {
+    "version": "0.1.4",
+    "upstreamCommit": "eae8e094e5779f42f1db2a7adf9036aa33744bc8",
+    "treeUrl": "https://github.com/knickish/constgebra/tree/eae8e094e5779f42f1db2a7adf9036aa33744bc8",
+    "observation": "Published crate metadata declares MIT OR Apache-2.0; complete pinned upstream tree has no licence text. Missing-text flag remains open."
+  },
+  "rustTests": "Not rerun; no Rust implementation, dependency or export-format changes.",
+  "ci": "Windows release CI attaches notices before each of the three example game ZIPs, then checks extracted provenance/notices and compiler absence; new head CI required.",
+  "review": "Claude Opus 5.5 medium read-only advisor and reviewer; final PASS after strengthening the missing-file and combined-bound tests, exact refusal diagnostics and CI success-provenance assertion. Main verified real-tool proof and full Python suite.",
+  "checks": [
+    "Full Python suite passed with three native Windows junction skips.",
+    "cargo deny check advisories passed with existing exceptions unchanged.",
+    "Workflow YAML parsing, cargo xtask docs and staged whitespace checks passed."
+  ],
+  "precedingCi": {
+    "url": "https://github.com/cunilab/Weftora/actions/runs/39608951607",
+    "scope": "Release asset staging commit 91e3229, all four jobs passed; game-notice change requires new head CI."
+  }
+}

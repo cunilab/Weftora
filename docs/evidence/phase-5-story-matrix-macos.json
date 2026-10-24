@@ -1,0 +1,159 @@
+{
+  "check": "P5-04",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "sourceCommit": "541b1bd05d87eb0eadef5a5e28366cc2e1f6a89d",
+  "device": "MacBookAir",
+  "cleanValidationStart": true,
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+  "reportedFullSuiteTestPasses": 374,
+  "cliRows": 34,
+  "playerRows": 16,
+  "mandatoryStoryTestsListed": 12,
+  "defaultEngineExcludesAllAuthoredTests": true,
+  "proofHelperTestsPassed": 6,
+  "commands": [
+    {
+      "name": "build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--locked"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "all-tests",
+      "command": [
+        "cargo",
+        "test-all",
+        "--",
+        "--test-threads=1"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "clippy-default",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "clippy-stories",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--features",
+        "weftora-cli/story-tests,weftora-render-bevy/story-tests",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "engine-list",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "--",
+        "--list"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "story-list",
+      "command": [
+        "cargo",
+        "test-all",
+        "--",
+        "--list"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "included-fmt",
+      "command": [
+        "rustfmt",
+        "--edition",
+        "2024",
+        "--check",
+        "tests/support/story_matrix.rs",
+        "crates/weftora-render-bevy/src/story_matrix.rs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "deps",
+      "command": [
+        "cargo",
+        "xtask",
+        "deps"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "deny",
+      "command": [
+        "cargo",
+        "deny",
+        "check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "docs",
+      "command": [
+        "cargo",
+        "xtask",
+        "docs"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "sourceSha256": {
+    "tests/support/story_matrix.rs": "b1ff02e2527ce7bd206e1499fa60151b355d57a02bc10c55d658fae7b87710cb",
+    "apps/weftora-cli/tests/story_matrix.rs": "a2d8e891a33a3ed4e3edc4b21567200e60da3714ce9ec35f1105ad18f03db91d",
+    "crates/weftora-render-bevy/src/story_matrix.rs": "6712ac5c670af701b2c5b2da659a6b9566054a752ec88f4d4da762bdc36274a1",
+    "scripts/verify-engine-independence.py": "25db7449622752e4ffe9775d9085545bc39965ab9a15ac4d6ffc6d66c368ad50",
+    ".github/workflows/ci.yml": "3c2ee9afa7c7052ded54662a2cbd4e6991c497846de5f1f2e1d6ede5452ca1f2"
+  },
+  "rowLog": "phase-5-story-matrix-macos.log",
+  "rowLogSha256": "0725e50babc2ba1a9b10a6ca303308e9b028430b0befc81e72a51583ddc1a404",
+  "windowsCiRun": "https://github.com/cunilab/Weftora/actions/runs/39194118874",
+  "scope": "Automated CLI and renderer-model matrix, no production Rust changes. Views compared by settled samples; audio includes cue tokens. Revised package metadata is test harness setup, not hot Story switching. No native hardware acceptance or complete P5-05 compatibility claim.",
+  "windowsMatrix": {
+    "ciRun": 39194118874,
+    "sourceBranchHead": "541b1bd05d87eb0eadef5a5e28366cc2e1f6a89d",
+    "cliRowsPassed": 34,
+    "playerRowsPassed": 16,
+    "rowLog": "phase-5-story-matrix-windows.log",
+    "rowLogSha256": "fc057b413551566074dce45a3e8ecd802fde9105a48f9a0314da1193e4b82c03",
+    "scope": "Full-suite and focused matrix steps passed; overall CI including updated source-isolation proof is tracked by GitHub."
+  }
+}

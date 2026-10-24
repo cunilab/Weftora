@@ -1,0 +1,133 @@
+{
+  "check": "Pinned upstream notice collection and toolkit proof",
+  "baseCommit": "1488b73671239db9b2a22a699c60bf005514502f",
+  "workingTreeDirty": true,
+  "platform": "MacBookAir development host",
+  "target": "aarch64-apple-darwin",
+  "profile": "debug",
+  "indexSha256": "8f6495a9acb690283e802a734c272f06988ef030cd38148628ff235be1e5367d",
+  "packageMappings": 52,
+  "uniqueUpstreamFiles": 45,
+  "targetMetadataInventories": {
+    "windows": {
+      "packages": 445,
+      "files": 859,
+      "missing": [
+        "constgebra 0.1.4"
+      ]
+    },
+    "macos": {
+      "packages": 457,
+      "files": 867,
+      "missing": [
+        "block2 0.6.2",
+        "constgebra 0.1.4",
+        "dispatch 0.2.0",
+        "dispatch2 0.3.1",
+        "objc2 0.6.5",
+        "objc2-app-kit 0.3.2",
+        "objc2-audio-toolbox 0.3.2",
+        "objc2-core-audio 0.3.2",
+        "objc2-core-audio-types 0.3.2",
+        "objc2-core-foundation 0.3.2",
+        "objc2-core-graphics 0.3.2",
+        "objc2-encode 4.1.0",
+        "objc2-foundation 0.3.2",
+        "objc2-io-kit 0.3.2",
+        "objc2-io-surface 0.3.2",
+        "objc2-metal 0.3.2",
+        "objc2-quartz-core 0.3.2"
+      ]
+    }
+  },
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "playerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "auditApproved": false,
+  "toolkitTransport": {
+    "zip": "weftora-tools.zip",
+    "sha256": "dfc899b0b4020932c121a246668188eb2ddfdd63aee4fed82ef3a139a178dd29",
+    "entries": 1491,
+    "uncompressedBytes": 214896095,
+    "maxEntries": 10000,
+    "maxUncompressedBytes": 1073741824,
+    "inventorySha256": "6c9a9fc3c5ad1b6bad4345e26d8d4643b0af57ad83fa7b8947f0256563c37159",
+    "roundTripVerified": true,
+    "scope": "Transport of a reviewed, quiescent folder; not Engine archive support, licence approval or native/clean-machine acceptance."
+  },
+  "extractedStarterProof": {
+    "check": "P6-01 automated starter workflow",
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "cliSha256": "391b9f2687ce8a5f69e408cb680b5ae7aa3b482bc4a6d2655c3db04db697a7b3",
+    "playerSha256": "bf2d8e7b60dd9feb34149ef4b387545b340b5cbb31c7e97fd43a995a57f2770e",
+    "cliIdentity": {
+      "identityFormat": 1,
+      "tool": "weftora",
+      "engineRelease": "0.0.1",
+      "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+      "target": "aarch64-apple-darwin",
+      "profile": "debug",
+      "dialogueArtifactFormat": 1,
+      "compilerId": "yarnspinner-rust",
+      "compilerVersion": "0.9.0"
+    },
+    "playerIdentity": {
+      "identityFormat": 1,
+      "tool": "weftora-player",
+      "engineRelease": "0.0.1",
+      "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+      "target": "aarch64-apple-darwin",
+      "profile": "debug",
+      "dialogueArtifactFormat": 1,
+      "compilerId": "yarnspinner-rust",
+      "compilerVersion": "0.9.0"
+    },
+    "generatedFiles": {
+      "README.md": "6dc99fa5e12e6e1750e69634899fe81f91446bb62214e0a8d38fc09212095cc1",
+      "main.yarn": "9725755b800ecfb9c3d76ac38dac49222053313efe11973fac929f06bb3497cb",
+      "manifest.jsonc": "5010f3f425b6219e4f52488ec082947c2884db1551d8b3851ee24961ec98744d"
+    },
+    "branches": [
+      {
+        "choice": 0,
+        "ready": true,
+        "completed": true
+      },
+      {
+        "choice": 1,
+        "ready": false,
+        "completed": true
+      }
+    ],
+    "existingProjectRefusedWithoutWrites": true,
+    "sourceUnchanged": true,
+    "exportedStoryMatchesSource": true,
+    "standaloneValidationPassed": true,
+    "scope": "Explicit matching tools (profile/target in identities); no Rust build during the proof. Export plumbing and preactivation validation, not native preview, clean-machine operation or full release acceptance."
+  },
+  "validation": {
+    "pythonTestsRun": 31,
+    "passed": 30,
+    "nativeWindowsJunctionSkipped": 1
+  },
+  "scope": "Existing Mac debug tools. Windows inventory is local target-filtered Cargo metadata, not native Windows toolkit execution or legal approval. Policy-only documents and missing package-root texts remain flagged; global licence/advisory/embedded/native obligations remain open."
+}

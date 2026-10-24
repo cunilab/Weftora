@@ -1,0 +1,73 @@
+{
+  "manifestSchema": 1,
+  "saveSchema": 1,
+  "id": "dev.weftora.life-sim",
+  "storyVersion": "0.1.0",
+  "title": "Market Day",
+  "entrypoint": "Start",
+  "dialogue": [
+    "main.yarn"
+  ],
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": [
+      "dialogue.yarn/1",
+      "ui.screens/1",
+      "save/1",
+      "rules.events/1",
+      "rules.commands/1",
+      "rules.rhai/1",
+      "rules.random/1",
+      "state.collections/1",
+      "dialogue.collections/1"
+    ]
+  },
+  "events": [
+    "events.jsonc"
+  ],
+  "state": {
+    "location": {
+      "default": "Home"
+    },
+    "hour": {
+      "default": 8
+    },
+    "energy": {
+      "default": 4
+    },
+    "coins": {
+      "default": 0
+    },
+    "inventory": {
+      "default": [
+        "permit"
+      ]
+    },
+    "schedule": {
+      "default": {
+        "market": "09:00-12:00",
+        "open": false
+      }
+    },
+    "shift_open": {
+      "default": false
+    },
+    "worked": {
+      "default": false
+    },
+    "earned": {
+      "default": 0
+    },
+    "rng": {
+      "default": 0
+    },
+    "status": {
+      "default": "A free day."
+    }
+  },
+  "screens": [
+    "ui/dashboard.jsonc",
+    "ui/journal.jsonc"
+  ],
+  "initialScreen": "dashboard"
+}

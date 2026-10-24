@@ -1,0 +1,43 @@
+{
+  "manifestSchema": 1,
+  "saveSchema": 1,
+  "id": "dev.weftora.commands-demo",
+  "storyVersion": "0.1.0",
+  "title": "Commands Demo",
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": [
+      "dialogue.yarn/1",
+      "rules.events/1",
+      "save/1",
+      "rules.commands/1",
+      "ui.screens/1"
+    ]
+  },
+  "entrypoint": "Start",
+  "dialogue": [
+    "main.yarn"
+  ],
+  "events": [
+    "events.jsonc"
+  ],
+  "state": {
+    "input": {
+      "default": false
+    },
+    "awarded": {
+      "default": false
+    },
+    "points": {
+      "default": 0
+    },
+    "temporary": {
+      "default": 0,
+      "scope": "session"
+    }
+  },
+  "screens": [
+    "screen.jsonc"
+  ],
+  "initialScreen": "dialogue"
+}

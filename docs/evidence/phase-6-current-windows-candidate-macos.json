@@ -1,0 +1,183 @@
+{
+  "runId": 39732450891,
+  "runAttempt": 1,
+  "sourceHead": "9aed5a7060ca7bebc16a3593bb77d67c14ebd6a6",
+  "workflowRevision": "30d42940e247e661ac73e7d44e05dfe68b94ec36",
+  "sourceTree": "49e8da8f061a1819409b688935a0d897314d9c3a",
+  "packages": [
+    {
+      "name": "weftora-authoring-tools.zip",
+      "size": 32894201,
+      "sha256": "68ec0c958d18398f718f91fc17600ca4c510de5a4ecacbb029949566a0726d74",
+      "sourcePackage": "weftora-release-authoring-transport",
+      "entryCount": 1418,
+      "uncompressedBytes": 97660286,
+      "folderInventorySha256": "dbb8a58567b4f94efc150603b4c5803068dd30d3f3a889f0387b8bd5e0796ee7",
+      "peFiles": [
+        {
+          "path": "weftora-authoring-tools/weftora-player.exe",
+          "sha256": "40753661062bfcc02ca8bfba3ebfa2e1d04c28f6ae4d44168171c075b1c21d1f",
+          "bytes": 84034048
+        },
+        {
+          "path": "weftora-authoring-tools/weftora.exe",
+          "sha256": "e62f8e7662034f0f25859551b6a57ac4b80e8cdfe791e969f3919b7085630ae0",
+          "bytes": 8655872
+        }
+      ]
+    },
+    {
+      "name": "weftora-transport-life-sim.zip",
+      "size": 29815310,
+      "sha256": "a0e2223f09bac00a35617a275419ab03f0165d33df478b726db74d70312b722c",
+      "sourcePackage": "weftora-release-transport-life-sim",
+      "entryCount": 1430,
+      "uncompressedBytes": 89036564,
+      "folderInventorySha256": "7ccf11b29cc38885e0557e741a6fff610d5afa1cf1214d991fa223f336ee060a",
+      "peFiles": [
+        {
+          "path": "weftora-transport-life-sim/weftora-player.exe",
+          "sha256": "40753661062bfcc02ca8bfba3ebfa2e1d04c28f6ae4d44168171c075b1c21d1f",
+          "bytes": 84034048
+        }
+      ]
+    },
+    {
+      "name": "weftora-transport-localization-demo.zip",
+      "size": 35703571,
+      "sha256": "22438f59b62be391f027f60a5840855fe4c72543558eeb7ccf5821af1ce9ea22",
+      "sourcePackage": "weftora-release-transport-localization-demo",
+      "entryCount": 1436,
+      "uncompressedBytes": 98608459,
+      "folderInventorySha256": "3797a410919d1c72d3c0ce31b9157944f7197cb736be69e661e4c4fdc83bf124",
+      "peFiles": [
+        {
+          "path": "weftora-transport-localization-demo/weftora-player.exe",
+          "sha256": "40753661062bfcc02ca8bfba3ebfa2e1d04c28f6ae4d44168171c075b1c21d1f",
+          "bytes": 84034048
+        }
+      ]
+    },
+    {
+      "name": "weftora-transport-story-a.zip",
+      "size": 29823122,
+      "sha256": "e8d9352c298ef540c1de841e9244bddfa939d76fa45aa67c4c00592da57cd6ee",
+      "sourcePackage": "weftora-release-transport-story-a",
+      "entryCount": 1439,
+      "uncompressedBytes": 89198387,
+      "folderInventorySha256": "44566dca7b3caedb30fe3a33af8c34acc4f5735946527949906651b98cd6f1fc",
+      "peFiles": [
+        {
+          "path": "weftora-transport-story-a/weftora-player.exe",
+          "sha256": "40753661062bfcc02ca8bfba3ebfa2e1d04c28f6ae4d44168171c075b1c21d1f",
+          "bytes": 84034048
+        }
+      ]
+    }
+  ],
+  "auditApproved": false,
+  "binaries": {
+    "weftora.exe": "e62f8e7662034f0f25859551b6a57ac4b80e8cdfe791e969f3919b7085630ae0",
+    "weftora-player.exe": "40753661062bfcc02ca8bfba3ebfa2e1d04c28f6ae4d44168171c075b1c21d1f"
+  },
+  "cargoLockSha256": "d727a7872b4d3b5c4d5c09e928b095e69445303a3dac0d070336cd9d86e0d33e",
+  "scope": "Read-only downloaded ZIP hash/inventory/CRC/path/type/bounds checks, notice/archive hashes, tool/export byte consistency, Git merge parent/tree checks and independent static ordinary-import inspection. No candidate executable launched. Does not approve release contents, authenticity, hermeticity or native acceptance; full CI/build-report crosscheck remains pending.",
+  "reviewedAtUtc": "2026-10-22T07:00:22.929614+00:00",
+  "inspectionDevice": "Andress-MacBook-Air",
+  "sourceParents": [
+    "48a965bfc684fb612e5e2266604478e0ca958027",
+    "9aed5a7060ca7bebc16a3593bb77d67c14ebd6a6"
+  ],
+  "githubRunUrl": "https://github.com/cunilab/Weftora/actions/runs/39732450891",
+  "ciOverallConclusionAtReview": null,
+  "jobConclusionsAtReview": {
+    "macOS headless (non-blocking)": "success",
+    "Dependencies (required)": "success",
+    "Windows (required)": "success",
+    "Windows release verification": null
+  },
+  "freshBuildAndTestsPassed": true,
+  "downloadVerificationPassed": true,
+  "freshBuildDurationSeconds": 1625,
+  "staticInspection": {
+    "host": "Darwin",
+    "llvmVersion": "Apple LLVM version 21.0.0",
+    "packages": 4,
+    "binaries": [
+      {
+        "sha256": "40753661062bfcc02ca8bfba3ebfa2e1d04c28f6ae4d44168171c075b1c21d1f",
+        "ordinaryImports": [
+          "advapi32.dll",
+          "api-ms-win-core-synch-l1-2-0.dll",
+          "api-ms-win-core-winrt-l1-1-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "api-ms-win-crt-string-l1-1-0.dll",
+          "bcryptprimitives.dll",
+          "combase.dll",
+          "dwmapi.dll",
+          "dxgi.dll",
+          "gdi32.dll",
+          "imm32.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "ole32.dll",
+          "oleaut32.dll",
+          "pdh.dll",
+          "powrprof.dll",
+          "psapi.dll",
+          "setupapi.dll",
+          "shell32.dll",
+          "uiautomationcore.dll",
+          "user32.dll",
+          "uxtheme.dll",
+          "vcruntime140.dll"
+        ],
+        "delayImportDirectoryAbsent": true
+      },
+      {
+        "sha256": "e62f8e7662034f0f25859551b6a57ac4b80e8cdfe791e969f3919b7085630ae0",
+        "ordinaryImports": [
+          "api-ms-win-core-synch-l1-2-0.dll",
+          "api-ms-win-crt-heap-l1-1-0.dll",
+          "api-ms-win-crt-locale-l1-1-0.dll",
+          "api-ms-win-crt-math-l1-1-0.dll",
+          "api-ms-win-crt-runtime-l1-1-0.dll",
+          "api-ms-win-crt-stdio-l1-1-0.dll",
+          "bcryptprimitives.dll",
+          "kernel32.dll",
+          "ntdll.dll",
+          "vcruntime140.dll"
+        ],
+        "delayImportDirectoryAbsent": true
+      }
+    ],
+    "scope": "Static ordinary-import evidence for MZ/AMD64 PE files in these frozen folders. No candidate executable is launched. Nonzero delay-import directories refuse. Does not resolve transitive imports, LoadLibrary/runtime-loaded modules, host availability, redistribution rights or native/clean-machine acceptance.",
+    "rawOutputRetention": "Local-only Mac logs; not committed with this summary. Windows CI logs are separate evidence."
+  },
+  "noticeInventory": {
+    "packages": 445,
+    "listedFilesPerDownloadPackage": 863,
+    "allListedHashesCheckedInAllFourPackages": true,
+    "missingTextOrMetadata": [
+      "constgebra 0.1.4"
+    ],
+    "auditApproved": false
+  },
+  "containerDigest": {
+    "apiReported": "sha256:8f3ead241ae586c83e0fec0a1f88dac0408f196947df1afeec44a3f3765c9cdc",
+    "checked": false,
+    "note": "GitHub artifact wrapper was downloaded/extracted with gh; inner ZIP hashes were checked separately."
+  },
+  "pending": [
+    "Full Windows release job completion",
+    "Build source-files.json against the fetched merge tree and build tool/config evidence",
+    "Windows build/import reports against downloaded executable/folder hashes",
+    "Native/clean-machine/performance and independent author acceptance in issue #5",
+    "Final source-distribution/licence/advisory review, including constgebra text"
+  ],
+  "freshBuildBasis": "Successful GitHub build/test step conclusion; build-provenance.json not yet reviewed for this run."
+}

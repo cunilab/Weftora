@@ -1,0 +1,99 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen",
+    "id": "menu",
+    "background": "#0B1220",
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 32,
+      "gap": 18
+    },
+    "children": [
+      {
+        "type": "text",
+        "text": "STATION DESK",
+        "size": 32,
+        "color": "#EDF2F8"
+      },
+      {
+        "type": "text",
+        "text": "One Story, three workspaces. Switching screens keeps the current dialogue.",
+        "size": 20,
+        "color": "#EDF2F8"
+      },
+      {
+        "type": "text",
+        "bind": {
+          "dialogue": "text"
+        },
+        "size": 26,
+        "color": "#EDF2F8"
+      },
+      {
+        "type": "choiceList",
+        "id": "choices",
+        "size": 22,
+        "color": "#EDF2F8",
+        "layout": {
+          "gap": 8
+        }
+      },
+      {
+        "type": "list",
+        "layout": {
+          "direction": "row",
+          "gap": 12
+        },
+        "children": [
+          {
+            "type": "button",
+            "id": "activity",
+            "text": "Open activity desk",
+            "action": {
+              "do": "screen.open",
+              "screen": "activity"
+            },
+            "size": 20,
+            "color": "#EDF2F8",
+            "background": "#24374A",
+            "layout": {
+              "padding": 12
+            }
+          },
+          {
+            "type": "button",
+            "id": "dialogue",
+            "text": "Open dialogue view",
+            "action": {
+              "do": "screen.open",
+              "screen": "dialogue"
+            },
+            "size": 20,
+            "color": "#EDF2F8",
+            "background": "#24374A",
+            "layout": {
+              "padding": 12
+            }
+          },
+          {
+            "type": "button",
+            "id": "pause",
+            "text": "Pause",
+            "action": {
+              "do": "screen.open",
+              "screen": "pause"
+            },
+            "size": 20,
+            "color": "#EDF2F8",
+            "background": "#24374A",
+            "layout": {
+              "padding": 12
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

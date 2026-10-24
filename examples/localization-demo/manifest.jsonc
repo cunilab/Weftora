@@ -1,0 +1,47 @@
+{
+  "manifestSchema": 1,
+  "id": "dev.weftora.localization-demo",
+  "storyVersion": "0.1.0",
+  "title": "Three Languages",
+  "entrypoint": "Start",
+  "dialogue": [
+    "main.yarn"
+  ],
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": [
+      "dialogue.yarn/1",
+      "localization.catalog/1",
+      "localization.text/1",
+      "ui.screens/1",
+      "assets.catalog/1",
+      "save/1"
+    ]
+  },
+  "localization": {
+    "baseLanguage": "en",
+    "languages": {
+      "en": "locales/en.jsonc",
+      "id": "locales/id.jsonc",
+      "ja": "locales/ja.jsonc"
+    },
+    "stateKey": "ui.language",
+    "font": "font.noto-jp"
+  },
+  "saveSchema": 1,
+  "state": {
+    "ui.language": {
+      "default": "en",
+      "scope": "settings"
+    }
+  },
+  "catalogs": {
+    "fonts": [
+      "fonts/catalog.jsonc"
+    ]
+  },
+  "screens": [
+    "ui/main.jsonc"
+  ],
+  "initialScreen": "main"
+}

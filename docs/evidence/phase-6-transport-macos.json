@@ -1,0 +1,106 @@
+{
+  "check": "P6-05 ZIP transport automated slice",
+  "platform": "MacBookAir development host",
+  "baseCommit": "28cb696a760122cef78f0ce3f8ebb7d6dd6a04b8",
+  "workingTreeDirty": true,
+  "pythonOptimizationEnabled": true,
+  "packages": [
+    {
+      "story": "story-a",
+      "transport": {
+        "zip": "story-a.zip",
+        "sha256": "3bc49a3f02f15d9a34c63832fff5b1412331bd5e28dcbcbc14affa0374028453",
+        "entries": 23,
+        "uncompressedBytes": 188406134,
+        "maxEntries": 10000,
+        "maxUncompressedBytes": 1073741824,
+        "inventorySha256": "f2e7b4df37a7c1e6d3a0313b2989baee96268f12ead4242afe0206a2a4b56dec",
+        "roundTripVerified": true,
+        "scope": "Transport of a reviewed, quiescent folder; not Engine archive support, licence approval or native/clean-machine acceptance."
+      },
+      "cli": {
+        "identity": {
+          "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+          "compilerId": "yarnspinner-rust",
+          "compilerVersion": "0.9.0",
+          "dialogueArtifactFormat": 1,
+          "engineRelease": "0.0.1",
+          "identityFormat": 1,
+          "profile": "debug",
+          "target": "aarch64-apple-darwin",
+          "tool": "weftora"
+        },
+        "sha256": "391b9f2687ce8a5f69e408cb680b5ae7aa3b482bc4a6d2655c3db04db697a7b3",
+        "version": "0.0.1"
+      },
+      "player": {
+        "file": "weftora-player",
+        "identity": {
+          "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+          "compilerId": "yarnspinner-rust",
+          "compilerVersion": "0.9.0",
+          "dialogueArtifactFormat": 1,
+          "engineRelease": "0.0.1",
+          "identityFormat": 1,
+          "profile": "debug",
+          "target": "aarch64-apple-darwin",
+          "tool": "weftora-player"
+        },
+        "sha256": "bf2d8e7b60dd9feb34149ef4b387545b340b5cbb31c7e97fd43a995a57f2770e"
+      },
+      "originalAndExtractedValidationPassed": true
+    },
+    {
+      "story": "life-sim",
+      "transport": {
+        "zip": "life-sim.zip",
+        "sha256": "83d3aa3649902071901b68cd83b80839b037f1ec2f260ebfcd653ef841d299a5",
+        "entries": 14,
+        "uncompressedBytes": 188244311,
+        "maxEntries": 10000,
+        "maxUncompressedBytes": 1073741824,
+        "inventorySha256": "aa0b49e9bbb25eb07e59253b5d4ff12a528d2df60e8216b911e132b67635cfe8",
+        "roundTripVerified": true,
+        "scope": "Transport of a reviewed, quiescent folder; not Engine archive support, licence approval or native/clean-machine acceptance."
+      },
+      "cli": {
+        "identity": {
+          "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+          "compilerId": "yarnspinner-rust",
+          "compilerVersion": "0.9.0",
+          "dialogueArtifactFormat": 1,
+          "engineRelease": "0.0.1",
+          "identityFormat": 1,
+          "profile": "debug",
+          "target": "aarch64-apple-darwin",
+          "tool": "weftora"
+        },
+        "sha256": "391b9f2687ce8a5f69e408cb680b5ae7aa3b482bc4a6d2655c3db04db697a7b3",
+        "version": "0.0.1"
+      },
+      "player": {
+        "file": "weftora-player",
+        "identity": {
+          "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+          "compilerId": "yarnspinner-rust",
+          "compilerVersion": "0.9.0",
+          "dialogueArtifactFormat": 1,
+          "engineRelease": "0.0.1",
+          "identityFormat": 1,
+          "profile": "debug",
+          "target": "aarch64-apple-darwin",
+          "tool": "weftora-player"
+        },
+        "sha256": "bf2d8e7b60dd9feb34149ef4b387545b340b5cbb31c7e97fd43a995a57f2770e"
+      },
+      "originalAndExtractedValidationPassed": true
+    }
+  ],
+  "validation": {
+    "pythonTestsRun": 20,
+    "pythonTestsPassed": 19,
+    "skippedNativeWindowsJunctionTest": 1,
+    "actionlint": "1.7.7 passed"
+  },
+  "scope": "Existing debug tools; no Rust rebuild. Both real exported folders were packaged, hash-verified after extraction and validated by their extracted players. Not Windows release-profile, native/clean-machine, authoring-tool licence audit or publication evidence."
+}

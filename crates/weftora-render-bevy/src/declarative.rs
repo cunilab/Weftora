@@ -11,7 +11,7 @@ use weftora_story::ui::{
     Binding, DialogueBinding, Direction, Length, Position, UiAction, Widget, WidgetKind,
 };
 
-use crate::{BUTTON_BG, END_TEXT, Player, Screen, decode_image, read_asset};
+use crate::{BUTTON_BG, END_TEXT, Player, Screen, decode_image, read_asset, theme};
 
 #[derive(Clone, Debug)]
 pub(crate) enum Intent {
@@ -54,6 +54,7 @@ pub(crate) struct Ui {
     focus_first: bool,
     images: BTreeMap<String, Handle<Image>>,
     fonts: BTreeMap<String, Handle<Font>>,
+    pub(super) default_font: Option<Handle<Font>>,
 }
 impl Ui {
     pub fn at_initial_base(&self, story: &weftora_story::Story) -> bool {
@@ -141,6 +142,9 @@ pub(crate) struct Choices {
     source: String,
 }
 #[derive(Component)]
+pub(crate) struct AdvanceButton;
+
+#[derive(Component)]
 pub(crate) struct ButtonBase(pub Color);
 
 pub(crate) fn setup(
@@ -150,11 +154,28 @@ pub(crate) fn setup(
     mut fonts: ResMut<Assets<Font>>,
     mut font_cx: ResMut<bevy::text::FontCx>,
 ) {
-    let Some(initial) = player.story.manifest().initial_screen.clone() else {
-        return;
-    };
+    let initial = player.story.manifest().initial_screen.clone();
     let result = (|| {
         let mut asset_cost = 0u64;
+        ui.default_font = Some(fonts.add(decode_font(
+            "player.interface",
+            include_bytes!("../assets/FiraSans-Regular.ttf").to_vec(),
+            &mut font_cx,
+        )?));
+        if let Some(id) = player
+            .story
+            .localization()
+            .and_then(|c| c.definition.font.as_ref())
+        {
+            let (_, bytes) = read_asset(&player.story, id, weftora_story::AssetKind::Font)?;
+            asset_cost += bytes.len() as u64;
+            if asset_cost > crate::MAX_IMAGE_BYTES {
+                return Err("localization font exceeds the 64 MiB preload budget".into());
+            }
+            let handle = fonts.add(decode_font(id, bytes, &mut font_cx)?);
+            ui.default_font = Some(handle.clone());
+            ui.fonts.insert(id.clone(), handle);
+        }
         for (_, screen) in player.story.screens() {
             for (path, widget) in screen.widgets() {
                 let source = format!("{}:{path}", screen.file);
@@ -196,13 +217,16 @@ pub(crate) fn setup(
     })();
     match result {
         Ok(()) => {
-            ui.layers.push(Layer {
-                id: initial,
-                return_focus: None,
-            });
-            ui.focus_first = true;
+            if let Some(initial) = initial {
+                ui.layers.push(Layer {
+                    id: initial,
+                    return_focus: None,
+                });
+                ui.focus_first = true;
+            }
         }
         Err(e) => {
+            player.startup_error = Some(e.clone());
             player.presenter.fail(e);
             player.dirty = true;
         }
@@ -244,6 +268,27 @@ fn node(w: &Widget) -> Node {
         padding: UiRect::all(px(w.layout.padding.unwrap_or(0.0))),
         row_gap: px(w.layout.gap.unwrap_or(0.0)),
         column_gap: px(w.layout.gap.unwrap_or(0.0)),
+        border: if w.kind == WidgetKind::Panel && w.background.is_some() {
+            UiRect::all(px(1))
+        } else {
+            UiRect::ZERO
+        },
+        border_radius: if w.kind == WidgetKind::Panel {
+            BorderRadius::all(px(12))
+        } else {
+            BorderRadius::ZERO
+        },
+        min_width: px(0),
+        flex_wrap: if w.layout.direction == Direction::Row {
+            FlexWrap::Wrap
+        } else {
+            FlexWrap::NoWrap
+        },
+        align_items: if w.layout.direction == Direction::Row {
+            AlignItems::Center
+        } else {
+            AlignItems::Stretch
+        },
         flex_direction: if w.layout.direction == Direction::Row {
             FlexDirection::Row
         } else {
@@ -259,10 +304,15 @@ fn color(s: &Option<String>, fallback: Color) -> Color {
 }
 fn font(w: &Widget, ui: &Ui) -> TextFont {
     let mut font = TextFont {
-        font_size: FontSize::Px(w.size.unwrap_or(28.0)),
+        font_size: FontSize::Px(w.size.unwrap_or(20.0)),
         ..default()
     };
-    if let Some(handle) = w.font.as_ref().and_then(|id| ui.fonts.get(id)) {
+    if let Some(handle) = w
+        .font
+        .as_ref()
+        .and_then(|id| ui.fonts.get(id))
+        .or(ui.default_font.as_ref())
+    {
         font.font = handle.clone().into();
     }
     font
@@ -281,10 +331,26 @@ fn spawn_widget(
     if w.kind != WidgetKind::Button {
         commands.entity(entity).insert(Pickable::IGNORE);
     }
+    if w.kind == WidgetKind::List
+        && w.children
+            .iter()
+            .any(|child| child.kind == WidgetKind::Button)
+    {
+        // Gaps between toolbar buttons must not advance the dialogue behind the toolbar.
+        commands.entity(entity).insert(Pickable {
+            is_hoverable: false,
+            should_block_lower: true,
+        });
+    }
     if w.background.is_some() {
         commands
             .entity(entity)
             .insert(BackgroundColor(color(&w.background, Color::NONE)));
+        if w.kind == WidgetKind::Panel {
+            commands
+                .entity(entity)
+                .insert(BorderColor::all(theme::BORDER));
+        }
     }
     match w.kind {
         WidgetKind::Text | WidgetKind::Button => {
@@ -293,7 +359,8 @@ fn spawn_widget(
                 .spawn((
                     Text::new(w.text.clone().unwrap_or_default()),
                     font(w, ui),
-                    TextColor(color(&w.color, Color::WHITE)),
+                    TextColor(color(&w.color, theme::TEXT)),
+                    bevy::text::LineHeight::RelativeToFont(1.35),
                     Pickable::IGNORE,
                 ))
                 .id();
@@ -306,8 +373,25 @@ fn spawn_widget(
             }
             if w.kind == WidgetKind::Button {
                 let action = w.action.clone().expect("validated button");
+                if matches!(action, UiAction::Advance) {
+                    commands.entity(entity).insert(AdvanceButton);
+                }
                 let origin = Some(layer.to_string());
+                let mut button_layout = node(w);
+                let defaults = theme::button_node();
+                button_layout.min_height = defaults.min_height;
+                button_layout.min_width = defaults.min_width;
+                button_layout.border = defaults.border;
+                button_layout.border_radius = defaults.border_radius;
+                button_layout.align_items = defaults.align_items;
+                button_layout.flex_shrink = 0.0;
+                if w.layout.padding.is_none() {
+                    button_layout.padding = defaults.padding;
+                }
                 commands.entity(entity).insert((
+                    button_layout,
+                    BorderColor::all(theme::BORDER),
+                    Outline::default(),
                     Button,
                     Hovered::default(),
                     TabIndex(0),
@@ -425,6 +509,9 @@ pub(crate) fn sync_layers(
         );
     }
 }
+#[derive(Component)]
+pub(crate) struct ChoiceText(usize);
+
 pub(crate) fn sync_choices(
     mut player: NonSendMut<Player>,
     mut ui: ResMut<Ui>,
@@ -432,11 +519,33 @@ pub(crate) fn sync_choices(
     mut commands: Commands,
     mut focus: ResMut<InputFocus>,
     focus_visible: Res<InputFocusVisible>,
+    mut texts: Query<(&ChoiceText, &mut Text)>,
 ) {
     let choices = match player.presenter.screen() {
         Screen::Choices(v) => v.clone(),
         _ => vec![],
     };
+    let same_offer = ui.choices_revision == player.presenter.revision()
+        && ui.choices.as_ref().is_some_and(|old| {
+            old.len() == choices.len() && old.iter().zip(&choices).all(|(a, b)| a.index == b.index)
+        });
+    if same_offer && !ui.rebuild_choices && ui.choices.as_ref() != Some(&choices) {
+        if let Err(error) = check_choices(&choices, "localized choices") {
+            player.presenter.fail(error);
+            player.dirty = true;
+            return;
+        }
+        for (binding, mut text) in &mut texts {
+            if let Some(choice) = choices.get(binding.0) {
+                let value = format!("{}. {}", binding.0 + 1, choice.text);
+                if text.0 != value {
+                    text.0 = value;
+                }
+            }
+        }
+        ui.choices = Some(choices);
+        return;
+    }
     let changed = ui.choices.as_ref() != Some(&choices)
         || (matches!(player.presenter.screen(), Screen::Choices(_))
             && ui.choices_revision != player.presenter.revision());
@@ -465,10 +574,9 @@ pub(crate) fn sync_choices(
                         list.layer,
                         list.widget.id.as_ref().expect("validated ID")
                     )),
-                    Node {
-                        padding: UiRect::axes(px(16), px(10)),
-                        ..default()
-                    },
+                    theme::button_node(),
+                    BorderColor::all(theme::BORDER),
+                    Outline::default(),
                     BackgroundColor(BUTTON_BG),
                     ButtonBase(BUTTON_BG),
                     observe(move |_: On<Activate>, mut intents: ResMut<Intents>| {
@@ -478,6 +586,7 @@ pub(crate) fn sync_choices(
                         });
                     }),
                     children![(
+                        ChoiceText(position),
                         Text::new(format!("{}. {}", position + 1, choice.text)),
                         font(&list.widget, &ui),
                         TextColor(color(&list.widget.color, Color::WHITE)),
@@ -498,9 +607,29 @@ pub(crate) fn sync_choices(
         }
     }
 }
+pub(crate) fn sync_advance_buttons(
+    player: NonSend<Player>,
+    mut buttons: Query<(Entity, &mut Node), With<AdvanceButton>>,
+    mut focus: ResMut<InputFocus>,
+) {
+    let display = if matches!(player.presenter.screen(), Screen::Line { .. }) {
+        Display::Flex
+    } else {
+        Display::None
+    };
+    for (entity, mut node) in &mut buttons {
+        if node.display != display {
+            node.display = display;
+        }
+        if display == Display::None && focus.get() == Some(entity) {
+            focus.clear();
+        }
+    }
+}
+
 pub(crate) fn restore_focus(
     mut ui: ResMut<Ui>,
-    keys: Query<(Entity, &FocusKey)>,
+    keys: Query<(Entity, &FocusKey, Option<&Node>)>,
     buttons: Query<(), With<Button>>,
     mut focus: ResMut<InputFocus>,
     focus_visible: Res<InputFocusVisible>,
@@ -510,7 +639,9 @@ pub(crate) fn restore_focus(
         ui.focus_first = true;
     }
     if let Some(key) = ui.restore.take()
-        && let Some((entity, _)) = keys.iter().find(|(_, k)| k.0 == key)
+        && let Some((entity, _, _)) = keys
+            .iter()
+            .find(|(_, k, n)| k.0 == key && n.is_none_or(|n| n.display != Display::None))
     {
         focus.set(entity, FocusCause::Auto);
         ui.focus_first = false;
@@ -518,19 +649,24 @@ pub(crate) fn restore_focus(
     if ui.focus_first
         && focus_visible.0
         && let Some(key) = &ui.first_key
-        && let Some((entity, _)) = keys.iter().find(|(_, k)| k.0 == *key)
+        && let Some((entity, _, _)) = keys
+            .iter()
+            .find(|(_, k, n)| k.0 == *key && n.is_none_or(|n| n.display != Display::None))
     {
         focus.set(entity, FocusCause::Auto);
     }
     ui.focus_first = false;
 }
-fn value_text(value: &Value) -> String {
-    match value {
+fn value_text(value: &Value) -> Result<String, String> {
+    Ok(match value {
         Value::Bool(v) => v.to_string(),
         Value::Int(v) => v.to_string(),
         Value::Float(v) => v.to_string(),
         Value::String(v) => v.clone(),
-    }
+        Value::List(_) | Value::Map(_) => {
+            return Err("text bindings require scalar state; expose a scalar view".into());
+        }
+    })
 }
 pub(crate) fn checked_text(text: String, source: &str) -> Result<String, String> {
     if text.len() > 4096 {
@@ -554,6 +690,12 @@ pub(crate) fn validate_display(
     state: &weftora_core::State,
     screen: &Screen,
 ) -> Result<(), String> {
+    if let Some(catalogs) = story
+        .localization()
+        .filter(|c| c.definition.state_key.is_some())
+    {
+        catalogs.language(state)?;
+    }
     if let Screen::Choices(choices) = screen {
         check_choices(choices, "loaded checkpoint")?;
     }
@@ -569,8 +711,13 @@ pub(crate) fn validate_display(
         for (path, widget) in definition.widgets() {
             if let Some(binding) = &widget.bind {
                 let text = match binding {
+                    Binding::Localized { localized } => story
+                        .localization()
+                        .ok_or("localized binding requires localization")?
+                        .ui_text(state, localized)?
+                        .to_owned(),
                     Binding::State { state: key } => {
-                        value_text(state.get(key).map_err(|e| e.to_string())?)
+                        value_text(state.get(key).map_err(|e| e.to_string())?)?
                     }
                     Binding::Dialogue { dialogue } => match (dialogue, screen) {
                         (DialogueBinding::Text, Screen::Line { text, .. }) => text.clone(),
@@ -597,7 +744,16 @@ pub(crate) fn update_bindings(
             .read()
             .map_err(|_| "canonical state lock poisoned".to_string())?;
         let mut values = BTreeMap::new();
+        let mut localized = BTreeMap::new();
         for (binding, _) in &texts {
+            if let Binding::Localized { localized: key } = &binding.binding {
+                let text = player
+                    .story
+                    .localization()
+                    .ok_or("localized binding requires localization")?
+                    .ui_text(&state, key)?;
+                localized.insert(key.clone(), checked_text(text.to_owned(), &binding.source)?);
+            }
             if let Binding::State { state: key } = &binding.binding
                 && !values.contains_key(key)
             {
@@ -606,22 +762,34 @@ pub(crate) fn update_bindings(
                     .map_err(|e| format!("{}: {e}", binding.source))?;
                 values.insert(
                     key.clone(),
-                    checked_text(value_text(value), &binding.source)?,
+                    checked_text(value_text(value)?, &binding.source)?,
                 );
             }
         }
-        Ok::<_, String>(values)
+        Ok::<_, String>((values, localized))
     })();
     let result = (|| {
-        let values = snapshot?;
+        let (values, localized) = snapshot?;
         for (binding, mut text) in &mut texts {
             let value = match &binding.binding {
                 Binding::State { state } => values[state].clone(),
+                Binding::Localized { localized: key } => localized[key].clone(),
                 Binding::Dialogue { dialogue } => match (dialogue, player.presenter.screen()) {
                     (DialogueBinding::Text, Screen::Line { text, .. }) => text.clone(),
                     (DialogueBinding::Speaker, Screen::Line { speaker, .. }) => {
                         speaker.clone().unwrap_or_default()
                     }
+                    (DialogueBinding::Text, Screen::Choices(_)) => player
+                        .presenter
+                        .decision_context()
+                        .map(|(_, text)| text.to_owned())
+                        .unwrap_or_default(),
+                    (DialogueBinding::Speaker, Screen::Choices(_)) => player
+                        .presenter
+                        .decision_context()
+                        .and_then(|(speaker, _)| speaker)
+                        .unwrap_or_default()
+                        .to_owned(),
                     (DialogueBinding::Text, Screen::End) => END_TEXT.into(),
                     _ => String::new(),
                 },
@@ -771,7 +939,13 @@ mod tests {
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (sync_layers, sync_choices, restore_focus, update_bindings)
+                (
+                    sync_layers,
+                    sync_choices,
+                    sync_advance_buttons,
+                    restore_focus,
+                    update_bindings,
+                )
                     .chain()
                     .after(crate::drive),
             );
@@ -800,7 +974,13 @@ mod tests {
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (sync_layers, sync_choices, restore_focus, update_bindings)
+                (
+                    sync_layers,
+                    sync_choices,
+                    sync_advance_buttons,
+                    restore_focus,
+                    update_bindings,
+                )
                     .chain()
                     .after(crate::drive),
             );
@@ -812,6 +992,94 @@ mod tests {
         player.presenter.advance();
         assert!(matches!(player.presenter.screen(), Screen::Choices(_)));
     }
+    #[test]
+    fn escape_closing_developer_tools_never_arms_quit_or_dismisses_story_overlay() {
+        for modal in [false, true] {
+            let mut app = screens_app();
+            app.insert_resource(crate::debug_tools::Inspector::new(true));
+            if modal {
+                activate(&mut app, "menu/pause");
+            }
+            let before = app.world().non_send::<Player>().presenter.screen().clone();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .reset_all();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::F12);
+            app.update();
+            assert!(app.world().resource::<crate::debug_tools::Inspector>().open);
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .reset_all();
+            app.world_mut()
+                .resource_mut::<ButtonInput<KeyCode>>()
+                .press(KeyCode::Escape);
+            app.update();
+            assert!(!app.world().resource::<crate::debug_tools::Inspector>().open);
+            assert_eq!(app.world().resource::<Ui>().modal(), modal);
+            assert!(app.world().resource::<crate::shell::Shell>().is_playing());
+            assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+            assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        }
+    }
+
+    #[test]
+    fn continue_hides_during_choices_and_returns_for_the_next_line() {
+        let mut app = rendered_app();
+        app.update();
+        let next = {
+            let world = app.world_mut();
+            world
+                .query_filtered::<Entity, With<AdvanceButton>>()
+                .single(world)
+                .unwrap()
+        };
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(next, FocusCause::Navigated);
+        offer_choices(&mut app);
+        app.update();
+        assert_eq!(
+            app.world().get::<Node>(next).unwrap().display,
+            Display::None
+        );
+        assert_ne!(app.world().resource::<InputFocus>().get(), Some(next));
+        app.world_mut().non_send_mut::<Player>().presenter.select(0);
+        app.update();
+        assert_eq!(
+            app.world().get::<Node>(next).unwrap().display,
+            Display::Flex
+        );
+    }
+
+    #[test]
+    fn escape_dismisses_overlay_without_progression_or_quit_and_restores_focus() {
+        let mut app = screens_app();
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = true;
+        activate(&mut app, "menu/pause");
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: None,
+                action: UiAction::Advance,
+            });
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Escape);
+        app.update();
+        assert!(!app.world().resource::<Ui>().modal());
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+        assert!(app.world().resource::<crate::shell::Shell>().is_playing());
+        let focused = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<FocusKey>(focused).unwrap().0,
+            "menu/pause"
+        );
+    }
+
     #[test]
     fn space_after_choices_appear_does_not_select_without_keyboard_navigation() {
         let mut app = rendered_app();
@@ -932,5 +1200,236 @@ mod tests {
                 }
             }
         }
+    }
+    fn screens_app() -> App {
+        let story = weftora_story::Story::load(
+            &std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/screens-demo"),
+        )
+        .unwrap();
+        let compiled = weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
+        assert!(weftora_yarn::check_story(&story, &compiled).is_empty());
+        let mut app = crate::tests::app_for(story, compiled);
+        app.init_resource::<Assets<Font>>()
+            .init_resource::<bevy::text::FontCx>()
+            .add_systems(Startup, setup)
+            .add_systems(
+                Update,
+                (
+                    sync_layers,
+                    sync_choices,
+                    sync_advance_buttons,
+                    restore_focus,
+                    update_bindings,
+                )
+                    .chain()
+                    .after(crate::drive),
+            );
+        app.update();
+        app
+    }
+    fn widget(app: &mut App, key: &str) -> Entity {
+        let world = app.world_mut();
+        world
+            .query::<(Entity, &FocusKey)>()
+            .iter(world)
+            .find_map(|(entity, value)| (value.0 == key).then_some(entity))
+            .unwrap_or_else(|| panic!("missing widget {key}"))
+    }
+    fn activate(app: &mut App, key: &str) {
+        let entity = widget(app, key);
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(entity, FocusCause::Navigated);
+        app.world_mut().trigger(Activate { entity });
+        app.update();
+    }
+    fn assert_tab_group(app: &mut App, prefix: &str) {
+        // Native Bevy propagates visibility in PostUpdate; this fixture omits render plugins.
+        let world = app.world_mut();
+        for mut visibility in world.query::<&mut InheritedVisibility>().iter_mut(world) {
+            *visibility = InheritedVisibility::VISIBLE;
+        }
+        use bevy::ecs::system::RunSystemOnce;
+        use bevy::input_focus::tab_navigation::{NavAction, TabNavigation};
+        for direction in [NavAction::Next, NavAction::Previous] {
+            for _ in 0..6 {
+                let next = app
+                    .world_mut()
+                    .run_system_once(move |nav: TabNavigation, focus: Res<InputFocus>| {
+                        nav.navigate(&focus, direction)
+                    })
+                    .unwrap()
+                    .unwrap();
+                assert!(
+                    app.world()
+                        .get::<FocusKey>(next)
+                        .unwrap()
+                        .0
+                        .starts_with(prefix)
+                );
+                app.world_mut()
+                    .resource_mut::<InputFocus>()
+                    .set(next, FocusCause::Navigated);
+            }
+        }
+    }
+    #[test]
+    fn authored_screens_keep_dialogue_and_state_across_navigation_and_modal_input() {
+        let mut app = screens_app();
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = true;
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        activate(&mut app, "menu/activity");
+        assert_eq!(app.world().resource::<Ui>().built, ["activity"]);
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        let panel = {
+            let world = app.world_mut();
+            world
+                .query::<(&Node, &BackgroundColor)>()
+                .iter(world)
+                .any(|(node, bg)| {
+                    node.width == percent(45) && bg.0 == Color::from(Srgba::hex("152235").unwrap())
+                })
+        };
+        assert!(
+            panel,
+            "authored layout and theme must reach Bevy components"
+        );
+        activate(&mut app, "activity/pause");
+        assert!(app.world().resource::<Ui>().modal());
+        assert_tab_group(&mut app, "pause/");
+        // A stale underlying activation, global progression and digit selection all refuse.
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: Some("activity".into()),
+                action: UiAction::SetState {
+                    key: "prepared".into(),
+                    value: Value::Bool(true),
+                },
+            });
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Action {
+                layer: None,
+                action: UiAction::Advance,
+            });
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Digit1);
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert_eq!(
+            app.world()
+                .non_send::<Player>()
+                .state
+                .read()
+                .unwrap()
+                .get("prepared"),
+            Ok(&Value::Bool(false))
+        );
+        activate(&mut app, "pause/resume");
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<FocusKey>(focus).unwrap().0,
+            "activity/pause"
+        );
+        activate(&mut app, "activity/prepare");
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<(&BoundText, &Text)>()
+                .iter(world)
+                .any(|(binding, text)| {
+                    matches!(&binding.binding, Binding::State { state } if state == "prepared")
+                        && text.0 == "true"
+                })
+        );
+        activate(&mut app, "activity/dialogue");
+        assert_eq!(app.world().resource::<Ui>().built, ["dialogue"]);
+        activate(&mut app, "dialogue/next");
+        assert!(matches!(
+            app.world().non_send::<Player>().presenter.screen(),
+            Screen::Choices(_)
+        ));
+        let choices = app.world().non_send::<Player>().presenter.screen().clone();
+        activate(&mut app, "dialogue/pause");
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .press(KeyCode::Digit1);
+        app.world_mut()
+            .resource_mut::<Intents>()
+            .push(Intent::Select {
+                layer: Some("dialogue".into()),
+                position: 0,
+            });
+        app.update();
+        app.world_mut()
+            .resource_mut::<ButtonInput<KeyCode>>()
+            .clear();
+        assert_eq!(
+            app.world().non_send::<Player>().presenter.screen(),
+            &choices
+        );
+        activate(&mut app, "pause/resume");
+        activate(&mut app, "dialogue/activity");
+        assert_eq!(
+            app.world().non_send::<Player>().presenter.screen(),
+            &choices
+        );
+        widget(&mut app, "activity/choices/0");
+        activate(&mut app, "activity/menu");
+        widget(&mut app, "menu/choices/0");
+        assert_eq!(
+            app.world().non_send::<Player>().presenter.screen(),
+            &choices
+        );
+        activate(&mut app, "menu/dialogue");
+        let entity = widget(&mut app, "dialogue/choices/0");
+        app.world_mut().trigger(Activate { entity });
+        app.update();
+        assert!(
+            matches!(app.world().non_send::<Player>().presenter.screen(), Screen::Line { text, .. } if text == "Your prepared kit is ready for the station shift.")
+        );
+        activate(&mut app, "dialogue/activity");
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<(&BoundText, &Text)>()
+                .iter(world)
+                .any(|(binding, text)| {
+                    matches!(&binding.binding, Binding::State { state } if state == "task")
+                        && text.0 == "Station shift"
+                })
+        );
+    }
+    #[test]
+    fn authored_overlay_return_to_menu_clears_layers_and_rejects_stale_origins() {
+        let mut app = screens_app();
+        app.world_mut().resource_mut::<InputFocusVisible>().0 = true;
+        activate(&mut app, "menu/activity");
+        activate(&mut app, "activity/pause");
+        activate(&mut app, "pause/menu");
+        assert_eq!(app.world().resource::<Ui>().built, ["menu"]);
+        assert!(!app.world().resource::<Ui>().modal());
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<FocusKey>(focus).unwrap().0,
+            "menu/activity"
+        );
+        let before = app.world().non_send::<Player>().presenter.screen().clone();
+        for layer in ["pause", "activity"] {
+            app.world_mut()
+                .resource_mut::<Intents>()
+                .push(Intent::Action {
+                    layer: Some(layer.into()),
+                    action: UiAction::Advance,
+                });
+        }
+        app.update();
+        assert_eq!(app.world().non_send::<Player>().presenter.screen(), &before);
+        assert_tab_group(&mut app, "menu/");
     }
 }

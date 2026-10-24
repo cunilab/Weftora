@@ -1,0 +1,56 @@
+{
+  "check": "P4-06",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "cliSha256": "1b8c94249fb3617c1131bbeae3309cda8d61bb7804eb2b152643fa3bb22bd1b0",
+  "playerSha256": "b6151f50cbb5ff9a285c7fdb87d38487a5e1fcabd434b61a0ad61182a03f885f",
+  "variants": [
+    {
+      "variant": "hello",
+      "playerSha256": "b6151f50cbb5ff9a285c7fdb87d38487a5e1fcabd434b61a0ad61182a03f885f"
+    },
+    {
+      "variant": "baseline",
+      "playerSha256": "b6151f50cbb5ff9a285c7fdb87d38487a5e1fcabd434b61a0ad61182a03f885f",
+      "lines": [
+        "Open the activity desk to prepare, or continue to choose your day.",
+        "You start the station shift without a prepared kit."
+      ],
+      "headlessTraceSha256": "3750322f89fb73953a4ace5975b8089f585d21eb707b07e9468e4039c1fdfb67",
+      "compiledDialogueSha256": "50ae7f7b8e03abc0f48b6fac0fa403df4895d36e6ff3a34febd5fad61126342f",
+      "screensSha256": {
+        "activity.jsonc": "c5408f63f719b73e0348d7109154a475762dcdd4f1d3b6ce39633109d3f6efb5",
+        "dialogue.jsonc": "15a36a7a70a3025297f1a39fa86d1f9499c85d09a178b5ef322a56bbd28a8557",
+        "menu.jsonc": "10c277b343df5fc054ebd5c5b9a3b7241c7c37def80eefdb6707068cc43c4cbe",
+        "pause.jsonc": "da55382c5fd0175604671cd11cb71bcf1087ddbe1202307ca18f5238d5f1c813"
+      },
+      "menu": {
+        "background": "#14251F",
+        "padding": 32,
+        "firstTarget": "activity"
+      }
+    },
+    {
+      "variant": "edit-ui",
+      "playerSha256": "b6151f50cbb5ff9a285c7fdb87d38487a5e1fcabd434b61a0ad61182a03f885f",
+      "lines": [
+        "Open the activity desk to prepare, or continue to choose your day.",
+        "You start the station shift without a prepared kit."
+      ],
+      "headlessTraceSha256": "3750322f89fb73953a4ace5975b8089f585d21eb707b07e9468e4039c1fdfb67",
+      "compiledDialogueSha256": "50ae7f7b8e03abc0f48b6fac0fa403df4895d36e6ff3a34febd5fad61126342f",
+      "screensSha256": {
+        "activity.jsonc": "c5408f63f719b73e0348d7109154a475762dcdd4f1d3b6ce39633109d3f6efb5",
+        "dialogue.jsonc": "15a36a7a70a3025297f1a39fa86d1f9499c85d09a178b5ef322a56bbd28a8557",
+        "menu.jsonc": "da21d2485ae5b7e4c3efbeac0826a473d5f641c472c172d3b8716dd2ecd8bb17",
+        "pause.jsonc": "da55382c5fd0175604671cd11cb71bcf1087ddbe1202307ca18f5238d5f1c813"
+      },
+      "menu": {
+        "background": "#302338",
+        "padding": 48,
+        "firstTarget": "dialogue"
+      }
+    }
+  ],
+  "scope": "Package validation and headless dialogue; no Rust build between exports. UI model tests run separately.",
+  "nativeVisualVerification": "pending maintainer in issue #5"
+}

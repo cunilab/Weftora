@@ -1,0 +1,301 @@
+{
+  "check": "P5-05 fixtures introduced through Phase 5",
+  "sourceCommit": "114867d5319f710865be4d4894aec5e279244b81",
+  "cleanValidationStart": true,
+  "device": "MacBookAir",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "rustc": "rustc 1.98.0 (88d9e12ae 2026-08-18)",
+  "cargo": "cargo 1.98.0 (797e8a9bc 2026-08-05)",
+  "cargoLockSha256": "74fb8e2b90c470236987d465dfb9b58484dfc6cc7607af6f2d658b0fa972dc52",
+  "reportedFullSuiteTestsPassed": 376,
+  "fullMatrixCliRowsPassed": 42,
+  "fullMatrixPlayerRowsPassed": 18,
+  "compatibilityCliRowsPassed": 8,
+  "compatibilityPlayerRowsPassed": 2,
+  "mandatoryStoryTestsListed": 14,
+  "defaultEngineExcludesAllAuthoredTests": true,
+  "commands": [
+    {
+      "name": "build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--locked"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "same-player",
+      "command": [
+        "python3",
+        "-B",
+        "-O",
+        "scripts/verify-life-sim.py",
+        "--cli",
+        "target/debug/weftora",
+        "--player",
+        "target/debug/weftora-player",
+        "--out",
+        "/tmp/weftora-p505-proof-993d48ed"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "all-tests",
+      "command": [
+        "cargo",
+        "test-all",
+        "--",
+        "--test-threads=1"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "cli-rows",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "weftora-cli",
+        "--features",
+        "story-tests",
+        "--test",
+        "story_matrix",
+        "--",
+        "--nocapture"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "player-rows",
+      "command": [
+        "cargo",
+        "test",
+        "--locked",
+        "-p",
+        "weftora-render-bevy",
+        "--features",
+        "story-tests",
+        "--lib",
+        "story_matrix",
+        "--",
+        "--nocapture"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "clippy-default",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "clippy-stories",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--features",
+        "weftora-cli/story-tests,weftora-render-bevy/story-tests",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "engine-list",
+      "command": [
+        "cargo",
+        "test",
+        "--workspace",
+        "--locked",
+        "--",
+        "--list"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "story-list",
+      "command": [
+        "cargo",
+        "test-all",
+        "--",
+        "--list"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "python-tests",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "included-fmt",
+      "command": [
+        "rustfmt",
+        "--edition",
+        "2024",
+        "--check",
+        "tests/support/story_matrix.rs",
+        "crates/weftora-render-bevy/src/story_matrix.rs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "deps",
+      "command": [
+        "cargo",
+        "xtask",
+        "deps"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "deny",
+      "command": [
+        "cargo",
+        "deny",
+        "check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "name": "docs",
+      "command": [
+        "cargo",
+        "xtask",
+        "docs"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "proofScriptPythonOptimizationEnabled": true,
+  "samePlayerProof": {
+    "platform": "macOS-27.0.1-arm64-arm-64bit",
+    "cliSha256": "eee925f0604a78d22befe4ab8e337b8747f4ef6a98e0e3bcd6a911d032b91a68",
+    "playerSha256": "24ed6fe9f9db8004a1781598879545b65445e0dfd6e09e35ffcf5d17a94731e2",
+    "compatibleRevisions": [
+      {
+        "story": "story-a",
+        "checkpoint": "scene.repair",
+        "storyVersion": "0.1.1",
+        "saveSchemaUnchanged": true,
+        "playerSha256": "24ed6fe9f9db8004a1781598879545b65445e0dfd6e09e35ffcf5d17a94731e2",
+        "authoredAssetPatched": true,
+        "assetVerification": "exported edited bytes; pixel use tested separately by renderer fixture",
+        "oldSaveCompletedWithPatchedTextAndNewDefault": true,
+        "saveDirectoryUnchanged": true,
+        "compiledDialogueSha256": "e787d29ac9bfe54f27926247001c462da83f3689f075aabbf22a34db218dcf4e",
+        "finalState": {
+          "matrix_added": 23,
+          "settings.audio.ambience": 1.0,
+          "settings.audio.effects": 1.0,
+          "settings.audio.master": 0.5,
+          "settings.audio.music": 1.0,
+          "settings.audio.voice": 1.0,
+          "story.attempts": 1.0,
+          "story.route": "repair",
+          "story.signal": true
+        }
+      },
+      {
+        "story": "story-b",
+        "checkpoint": "day.shift",
+        "storyVersion": "0.1.1",
+        "saveSchemaUnchanged": true,
+        "playerSha256": "24ed6fe9f9db8004a1781598879545b65445e0dfd6e09e35ffcf5d17a94731e2",
+        "authoredAssetPatched": false,
+        "assetVerification": "no authored media; renderer image-patch fixture only",
+        "oldSaveCompletedWithPatchedTextAndNewDefault": true,
+        "saveDirectoryUnchanged": true,
+        "compiledDialogueSha256": "f75cd4c131aae6dd9ed2cb06be0082dbed66fe1b202b1c3c59219e098de4d840",
+        "finalState": {
+          "coins": 2,
+          "earned": 4,
+          "energy": 3,
+          "hour": 14,
+          "inventory": [
+            "permit",
+            "receipt"
+          ],
+          "location": "Home",
+          "matrix_added": 23,
+          "rng": -7046029254386353131,
+          "schedule": {
+            "market": "09:00-12:00",
+            "open": false
+          },
+          "shift_open": false,
+          "status": "A good meal.",
+          "worked": true
+        }
+      }
+    ],
+    "futureDialogueFormatRefusals": [
+      {
+        "story": "story-a",
+        "exitCode": 1,
+        "stdoutEmpty": true,
+        "goodArtifactUnchanged": true
+      },
+      {
+        "story": "story-b",
+        "exitCode": 1,
+        "stdoutEmpty": true,
+        "goodArtifactUnchanged": true
+      }
+    ]
+  },
+  "baselinePlayerHashes": {
+    "story-a": "24ed6fe9f9db8004a1781598879545b65445e0dfd6e09e35ffcf5d17a94731e2",
+    "story-b": "24ed6fe9f9db8004a1781598879545b65445e0dfd6e09e35ffcf5d17a94731e2",
+    "edit-pay": "24ed6fe9f9db8004a1781598879545b65445e0dfd6e09e35ffcf5d17a94731e2"
+  },
+  "rawSamePlayerReportSha256": "ac3a211d45056eaee9a7ca281b737ab5f4f871e283240ead2ba7ada8bee2c663",
+  "sourceSha256": {
+    "apps/weftora-cli/tests/story_matrix.rs": "35c28c0a4e0b588e89dc65b0ddf61722698abef1e0308ee845dd6f62f4646875",
+    "crates/weftora-render-bevy/src/story_matrix.rs": "a1f02dfe88bdb3545227631ed8a1e5e1690c3d998685cebc651cf83d27f4e427",
+    "tests/support/story_matrix.rs": "e37caebb132f75185ccc3138d6b5c03554459f7862b8d1b7a5a48ceeb154df1e",
+    "scripts/verify-life-sim.py": "674452f428bb185ea68af8472fb56e1c0b5faa1cb00d2534728c9d888c115abd",
+    "scripts/verify-engine-independence.py": "3c1f9f5949db01cbb6606a32c06bbf9aaae6afe07aa1b0347a872a53b2e392d8",
+    ".github/workflows/ci.yml": "18d2b689e06dd741bd1998bf897b8f8fba4c40e1939fd360e9680f0028a34f80"
+  },
+  "rowLog": "phase-5-compatibility-macos.log",
+  "rowLogSha256": "65756c05af44c11fc672454beaabdbae84e485d327c8b1abe439cc1d6f6790d0",
+  "windowsCiRun": "https://github.com/cunilab/Weftora/actions/runs/39367965746",
+  "scope": "Modeled API and older-writer metadata policy plus real current-player package validation and shared CLI continuation. Renderer fixtures use fresh sessions, not hot reload. Native Windows acceptance and Phase 6 downgrade/export-tool-release fixtures remain open."
+}

@@ -10,7 +10,19 @@ use weftora_story::Story;
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
-    match args.as_slice() {
+    run_args(&args)
+}
+
+fn run_args(args: &[String]) -> ExitCode {
+    match args {
+        [flag] if flag == "--tool-identity" => {
+            println!(
+                "{}",
+                serde_json::to_string(&weftora_yarn::ToolIdentity::current("weftora-player"))
+                    .expect("tool identity serializes")
+            );
+            ExitCode::SUCCESS
+        }
         [flag] if flag == "--version" => match version_line() {
             Ok(line) => {
                 println!("{line}");
@@ -21,18 +33,62 @@ fn main() -> ExitCode {
                 ExitCode::FAILURE
             }
         },
-        [] => run_story(default_story_dir(), None, false),
-        [dir] => run_story(PathBuf::from(dir), None, false),
-        [dir, flag, artifact] if flag == "--dialogue" => {
-            run_story(PathBuf::from(dir), Some(PathBuf::from(artifact)), false)
+        [debug, start, node] if debug == "--debug-tools" && start == "--start-node" => {
+            run_story(default_story_dir(), None, false, true, Some(node))
         }
-        [dir, flag] if flag == "--validate" => run_story(PathBuf::from(dir), None, true),
+        [dir, debug, start, node] if debug == "--debug-tools" && start == "--start-node" => {
+            run_story(PathBuf::from(dir), None, false, true, Some(node))
+        }
+        [dir, flag, artifact, debug, start, node]
+            if flag == "--dialogue" && debug == "--debug-tools" && start == "--start-node" =>
+        {
+            run_story(
+                PathBuf::from(dir),
+                Some(PathBuf::from(artifact)),
+                false,
+                true,
+                Some(node),
+            )
+        }
+        [] => run_story(default_story_dir(), None, false, false, None),
+        [flag] if flag == "--debug-tools" => {
+            run_story(default_story_dir(), None, false, true, None)
+        }
+        [dir, flag] if flag == "--debug-tools" => {
+            run_story(PathBuf::from(dir), None, false, true, None)
+        }
+        [dir, flag, artifact, debug] if flag == "--dialogue" && debug == "--debug-tools" => {
+            run_story(
+                PathBuf::from(dir),
+                Some(PathBuf::from(artifact)),
+                false,
+                true,
+                None,
+            )
+        }
+        [dir] => run_story(PathBuf::from(dir), None, false, false, None),
+        [dir, flag, artifact] if flag == "--dialogue" => run_story(
+            PathBuf::from(dir),
+            Some(PathBuf::from(artifact)),
+            false,
+            false,
+            None,
+        ),
+        [dir, flag] if flag == "--validate" => {
+            run_story(PathBuf::from(dir), None, true, false, None)
+        }
         [dir, flag, artifact, validate] if flag == "--dialogue" && validate == "--validate" => {
-            run_story(PathBuf::from(dir), Some(PathBuf::from(artifact)), true)
+            run_story(
+                PathBuf::from(dir),
+                Some(PathBuf::from(artifact)),
+                true,
+                false,
+                None,
+            )
         }
         _ => {
             eprintln!(
-                "usage: weftora-player [--version | <story-dir> [--dialogue <artifact>] [--validate]]"
+                "usage: weftora-player [--version | --tool-identity | <story-dir> [--dialogue <artifact>] [--validate | --debug-tools [--start-node <node>]]]"
             );
             ExitCode::from(2)
         }
@@ -58,7 +114,13 @@ fn version_line() -> Result<String, String> {
     ))
 }
 
-fn run_story(dir: PathBuf, artifact: Option<PathBuf>, validate: bool) -> ExitCode {
+fn run_story(
+    dir: PathBuf,
+    artifact: Option<PathBuf>,
+    validate: bool,
+    debug_tools: bool,
+    node: Option<&str>,
+) -> ExitCode {
     match load(&dir, artifact.as_deref()) {
         Ok((story, dialogue, state)) => {
             if validate {
@@ -67,7 +129,14 @@ fn run_story(dir: PathBuf, artifact: Option<PathBuf>, validate: bool) -> ExitCod
                     story.manifest().id
                 );
             } else {
-                if let Err(message) = weftora_render_bevy::run(story, dialogue, state) {
+                let result = if let Some(node) = node {
+                    weftora_render_bevy::run_at_node_with_debug_tools(story, dialogue, node)
+                } else if debug_tools {
+                    weftora_render_bevy::run_with_debug_tools(story, dialogue, state)
+                } else {
+                    weftora_render_bevy::run(story, dialogue, state)
+                };
+                if let Err(message) = result {
                     eprintln!("weftora-player: {message}");
                     return ExitCode::FAILURE;
                 }
@@ -191,6 +260,43 @@ mod tests {
                 .to_string()
                 .contains("manifest.jsonc: entrypoint `Missing`")
         );
+    }
+
+    #[test]
+    fn selected_node_and_argument_refusals_happen_before_window_creation() {
+        let (tmp, story) = package();
+        let story = story.to_str().unwrap();
+        let artifact = tmp.path().join(weftora_yarn::ARTIFACT_FILE);
+        for node in ["Missing", "start", "", "$Yarn.Internal.Start"] {
+            for args in [
+                vec![story, "--debug-tools", "--start-node", node],
+                vec![
+                    story,
+                    "--dialogue",
+                    artifact.to_str().unwrap(),
+                    "--debug-tools",
+                    "--start-node",
+                    node,
+                ],
+            ] {
+                assert_eq!(
+                    run_args(&args.into_iter().map(String::from).collect::<Vec<_>>()),
+                    ExitCode::FAILURE
+                );
+            }
+        }
+        for flags in [
+            vec!["--start-node", "Start"],
+            vec!["--debug-tools", "--start-node"],
+            vec!["--start-node", "Start", "--debug-tools"],
+            vec!["--validate", "--debug-tools", "--start-node", "Start"],
+        ] {
+            let args = std::iter::once(story)
+                .chain(flags)
+                .map(String::from)
+                .collect::<Vec<_>>();
+            assert_eq!(run_args(&args), ExitCode::from(2));
+        }
     }
 
     #[test]

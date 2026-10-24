@@ -1,0 +1,12 @@
+MacBookAir compatibility PASS-row excerpts; full matrix also reran successfully.
+
+PASS story-a/compatibility/api-policy: unchanged requirements accept compatible API; outside range and unnamed prerelease refuse
+PASS story-a/compatibility/dialogue-format: valid artifact accepts; future format refuses specifically
+PASS story-a/compatibility/text-asset-patch: old checkpoint completes with patched text, changed image bytes and new-field default; saves unchanged
+PASS story-a/compatibility/writer-version: earlier Engine release diagnostics do not reject same-API save
+PASS life-sim/compatibility/api-policy: unchanged requirements accept compatible API; outside range and unnamed prerelease refuse
+PASS life-sim/compatibility/dialogue-format: valid artifact accepts; future format refuses specifically
+PASS life-sim/compatibility/text-asset-patch: old checkpoint completes with patched text, changed image bytes and new-field default; saves unchanged
+PASS life-sim/compatibility/writer-version: earlier Engine release diagnostics do not reject same-API save
+PASS story-a/compatibility/player-patch: old noninitial checkpoint restores patched text, newly decoded image pixels, new-field default and once-only mechanics; files unchanged
+PASS life-sim/compatibility/player-patch: old noninitial checkpoint restores patched text, newly decoded image pixels, new-field default and once-only mechanics; files unchanged

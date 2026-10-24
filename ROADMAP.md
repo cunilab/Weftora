@@ -11,6 +11,7 @@ status: proposed
 **Rules for every phase**
 
 - A phase is done only when its required checks in [success criteria](./docs/success-criteria.md) pass with evidence. Any explicit deferral must be recorded there and tracked by an issue; it is not a test pass. A ticked box alone means nothing.
+- Pending maintainer Windows verification is queued in [issue #5](https://github.com/cunilab/Weftora/issues/5) and does not block later implementation, automated CI or development-host checks. Implementation may advance while acceptance remains open; this does not waive any gate.
 - Hardening work lands in the phase that introduces the thing it protects. For example, archive security fixtures arrive when an archive format exists.
 - Windows x64 is the only release target and the only place gates are signed off. Maintainers may develop on macOS or Linux; see [platforms](./docs/platforms.md).
 - Example Stories live in `examples/`; they are content, never Cargo workspace members, and the Engine never depends on them.
@@ -53,65 +54,81 @@ Goal: replace spike code with the real, tested core.
 
 Goal: full Yarn integration and the presentation primitives a visual novel needs.
 
-**Status:** in progress. Compiled dialogue, typed catalogs, declarative UI and presentation media primitives are implemented with automated checks; see [Phase 2 implementation evidence](./docs/evidence/phase-2.md). Native rendering/audio/input/font/performance results remain maintainer-owned under issue #5. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 is resolved by the merged runtime fixes. No Phase 2 gate is claimed.
+**Status:** Windows views, audio and UI verification is recorded in the [agent results](./docs/evidence/phase-2-windows-agent.md#results) and [completed maintainer records](./docs/evidence/phase-2-windows.md#completed-maintainer-records), with the corresponding issue #5 items checked. Runtime diagnostics/resource limits pass automated Windows CI; issue #8 is resolved. [ADR 0006](./docs/adr/0006-performance-baseline.md) explicitly leaves input-to-feedback p95 unmeasured, so the performance item and full Phase 2 gate remain open.
 
 - [x] Yarn adapter on canonical state (no shadow variables) with the type mapping in [architecture §6](./docs/architecture.md#6-dialogue-yarn-spinner); Yarn commands mapped to Engine primitives (Story-defined commands follow in Phase 4); file/node diagnostics.
 - [x] Compiled dialogue artifact with its own format version and compiler identity; the player refuses unknown formats. [Automated P2-03 evidence](./docs/evidence/phase-2.md#verified-revision).
-- [ ] Views and layers: background, characters, CG, overlay; position, scale, opacity, fade, move, crossfade.
-- [ ] Audio channels: music, effects, ambience, voice; fades, user volume.
+- [x] Views and layers: background, characters, CG, overlay; position, scale, opacity, fade, move, crossfade. [Windows scripted observations](./docs/evidence/phase-2-windows-agent.md#results), confirmed in issue #5.
+- [x] Audio channels: music, effects, ambience, voice; fades, user volume. [Maintainer device/listening record](./docs/evidence/phase-2-windows.md#p2-05--musiceffectsvoice-fades-and-user-volume).
 - [x] Choose the declarative UI renderer (Bevy UI or alternative) by ADR.
-- [ ] Declarative UI v1: screen, panel, text, image, button, list, choice list, overlay; state bindings; keyboard/mouse focus.
-- [x] Asset catalogs for images, audio and fonts; native font/rendering checks remain in issue #5.
+- [x] Declarative UI v1: screen, panel, text, image, button, list, choice list, overlay; state bindings; keyboard/mouse focus. [Windows interaction and real-input records](./docs/evidence/phase-2-windows.md#ui-interaction-battery--overlay-blocking-focus-return-shifttab-resize), including the subsequent Volume/click-through record.
+- [x] Asset catalogs for images, audio and fonts; native font/media and validation results are in the [completed Windows records](./docs/evidence/phase-2-windows.md#completed-maintainer-records).
 - [x] Pin Bevy and Yarn versions; record a dependency licence inventory.
-- [ ] Measure a Windows performance baseline; confirm or revise the budgets in [PRD R15](./PRD.md#5-requirements) by ADR.
+- [ ] Finish Windows performance evidence against [PRD R15](./PRD.md#5-requirements): startup, idle memory and check time are measured; input-to-feedback p95 remains open under [ADR 0006](./docs/adr/0006-performance-baseline.md#decision-confirm-the-measured-budgets-leave-input-p95-open).
 
 ## Phase 3 — First playable visual novel (Story A) and saves
 
 Goal: a short, complete visual novel played through the prebuilt player.
 
-**Status:** implementation complete. [ADR 0007](./docs/adr/0007-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, runtime checkpoints, headless save/load, candidate player restoration, Story A, its automated content-only edit proof, author tutorial and Windows test package are implemented. Native Windows testing and the independent tutorial walkthrough remain maintainer-owned in issue #5; no Phase 3 gate is claimed.
+**Status:** implementation complete. [ADR 0007](./docs/adr/0007-safe-checkpoint-saves.md) defines checkpoint saves; bounded storage, runtime checkpoints, headless save/load, candidate player restoration, Story A, its automated content-only edit proof, author tutorial and Windows test package are implemented. Issue #5 marks P3-01 through P3-06 complete (historical ticks preserved, not a waiver of evidence gaps); their historical Windows records from PR #21 are integrated and [reviewed here](./docs/evidence/phase-3.md#historical-windows-evidence-review). The same-player edit evidence is supported. P3-03 paired-session records lack per-record player hashes, so navigation acceptance remains unchecked; P3-07 still needs the independent walkthrough. Current release-candidate Windows verification remains separate.
 
 - [x] Add `examples/story-a/`, preserving Hello Story golden fixtures: menu, two branches, characters, CG, music, transitions, themed choice UI.
 - [x] Saves: container format, Story `saveSchema`, stable checkpoint IDs, atomic write, user-writable Windows location, corruption handling.
 - [x] Load pipeline: bounded read → compatibility check → isolated candidate → validate → atomically activate; unsupported migrations refuse safely.
-- [ ] Keyboard and mouse navigation, window resizing and readable scaled UI.
-- [ ] Prove that editing Story A's dialogue, screens and assets does not change the player binary.
-- [x] Author tutorial: how to change Story A without touching Rust; independent Windows walkthrough remains in issue #5.
+- [ ] Keyboard and mouse navigation, window resizing and readable scaled UI. Historical Windows records are [reviewed and integrated](./docs/evidence/phase-3.md#historical-windows-evidence-review), but paired mouse/DPI records lack binary hashes; Shift+Tab from the first control clears focus. Acceptance remains pending the provenance gap.
+- [x] Prove that editing Story A's dialogue, screens and assets does not change the player binary. Automated proof and historical Windows before/after observations are [reviewed and integrated](./docs/evidence/phase-3.md#historical-windows-evidence-review).
+- [x] Publish the author tutorial: how to change Story A without touching Rust.
+- [ ] P3-07: someone other than the tutorial author completes the independent prebuilt-tools walkthrough; remains in issue #5.
 - [ ] Optional: tag a Windows **developer alpha**. This is not the foundation release.
 
 ## Phase 4 — Story-defined rules
 
 Goal: games define their own mechanics without Engine changes.
 
-- [ ] Declarative events: trigger → conditions → ordered actions, priority and tie-break, bounded scheduling.
-- [ ] Condition operators on typed values: `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not.
-- [ ] List and map state values with deterministic serialisation ([ADR 0003](./docs/adr/0003-story-rules-language.md)).
-- [ ] Rhai script host: allowlisted Engine API, operation/depth/size limits, errors mapped to Story diagnostics, no file/network/OS access.
-- [ ] Story-defined commands written in declarative actions or Rhai, callable from screens, events and Yarn.
-- [ ] Themed custom screens and navigation.
+**Status:** P4-01, P4-02, P4-04 and P4-07 have the automated evidence required by their success criteria, including passing Windows CI. [Phase 4 evidence](./docs/evidence/phase-4.md#checklist-reconciliation) maps these results. Commands/custom screens have automated implementation coverage but their native demonstrations remain in issue #5; the Rhai host still defers script-internal Engine command calls. Phase 4 is not fully accepted, and these remaining items do not block subsequent implementation.
+
+- [x] P4-01: typed condition operators `==`, `!=`, `<`, `<=`, `>`, `>=`, and, or, not; valid-type and invalid-operand table tests.
+- [x] P4-02: declarative events, conditions and ordered actions by priority/declaration order; deterministic traces and bounded cycle failures.
+- [ ] P4-03: declarative and Rhai Story commands on the unchanged player. Shared Yarn/event/UI paths, partial-write error semantics and automated replay/package proofs are implemented; native unchanged-player demonstration remains in issue #5.
+- [x] P4-04: flat list/map state serialises deterministically and survives save/load; Yarn scalar length/membership views work without exposing collections as Yarn variables. See [ADR 0009](./docs/adr/0009-flat-collection-state.md) and [ADR 0012](./docs/adr/0012-yarn-collection-queries.md).
+- [ ] P4-05: full Rhai host contract. State/signal permissions, shared budgets, depth/data limits, hostile-script fixtures and source diagnostics are implemented; script-internal Engine calls remain deferred under [ADR 0010](./docs/adr/0010-bounded-rhai-host.md), and native acceptance stays queued.
+- [ ] P4-06: themed custom screens and navigation. The [screens demo](./examples/screens-demo/README.md), renderer navigation/focus tests, invalid fixtures and same-player edit proof provide automated coverage; native verification remains in issue #5.
+- [x] P4-07: Rhai syntax diagnostics name file/line; canonical seeded randomness resumes identically after save/load. See [ADR 0011](./docs/adr/0011-canonical-seeded-randomness.md) and the negative/replay fixtures.
 
 ## Phase 5 — Second Story proves reuse (Story B)
 
 Goal: a meaningfully different game on the same binary.
 
-- [ ] `examples/life-sim/`: at least two locations, a time/schedule rule, a resource and an inventory-like list, a conditional activity and a custom screen.
-- [ ] Story A and Story B run on the same player binary (same SHA-256).
-- [ ] The Engine workspace builds and tests pass with both Stories deleted.
-- [ ] Negative matrix: invalid packages, missing IDs, cross-Story saves, incompatible schemas and versions, script errors. No partial activation.
+**Status:** P5-03 through P5-05 have automated evidence; P5-01/P5-02 native Story B and same-player completion remain queued in issue #5. Phase 6 implementation may proceed while that acceptance is open.
+
+- [ ] `examples/life-sim/`: at least two locations, a time/schedule rule, a resource and an inventory-like list, a conditional activity and a custom screen. [Market Day](./examples/life-sim/README.md) implements a finite day with scenario/replay checks; native acceptance remains queued in issue #5.
+- [ ] Story A and Story B run on the same player binary (same SHA-256). Automated exports, shared-runner completion and a pay-edit proof are recorded in [Phase 5 evidence](./docs/evidence/phase-5.md); native completion remains.
+- [x] The Engine workspace builds and tests pass with both Stories deleted. An isolated-source P5-03 proof runs the default Engine suite without A/B; required CI separately runs the authored-Story suite with `cargo test-all`. See [Phase 5 evidence](./docs/evidence/phase-5.md); isolated macOS proof and required Windows CI passed.
+- [x] Negative matrix: invalid packages, missing IDs, cross-Story saves, incompatible schemas and versions, script errors. [A/B matrix evidence](./docs/evidence/phase-5.md#ab-failure-matrix-p5-04) records preactivation refusals, failed-load state/media/navigation preservation and intact save files. Native observations stay in issue #5.
+- [x] ADR 0002 fixtures introduced through Phase 5 hold against both Stories, including compatible text/asset patches, old-save reconstruction and modeled version boundaries. [P5-05 evidence](./docs/evidence/phase-5.md#compatible-revisions-and-version-fixtures-p5-05) distinguishes current-player proof from modeled API/writer metadata. Native checks stay in issue #5; Phase 6 release rows remain open.
 
 ## Phase 6 — Windows foundation release
 
 Goal: a stranger can make and ship a game on Windows.
 
-- [ ] `weftora new | check | run | export` complete with actionable errors and non-zero exit codes.
-- [ ] Decide the release package container (folder or archive). If archive: traversal and decompression-bomb protection and fixtures.
-- [ ] Export: prebuilt player + validated Story + compiled dialogue + release metadata (player SHA-256, CLI/compiler identity, content hashes).
-- [ ] Debug tools: state inspector, command runner, signal and event trace, start any Yarn node.
-- [ ] Localisation pipeline.
-- [ ] Licence, dependency licence and advisory audit.
+**Status:** implementation may advance; release acceptance is open. The starter CLI is implemented; automated workflow results are tracked in [Phase 6 evidence](./docs/evidence/phase-6.md). Existing check/run/export and debug-package proofs do not satisfy clean-machine, release-profile or tool-identity requirements by themselves. [Release-profile CI automation](./docs/evidence/phase-6.md#release-profile-automation-p6-03-partial) is implemented; the first Windows release run passed. [All-example baseline export/hash checks](./docs/evidence/phase-6.md#all-example-baseline-exports-p6-03-automated-slice) are now wired into release CI; [six isolated mechanics-edit recipes](./docs/evidence/phase-6.md#isolated-mechanics-edit-recipes-p6-03-automated-slice) are automated too. The [release proof coverage table](./docs/release-proof-coverage.md) maps earlier checks and maps the actual changed-build experiment, which now has isolated release CI automation. Final candidate reruns and native/manual acceptance stay open.
+
+- [x] `weftora new | check | run | export` implemented with actionable errors and non-zero exit codes. [P6-01 CLI integration and starter proof](./docs/evidence/phase-6.md) pass on macOS and [required Windows CI](https://github.com/cunilab/Weftora/actions/runs/39370423376). Native preview and the independent clean-machine walkthrough remain queued in issue #5.
+- [x] Decide the runtime release package container: folders ([ADR 0013](./docs/adr/0013-folder-release-packages.md)). The Engine does not extract archives; GitHub download ZIP transport now has [staging/path/link/bounds and round-trip hash automation](./docs/evidence/phase-6.md#zip-transport-validation-p6-05-automated-slice), with MacBookAir proof and Windows CI wiring; [combined download checksum staging](./docs/evidence/phase-6.md#combined-release-download-staging-p6-05-automated-slice) and [offline download verification](./docs/evidence/phase-6.md#offline-download-verification-p6-05-automated-slice) are implemented; final candidate evidence remains required before publishing. [Trunk-based release checklist](./docs/releasing.md#release-checklist) tracks remaining release acceptance.
+- [ ] Export: prebuilt player + validated Story + compiled dialogue + release metadata (player SHA-256, CLI/compiler identity, content hashes). Host-target tool identity checks and copied-player hash verification pass automated checks on macOS and [required Windows CI](https://github.com/cunilab/Weftora/actions/runs/39382990097); [P6-02 automated evidence](./docs/evidence/phase-6.md#export-tool-identity-p6-02-automated-slice) is separate from pending clean-Windows-VM and release-build acceptance.
+- [ ] Debug tools: [opt-in state inspector/editor, command runner, signal/event trace and launch-time Yarn node selection](./docs/debug-tools.md) implemented with automated input/save/rule checks. Native release-build acceptance remains open.
+- [ ] Localisation pipeline: [catalog validation, live switching and a bundled Japanese font](./docs/localization.md) are implemented; native release-build acceptance remains. A fixture Story with English (`en`, source), Indonesian (`id`) and Japanese (`ja`) UI, dialogue and choices; other Stories choose their own languages. Switching must preserve progress without replaying commands, and retain choice IDs, order and availability while translating their text. Missing translations must make `check` fail. Bundle a Japanese font and its licence for the notice audit. P6-11 remains open until implementation and native evidence pass; Windows acceptance stays queued in issue #5.
+- [ ] Licence, dependency licence and advisory audit. [Authoring-tools candidate staging and notice collection](./docs/evidence/phase-6.md#authoring-tools-candidate-and-notice-inventory) are automated; [Standalone game notice propagation](./docs/evidence/phase-6.md#standalone-game-notice-propagation-p6-06-automated-slice) preserves matching toolkit texts and unresolved flags in each example ZIP. [Pinned upstream texts](./docs/evidence/phase-6.md#pinned-upstream-notice-texts) reduce the Windows-target metadata gap to `constgebra`; the [embedded default-font audit](./docs/evidence/phase-6.md#embedded-font-notice-audit) supplies the separate Fira Mono OFL notice; the [resource/advisory review](./docs/evidence/phase-6.md#example-resource-and-advisory-review) verifies existing example notices and exception reachability, and [smartstring source/recipient-notice packaging](./docs/evidence/phase-6.md#smartstring-source-archive-and-recipient-notice) is implemented. [Fresh candidate build provenance](./docs/releasing.md#record-candidate-build-provenance) now has a [completed Windows review](./docs/evidence/phase-6.md#completed-fresh-windows-provenance-review-earlier-candidate) matching 534 tracked source files, logs and packaged tool hashes; the [newer download review](./docs/evidence/phase-6.md#fresh-windows-candidate-download-review) has its own pending full-report checks. Selected-main reruns remain required. Final source-distribution and obligation review remain open. The [static Windows import report](./docs/evidence/phase-6.md#windows-static-import-inventory-and-runtime-prerequisites) identifies the external Microsoft runtime prerequisite and automates ordinary-import evidence. Remaining text/attribution gaps, dynamic/native integration, obligations and final exception approval still require review.
 - [ ] Meet the approved performance budgets on the reference Windows machine.
 - [ ] Clean-machine walkthrough by someone who does not know Rust.
+- [x] Publish the [current compatibility table](./docs/adr/0002-versioning-compatibility.md#current-compatibility-table) and verify ADR 0002 Phase 6 current-reader downgrade and mismatched-tool fixtures for both Stories. [Automated evidence](./docs/evidence/phase-6.md) covers API/schema refusal, compatible release rollback and actual build-pair checks. Release-profile reruns (P6-03) and native integration (P6-04) remain separate; no historical-binary guarantee is claimed.
 - [ ] Publish the compatibility table; tag the release. Pre-1.0 versions are fine.
+
+The [player UI redesign](./docs/ui-design.md) improves shared controls, example screens, overlays and developer tools; Windows visual/behavior acceptance remains queued in issue #5.
+
+- [ ] Player UX acceptance: implement the [Ren'Py-informed lifecycle and game-menu plan](./docs/renpy-ux-review.md), including resumable navigation, honest checkpoint-save availability, destructive-action confirmations and decision context. The engine shell, persistent volume/language preferences and Story A menu migration are implemented and tested; read-only history, further visual refinement and native UX acceptance remain. Styling alone does not close this item; portable development continues while Windows checks wait in issue #5.
+
+Draft-release preparation is implemented with default read-only preflight, exact main/tag/CI-attempt and artifact verification, and explicit unpublished-draft creation. See [release operations](docs/releasing.md#prepare-a-draft-with-verified-ci-artifacts). Real main-candidate dispatch, final licence/advisory review and native acceptance remain open; this does not complete P6.
 
 ## Phase 7 — Ports, one at a time (locked until Phase 6 passes)
 

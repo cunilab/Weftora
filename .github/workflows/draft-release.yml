@@ -1,0 +1,74 @@
+name: Prepare release draft
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing annotated version tag on main (for example v0.1.0)
+        required: true
+        type: string
+      ci_run_id:
+        description: Completed CI push run from main at the tagged commit
+        required: true
+        type: string
+      notes:
+        description: Reviewed release notes, supported contracts and known limitations
+        required: true
+        type: string
+      create_draft:
+        description: Create an unpublished draft after preflight (otherwise verify only)
+        default: false
+        type: boolean
+      checklist_reviewed:
+        description: Maintainer confirms all release checklist evidence, including native and licence acceptance
+        default: false
+        type: boolean
+
+permissions: {}
+
+concurrency:
+  group: draft-release-${{ inputs.tag }}
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.repository == 'cunilab/Weftora' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      actions: read
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+      - name: Check frozen inputs and optionally create a draft
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          CI_RUN_ID: ${{ inputs.ci_run_id }}
+          RELEASE_NOTES: ${{ inputs.notes }}
+          CREATE_DRAFT: ${{ inputs.create_draft }}
+          CHECKLIST_REVIEWED: ${{ inputs.checklist_reviewed }}
+        shell: bash
+        run: |
+          python -c 'import os; from pathlib import Path; Path(os.environ["RUNNER_TEMP"], "release-notes.md").write_text(os.environ["RELEASE_NOTES"], encoding="utf-8")'
+          options=()
+          if [[ "$CREATE_DRAFT" == "true" ]]; then options+=(--create-draft); fi
+          if [[ "$CHECKLIST_REVIEWED" == "true" ]]; then options+=(--checklist-reviewed); fi
+          python -I -B -O scripts/prepare-github-release.py --tag "$RELEASE_TAG" --run-id "$CI_RUN_ID" --notes "$RUNNER_TEMP/release-notes.md" --out "$RUNNER_TEMP/weftora-draft-release" "${options[@]}"
+      - name: Retain preflight and draft readback records
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          if-no-files-found: ignore
+          name: weftora-draft-preflight-${{ github.run_id }}-attempt-${{ github.run_attempt }}
+          path: |
+            ${{ runner.temp }}/weftora-draft-release/draft-release-plan.json
+            ${{ runner.temp }}/weftora-draft-release/draft-created.json
+            ${{ runner.temp }}/weftora-draft-release/release-notes.md
+          retention-days: 14

@@ -329,3 +329,114 @@ fn supported_resource_boundaries_remain_playable() {
         play(case, true).unwrap();
     }
 }
+
+#[test]
+fn fallible_function_handler_stops_before_returning_wrong_types() {
+    let mut compiled = compiled("arity", false);
+    compiled
+        .program
+        .nodes
+        .get_mut("Start")
+        .unwrap()
+        .instructions = vec![
+        instruction(OpCode::PushFloat, vec![number(1.0)]),
+        instruction(OpCode::PushFloat, vec![number(1.0)]),
+        instruction(OpCode::CallFunc, vec![text("round")]),
+        instruction(OpCode::Stop, vec![]),
+    ];
+    for bad_type in [false, true] {
+        let state = Arc::new(RwLock::new(weftora_core::State::new()));
+        let mut dialogue = Dialogue::new(
+            Box::new(StateStorage::new(state)),
+            Box::new(StringTableTextProvider::new()),
+        );
+        dialogue.replace_program(compiled.program.clone());
+        dialogue.set_node("Start").unwrap();
+        let error = dialogue
+            .continue_with_function_handler(|_, _| {
+                if bad_type {
+                    Ok(Some(YarnValue::Boolean(false)))
+                } else {
+                    Err("host query failed".into())
+                }
+            })
+            .unwrap_err();
+        assert!(
+            matches!(error, yarnspinner_runtime::prelude::DialogueError::InvalidExecution {ref node_name,..} if node_name=="Start")
+        );
+        assert!(error.to_string().contains(if bad_type {
+            "wrong type"
+        } else {
+            "host query failed"
+        }));
+        assert!(!dialogue.can_continue());
+    }
+}
+
+#[test]
+fn query_signatures_cannot_silently_run_without_the_host_handler() {
+    let mut compiled = compiled("arity", false);
+    compiled
+        .program
+        .nodes
+        .get_mut("Start")
+        .unwrap()
+        .instructions = vec![
+        instruction(OpCode::PushString, vec![text("items")]),
+        instruction(OpCode::PushFloat, vec![number(1.0)]),
+        instruction(OpCode::CallFunc, vec![text("state_list_len")]),
+        instruction(OpCode::Stop, vec![]),
+    ];
+    let state = Arc::new(RwLock::new(weftora_core::State::new()));
+    state
+        .write()
+        .unwrap()
+        .set("items", weftora_api::Value::List(vec![]))
+        .unwrap();
+    let mut runner = DialogueRunner::new(&compiled, state);
+    runner.start("Start").unwrap();
+    let error = runner
+        .runtime_call(|dialogue| dialogue.continue_())
+        .unwrap_err();
+    assert!(
+        error
+            .to_string()
+            .contains("requires the Weftora host handler"),
+        "{error}"
+    );
+    assert!(runner.next_event().is_err());
+}
+#[test]
+fn crafted_query_operands_fail_before_later_writes() {
+    for count in [1.0, 2.0] {
+        let mut compiled = compiled("arity", false);
+        compiled
+            .program
+            .initial_values
+            .insert("$after".into(), number(0.0));
+        compiled
+            .program
+            .nodes
+            .get_mut("Start")
+            .unwrap()
+            .instructions = vec![
+            instruction(OpCode::PushFloat, vec![number(1.0)]),
+            instruction(OpCode::PushFloat, vec![number(count)]),
+            instruction(OpCode::CallFunc, vec![text("state_list_len")]),
+            instruction(OpCode::PushFloat, vec![number(9.0)]),
+            instruction(OpCode::StoreVariable, vec![text("$after")]),
+            instruction(OpCode::Stop, vec![]),
+        ];
+        let compiled =
+            CompiledDialogue::from_artifact_bytes(&compiled.to_artifact_bytes().unwrap()).unwrap();
+        let state = Arc::new(RwLock::new(weftora_core::State::new()));
+        let mut runner = DialogueRunner::new(&compiled, state.clone());
+        runner.start("Start").unwrap();
+        let error = runner.next_event().unwrap_err();
+        assert!(error.to_string().contains("state_list_len"), "{error}");
+        assert_eq!(
+            state.read().unwrap().get("after"),
+            Ok(&weftora_api::Value::Float(0.0))
+        );
+    }
+}

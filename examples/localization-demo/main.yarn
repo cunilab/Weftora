@@ -1,0 +1,12 @@
+title: Start
+---
+<<declare $name = "Mira">>
+<<declare $coins = 7>>
+<<checkpoint start>>
+Mira: Hello, {$name}. You have {$coins} coins. #line:greeting
+-> Visit the market. #line:visit
+    Mira: The market is open. #line:market
+-> Wait here. #line:wait
+    Mira: We can take our time. #line:rest
+Mira: See you soon. #line:goodbye
+===

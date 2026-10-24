@@ -1,0 +1,210 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen",
+    "id": "dashboard",
+    "background": "#101D2B",
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 24,
+      "gap": 16
+    },
+    "children": [
+      {
+        "type": "text",
+        "text": "MARKET DAY",
+        "size": 30,
+        "color": "#F2DDA4"
+      },
+      {
+        "type": "list",
+        "layout": {
+          "direction": "row",
+          "gap": 20
+        },
+        "children": [
+          {
+            "type": "panel",
+            "background": "#1B3042",
+            "layout": {
+              "width": "25%",
+              "padding": 24,
+              "gap": 8
+            },
+            "children": [
+              {
+                "type": "text",
+                "text": "Location",
+                "size": 18,
+                "color": "#A8B8C7"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "location"
+                },
+                "size": 22,
+                "color": "#F2DDA4"
+              },
+              {
+                "type": "text",
+                "text": "Hour",
+                "size": 18,
+                "color": "#A8B8C7"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "hour"
+                },
+                "size": 22,
+                "color": "#F2DDA4"
+              },
+              {
+                "type": "text",
+                "text": "Energy / 6",
+                "size": 18,
+                "color": "#A8B8C7"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "energy"
+                },
+                "size": 22,
+                "color": "#F2DDA4"
+              },
+              {
+                "type": "text",
+                "text": "Coins",
+                "size": 18,
+                "color": "#A8B8C7"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "coins"
+                },
+                "size": 22,
+                "color": "#F2DDA4"
+              },
+              {
+                "type": "text",
+                "text": "Morning shift open",
+                "size": 18,
+                "color": "#A8B8C7"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "shift_open"
+                },
+                "size": 22,
+                "color": "#F2DDA4"
+              }
+            ]
+          },
+          {
+            "type": "panel",
+            "layout": {
+              "width": "65%",
+              "padding": 14,
+              "gap": 16
+            },
+            "children": [
+              {
+                "type": "text",
+                "bind": {
+                  "dialogue": "text"
+                },
+                "size": 26,
+                "color": "#EDF2F8"
+              },
+              {
+                "type": "choiceList",
+                "id": "choices",
+                "size": 22,
+                "color": "#EDF2F8",
+                "layout": {
+                  "gap": 8
+                }
+              },
+              {
+                "type": "button",
+                "id": "next",
+                "text": "Continue",
+                "action": {
+                  "do": "dialogue.advance"
+                },
+                "size": 20,
+                "background": "#F2BF6D",
+                "layout": {
+                  "padding": 12
+                },
+                "color": "#101723"
+              },
+              {
+                "type": "text",
+                "bind": {
+                  "state": "status"
+                },
+                "size": 22,
+                "color": "#F2DDA4"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "list",
+        "layout": {
+          "direction": "row",
+          "gap": 12
+        },
+        "children": [
+          {
+            "type": "button",
+            "id": "journal",
+            "text": "Journal",
+            "action": {
+              "do": "screen.open",
+              "screen": "journal"
+            },
+            "size": 20,
+            "background": "#304B60",
+            "layout": {
+              "padding": 12
+            }
+          },
+          {
+            "type": "button",
+            "id": "save",
+            "text": "Save (F5)",
+            "action": {
+              "do": "save"
+            },
+            "size": 20,
+            "background": "#304B60",
+            "layout": {
+              "padding": 12
+            }
+          },
+          {
+            "type": "button",
+            "id": "load",
+            "text": "Load (F9)",
+            "action": {
+              "do": "load"
+            },
+            "size": 20,
+            "background": "#304B60",
+            "layout": {
+              "padding": 12
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

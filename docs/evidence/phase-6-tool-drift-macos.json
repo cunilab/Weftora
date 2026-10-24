@@ -1,0 +1,76 @@
+{
+  "check": "P6-02 real changed-source build mismatch",
+  "sourceCommit": "88c49359411d3d03b53a0ff9b3fd74fc7d0cb6c7",
+  "device": "MacBookAir",
+  "baselineCliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "389875f7d01a4783624ff4f75072caff102edde7af349b99ed1bfbfec33a17a4",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "retainedPlayerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "389875f7d01a4783624ff4f75072caff102edde7af349b99ed1bfbfec33a17a4",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "changedCliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "3607e093ac18ba7a03345ca47214bc9d4551e23b5c0814fa18d15995b35771a0",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "retainedPlayerSha256": "c25d3f8a17956683f340988966c74ceed88a2715093d8786a6040663a4e1e157",
+  "controlledSource": "apps/weftora-cli/src/tool_identity.rs",
+  "controlledAppend": "\n// P6-02 controlled build-fingerprint negative fixture.\n",
+  "baselineSourceSha256": "9b8a79ee40535472969621dcd82dd129a2e003536aae630c22d9ab7c84c425ef",
+  "changedSourceSha256": "40fbd8f3e1f8ca0fa9779871454a7a4e4cc6ebef5b2b39c4aa9577fd288e583c",
+  "refusals": [
+    {
+      "story": "story-a",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true
+    },
+    {
+      "story": "story-a",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true
+    },
+    {
+      "story": "story-b",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true
+    },
+    {
+      "story": "story-b",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true
+    }
+  ],
+  "sourceRestored": true,
+  "restoredIdentitiesMatchBaseline": true,
+  "scope": "Actual debug executables at the same release version, with a controlled Engine source change and only CLI rebuilt. No historical release, native window, clean VM, signing or release-profile acceptance."
+}

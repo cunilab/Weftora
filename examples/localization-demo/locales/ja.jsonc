@@ -1,0 +1,15 @@
+{
+  "localizationSchema": 1,
+  "ui": {
+    "language": "言語",
+    "continue": "続ける"
+  },
+  "dialogue": {
+    "line:greeting": "ミラ: {0}さん、こんにちは。コインは{1}枚です。",
+    "line:visit": "市場に行く。",
+    "line:market": "ミラ: 市場は開いています。",
+    "line:wait": "ここで待つ。",
+    "line:rest": "ミラ: ゆっくりできます。",
+    "line:goodbye": "ミラ: また会いましょう。"
+  }
+}

@@ -1,0 +1,311 @@
+{
+  "checks": [
+    "P5-01",
+    "P5-02 automated package/headless coverage",
+    "P5-05 cross-Story and compatible revisions"
+  ],
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "cliSha256": "411fb8faade14568f6677d9a5a075b8d2b7d6d271aacdb553686a6632cc51d6e",
+  "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "ceea7d9686c041bb374a5985eae38b3e7cc9f8255bbcc91b15b6e57977345c5f",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "playerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "ceea7d9686c041bb374a5985eae38b3e7cc9f8255bbcc91b15b6e57977345c5f",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "wrongToolRefusals": [
+    {
+      "story": "story-a",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    },
+    {
+      "story": "story-a",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    },
+    {
+      "story": "story-b",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    },
+    {
+      "story": "story-b",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    }
+  ],
+  "downgradeCompatibility": [
+    {
+      "story": "story-a",
+      "case": "engine-api-downgrade",
+      "writerMetadataPatch": {
+        "writerEngineApi": "0.1.1"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "2696ef33d2c942630781c6ebf6ff7b1c14f9ebdde40495a5583840d36c7ac275",
+      "checkpoint": "scene.repair"
+    },
+    {
+      "story": "story-a",
+      "case": "story-schema-downgrade",
+      "writerMetadataPatch": {
+        "saveSchema": 2,
+        "storyVersion": "0.2.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "3d6121e2f073a7967b81ca1d349c6c02e45c1bfad6178d82e7b186359160899f",
+      "checkpoint": "scene.repair"
+    },
+    {
+      "story": "story-a",
+      "case": "compatible-release-rollback",
+      "writerMetadataPatch": {
+        "storyVersion": "99.0.0",
+        "writerEngineRelease": "99.0.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 0,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "2a6794411012f8fe905b54c59adfe2eec3b5fb796810d54701572845dc5b7995",
+      "checkpoint": "scene.repair"
+    },
+    {
+      "story": "story-b",
+      "case": "engine-api-downgrade",
+      "writerMetadataPatch": {
+        "writerEngineApi": "0.1.1"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "6794e9d19e046bde49585228cdb9d3a29db05289b0b68cf79772b9c45dd03295",
+      "checkpoint": "day.shift"
+    },
+    {
+      "story": "story-b",
+      "case": "story-schema-downgrade",
+      "writerMetadataPatch": {
+        "saveSchema": 2,
+        "storyVersion": "0.2.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "1a89e0b55da64ea76ad3da0234e637cc9d93cd5b138cd03b1d18cfd538eb4578",
+      "checkpoint": "day.shift"
+    },
+    {
+      "story": "story-b",
+      "case": "compatible-release-rollback",
+      "writerMetadataPatch": {
+        "storyVersion": "99.0.0",
+        "writerEngineRelease": "99.0.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 0,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "bd6cf174bf92d728ee58465d2996d85daad3045ca2914a092c5d986516ca0a19",
+      "checkpoint": "day.shift"
+    }
+  ],
+  "variants": [
+    {
+      "variant": "story-a",
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "traceRunner": "weftora CLI headless",
+      "compiledDialogueSha256": "8cbe5b29e056435ce753b746a7f17066caa7885bb4fea8258bbbfeb6c6e54e82",
+      "traceSha256": "bc0dcd2bb664fc3f90f88b6ecdda676449a035d7bc543281bd9ff3bcde9b709c",
+      "finalState": {
+        "settings.audio.ambience": 1.0,
+        "settings.audio.effects": 1.0,
+        "settings.audio.master": 0.5,
+        "settings.audio.music": 1.0,
+        "settings.audio.voice": 1.0,
+        "story.attempts": 1.0,
+        "story.route": "repair",
+        "story.signal": true
+      }
+    },
+    {
+      "variant": "story-b",
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "traceRunner": "weftora CLI headless",
+      "compiledDialogueSha256": "56e3b05cec452f0af32b00af8f7e6daaf2f941d8a6d6f66ffdbc008ef531108f",
+      "traceSha256": "c540a62864b59ffcbc7767d2419a80a448409860b8147324797eb164da267dc1",
+      "finalState": {
+        "coins": 2,
+        "earned": 4,
+        "energy": 3,
+        "hour": 14,
+        "inventory": [
+          "permit",
+          "receipt"
+        ],
+        "location": "Home",
+        "rng": -7046029254386353131,
+        "schedule": {
+          "market": "09:00-12:00",
+          "open": false
+        },
+        "shift_open": false,
+        "status": "A good meal.",
+        "worked": true
+      }
+    },
+    {
+      "variant": "edit-pay",
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "traceRunner": "weftora CLI headless",
+      "compiledDialogueSha256": "56e3b05cec452f0af32b00af8f7e6daaf2f941d8a6d6f66ffdbc008ef531108f",
+      "traceSha256": "0b97837edf3ce83220282ea29d19734142ac47bb94e7b6c9a485cafaef0bea99",
+      "finalState": {
+        "coins": 4,
+        "earned": 6,
+        "energy": 3,
+        "hour": 14,
+        "inventory": [
+          "permit",
+          "receipt"
+        ],
+        "location": "Home",
+        "rng": -7046029254386353131,
+        "schedule": {
+          "market": "09:00-12:00",
+          "open": false
+        },
+        "shift_open": false,
+        "status": "A good meal.",
+        "worked": true
+      }
+    }
+  ],
+  "saveRefusals": [
+    {
+      "case": "a-in-b",
+      "refusedWithoutOutputOrFileChanges": true
+    },
+    {
+      "case": "b-in-a",
+      "refusedWithoutOutputOrFileChanges": true
+    },
+    {
+      "case": "old-schema",
+      "refusedWithoutOutputOrFileChanges": true
+    }
+  ],
+  "compatibleRevisions": [
+    {
+      "story": "story-a",
+      "checkpoint": "scene.repair",
+      "storyVersion": "0.1.1",
+      "saveSchemaUnchanged": true,
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "authoredAssetPatched": true,
+      "assetVerification": "exported edited bytes; pixel use tested separately by renderer fixture",
+      "oldSaveCompletedWithPatchedTextAndNewDefault": true,
+      "saveDirectoryUnchanged": true,
+      "compiledDialogueSha256": "e787d29ac9bfe54f27926247001c462da83f3689f075aabbf22a34db218dcf4e",
+      "finalState": {
+        "matrix_added": 23,
+        "settings.audio.ambience": 1.0,
+        "settings.audio.effects": 1.0,
+        "settings.audio.master": 0.5,
+        "settings.audio.music": 1.0,
+        "settings.audio.voice": 1.0,
+        "story.attempts": 1.0,
+        "story.route": "repair",
+        "story.signal": true
+      }
+    },
+    {
+      "story": "story-b",
+      "checkpoint": "day.shift",
+      "storyVersion": "0.1.1",
+      "saveSchemaUnchanged": true,
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "authoredAssetPatched": false,
+      "assetVerification": "no authored media; renderer image-patch fixture only",
+      "oldSaveCompletedWithPatchedTextAndNewDefault": true,
+      "saveDirectoryUnchanged": true,
+      "compiledDialogueSha256": "f75cd4c131aae6dd9ed2cb06be0082dbed66fe1b202b1c3c59219e098de4d840",
+      "finalState": {
+        "coins": 2,
+        "earned": 4,
+        "energy": 3,
+        "hour": 14,
+        "inventory": [
+          "permit",
+          "receipt"
+        ],
+        "location": "Home",
+        "matrix_added": 23,
+        "rng": -7046029254386353131,
+        "schedule": {
+          "market": "09:00-12:00",
+          "open": false
+        },
+        "shift_open": false,
+        "status": "A good meal.",
+        "worked": true
+      }
+    }
+  ],
+  "futureDialogueFormatRefusals": [
+    {
+      "story": "story-a",
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "goodArtifactUnchanged": true
+    },
+    {
+      "story": "story-b",
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "goodArtifactUnchanged": true
+    }
+  ],
+  "scope": "Package validation and shared-runner completion; no Rust build between exports. Native player completion pending issue #5. Phase 5 gate not claimed."
+}

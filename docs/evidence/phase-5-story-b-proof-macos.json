@@ -1,0 +1,96 @@
+{
+  "checks": [
+    "P5-01",
+    "P5-02 automated package/headless coverage",
+    "P5-05 cross-Story refusal"
+  ],
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "cliSha256": "1b8c94249fb3617c1131bbeae3309cda8d61bb7804eb2b152643fa3bb22bd1b0",
+  "playerSha256": "6f25d427a0c57476333672abf744cf1a0dfce5baaac117177d860ac1efbf054b",
+  "variants": [
+    {
+      "variant": "story-a",
+      "playerSha256": "6f25d427a0c57476333672abf744cf1a0dfce5baaac117177d860ac1efbf054b",
+      "traceRunner": "weftora CLI headless",
+      "compiledDialogueSha256": "8cbe5b29e056435ce753b746a7f17066caa7885bb4fea8258bbbfeb6c6e54e82",
+      "traceSha256": "82bb82204c27a365105f0045c41d44a900206429f357dce9c412c9d9e000ed37",
+      "finalState": {
+        "settings.audio.ambience": 1.0,
+        "settings.audio.effects": 1.0,
+        "settings.audio.master": 0.5,
+        "settings.audio.music": 1.0,
+        "settings.audio.voice": 1.0,
+        "story.attempts": 1.0,
+        "story.route": "repair",
+        "story.signal": true
+      }
+    },
+    {
+      "variant": "story-b",
+      "playerSha256": "6f25d427a0c57476333672abf744cf1a0dfce5baaac117177d860ac1efbf054b",
+      "traceRunner": "weftora CLI headless",
+      "compiledDialogueSha256": "56e3b05cec452f0af32b00af8f7e6daaf2f941d8a6d6f66ffdbc008ef531108f",
+      "traceSha256": "c540a62864b59ffcbc7767d2419a80a448409860b8147324797eb164da267dc1",
+      "finalState": {
+        "coins": 2,
+        "earned": 4,
+        "energy": 3,
+        "hour": 14,
+        "inventory": [
+          "permit",
+          "receipt"
+        ],
+        "location": "Home",
+        "rng": -7046029254386353131,
+        "schedule": {
+          "market": "09:00-12:00",
+          "open": false
+        },
+        "shift_open": false,
+        "status": "A good meal.",
+        "worked": true
+      }
+    },
+    {
+      "variant": "edit-pay",
+      "playerSha256": "6f25d427a0c57476333672abf744cf1a0dfce5baaac117177d860ac1efbf054b",
+      "traceRunner": "weftora CLI headless",
+      "compiledDialogueSha256": "56e3b05cec452f0af32b00af8f7e6daaf2f941d8a6d6f66ffdbc008ef531108f",
+      "traceSha256": "0b97837edf3ce83220282ea29d19734142ac47bb94e7b6c9a485cafaef0bea99",
+      "finalState": {
+        "coins": 4,
+        "earned": 6,
+        "energy": 3,
+        "hour": 14,
+        "inventory": [
+          "permit",
+          "receipt"
+        ],
+        "location": "Home",
+        "rng": -7046029254386353131,
+        "schedule": {
+          "market": "09:00-12:00",
+          "open": false
+        },
+        "shift_open": false,
+        "status": "A good meal.",
+        "worked": true
+      }
+    }
+  ],
+  "saveRefusals": [
+    {
+      "case": "a-in-b",
+      "refusedWithoutOutputOrFileChanges": true
+    },
+    {
+      "case": "b-in-a",
+      "refusedWithoutOutputOrFileChanges": true
+    },
+    {
+      "case": "old-schema",
+      "refusedWithoutOutputOrFileChanges": true
+    }
+  ],
+  "scope": "Package validation and shared-runner completion; no Rust build between exports. Native player completion pending issue #5. Phase 5 gate not claimed."
+}

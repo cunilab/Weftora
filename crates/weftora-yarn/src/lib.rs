@@ -18,7 +18,13 @@ use yarnspinner_core::prelude::{Program, YarnValue};
 use yarnspinner_runtime::prelude::{Dialogue, OptionId, StringTableTextProvider};
 
 mod artifact;
+mod tool_identity;
+pub use tool_identity::ToolIdentity;
 mod checkpoint;
+mod localization;
+mod queries;
+#[doc(hidden)]
+pub use queries::library as collection_query_library;
 mod storage;
 mod validation;
 pub use artifact::{
@@ -294,16 +300,24 @@ pub struct DialogueRunner {
     storage: StateStorage,
     capture: Option<checkpoint::Capture>,
     state: SharedState,
+    rules: weftora_story::rules::Rules,
+    scripts: weftora_script::Programs,
+    query_persistent_only: bool,
     program: Program,
     failure: Option<String>,
     node_files: BTreeMap<String, String>,
     writes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     write_bytes: std::sync::Arc<std::sync::atomic::AtomicUsize>,
     current_node: String,
+    presentation_context: u64,
     consecutive_commands: usize,
     consecutive_continues: usize,
     instructions_since_blocking: usize,
-    queue: VecDeque<DialogueEvent>,
+    queue: VecDeque<localization::QueuedEvent>,
+    localization: Option<weftora_story::localization::Catalogs>,
+    active_language: Option<String>,
+    display: Option<localization::Display>,
+    previous_line: Option<yarnspinner_runtime::prelude::Line>,
     /// `(id, available)` of the choices offered by the last `Choices` event that was not yet answered.
     pending_choices: Option<Vec<(usize, bool)>>,
     started: bool,
@@ -328,6 +342,7 @@ impl DialogueRunner {
         let storage = StateStorage::new(state.clone());
         let (writes, write_bytes) = storage.write_counters();
         let mut yarn = Dialogue::new(Box::new(storage.clone()), Box::new(text));
+        yarn.library_mut().extend(queries::library());
         let default_error = match state.read() {
             Ok(state) => check_defaults(&dialogue.program, &state)
                 .into_iter()
@@ -345,6 +360,9 @@ impl DialogueRunner {
             storage,
             capture: None,
             state,
+            rules: weftora_story::rules::Rules::default(),
+            scripts: weftora_script::Programs::default(),
+            query_persistent_only: false,
             program: dialogue.program.clone(),
             failure: default_error.or_else(|| {
                 initialization
@@ -355,14 +373,69 @@ impl DialogueRunner {
             writes,
             write_bytes,
             current_node: String::new(),
+            presentation_context: 0,
             consecutive_commands: 0,
             consecutive_continues: 0,
             instructions_since_blocking: 0,
             queue: VecDeque::new(),
+            localization: None,
+            active_language: None,
+            display: None,
+            previous_line: None,
             pending_choices: None,
             started: false,
             ended: false,
         }
+    }
+
+    /// Enable a fresh noncanonical rule trace; save replay stays untraced unless explicitly enabled.
+    pub fn enable_rule_trace(&mut self) {
+        self.rules.enable_trace();
+    }
+    pub fn rule_trace(&self) -> Option<weftora_story::rules::RuleTrace> {
+        self.rules.trace()
+    }
+    pub fn clear_rule_trace(&self) {
+        self.rules.clear_trace();
+    }
+
+    /// Creates a Story-aware runner, including its validated rules. Hosts use this for play and restore.
+    pub fn for_story(
+        dialogue: &CompiledDialogue,
+        state: SharedState,
+        story: &weftora_story::Story,
+    ) -> Self {
+        let mut runner = Self::new(dialogue, state);
+        runner.rules = story.rules().clone();
+        runner.localization = story
+            .localization()
+            .filter(|c| c.definition.state_key.is_some())
+            .cloned();
+        if let Some(error) = localization::validate(story, dialogue).first() {
+            runner.failure.get_or_insert_with(|| error.to_string());
+        }
+        runner.query_persistent_only = story.manifest().save_schema.is_some();
+        if let Some(error) = queries::validate(story, dialogue).first() {
+            runner.failure.get_or_insert_with(|| error.to_string());
+        }
+        match weftora_script::Programs::compile(runner.rules.scripts()) {
+            Ok(scripts) => runner.scripts = scripts,
+            Err(errors) => {
+                runner.failure = Some(
+                    errors
+                        .iter()
+                        .map(ToString::to_string)
+                        .collect::<Vec<_>>()
+                        .join("\n"),
+                )
+            }
+        }
+        runner
+    }
+
+    /// Changes at node and checkpoint boundaries, including re-entry into the same node.
+    pub fn presentation_context(&self) -> u64 {
+        self.presentation_context
     }
 
     /// Starts (or restarts) the dialogue at `node`.
@@ -390,6 +463,8 @@ impl DialogueRunner {
             dialogue.set_node(node).map(|_| ())
         })?;
         self.queue.clear();
+        self.display = None;
+        self.previous_line = None;
         self.pending_choices = None;
         self.capture = None;
         self.current_node = node.to_string();
@@ -403,17 +478,118 @@ impl DialogueRunner {
     pub fn next_event(&mut self) -> Result<DialogueEvent, DialogueError> {
         if self.pending_choices.is_none() {
             self.disarm_after_progress();
+            self.display = None;
         }
         loop {
+            let from = if self.rules.is_empty() {
+                0
+            } else {
+                self.state
+                    .read()
+                    .map_err(|_| DialogueError::Runtime("state lock is poisoned".into()))?
+                    .pending_changes()
+                    .len()
+            };
             let event = self.next_event_one()?;
+            let story_command = match &event {
+                DialogueEvent::Command(command) if self.rules.has_command(&command.name) => {
+                    Some(command)
+                }
+                _ => None,
+            };
+            if !self.rules.is_empty() {
+                let settled = self
+                    .state
+                    .write()
+                    .map_err(|_| "state lock is poisoned".to_string())
+                    .and_then(|mut state| {
+                        let after_vm = state.pending_changes().len();
+                        if let Some(command) = story_command {
+                            let args = self
+                                .rules
+                                .parse_command(&command.name, &command.args, false)
+                                .map_err(|e| e.to_string())?;
+                            self.rules
+                                .call_with(
+                                    &command.name,
+                                    &args,
+                                    &mut state,
+                                    from,
+                                    &mut self.scripts,
+                                )
+                                .map_err(|e| e.to_string())?;
+                        } else {
+                            self.rules
+                                .settle_with(&mut state, from, &mut self.scripts)
+                                .map_err(|e| e.to_string())?;
+                        }
+                        self.storage
+                            .charge_rule_changes(&state.pending_changes()[after_vm..])
+                            .map_err(|e| e.to_string())
+                    });
+                if let Err(error) = settled {
+                    return self.fail_with_context(DialogueError::Runtime(error));
+                }
+            }
+            if story_command.is_some() {
+                continue;
+            }
             if let DialogueEvent::Command(command) = &event
                 && command.name == "checkpoint"
             {
+                self.presentation_context = self.presentation_context.wrapping_add(1);
+                self.previous_line = None;
                 self.capture_checkpoint(&command.args[0]);
                 continue;
             }
             self.arm_checkpoint(&event);
             return Ok(event);
+        }
+    }
+
+    /// Apply a screen action through the same bounded rule bridge as Yarn commands.
+    pub fn ui_action(&mut self, action: &weftora_story::ui::UiAction) -> Result<(), DialogueError> {
+        self.ensure_healthy()?;
+        let result = (|| {
+            let mut state = self
+                .state
+                .write()
+                .map_err(|_| "state lock is poisoned".to_string())?;
+            let from = state.pending_changes().len();
+            match action {
+                weftora_story::ui::UiAction::SetState { key, value } => {
+                    state.get(key).map_err(|e| e.to_string())?;
+                    if let Some(localization) = &self.localization
+                        && localization.definition.state_key.as_deref() == Some(key)
+                        && !matches!(value, Value::String(language) if localization.languages.contains_key(language))
+                    {
+                        return Err("language must name a declared localization language".into());
+                    }
+                    state.set(key, value.clone()).map_err(|e| e.to_string())?;
+                    self.rules
+                        .settle_with(&mut state, from, &mut self.scripts)
+                        .map_err(|e| e.to_string())?;
+                }
+                weftora_story::ui::UiAction::CallCommand { command, args } => {
+                    self.rules
+                        .call_with(command, args, &mut state, from, &mut self.scripts)
+                        .map_err(|e| e.to_string())?;
+                }
+                _ => return Err("expected a state or command UI action".into()),
+            }
+            // Each user action has its own bounded dispatch/notification budget.
+            // UI inputs are absent from checkpoint replay, including changes later reversed by rules.
+            if state.pending_changes()[from..]
+                .iter()
+                .any(|change| state.scope(&change.key) == Ok(weftora_core::Scope::Persistent))
+            {
+                self.capture = None;
+            }
+            Ok(())
+        })();
+        match result {
+            Ok(()) => Ok(()),
+            Err(error) => self.fail_with_context(DialogueError::Runtime(error)),
         }
     }
 
@@ -435,23 +611,32 @@ impl DialogueRunner {
                 "a choice must be made before continuing".into(),
             ));
         }
+        if let Err(error) = self.sync_language() {
+            return self.fail_with_context(error);
+        }
         let remaining = MAX_INSTRUCTIONS_BEFORE_BLOCKING - self.instructions_since_blocking;
         let per_call_budget = self.dialogue.instruction_budget();
         self.dialogue
             .set_instruction_budget(remaining.min(per_call_budget));
+        let query_state = self.state.clone();
+        let persistent_only = self.query_persistent_only;
         let result = self.runtime_call(|dialogue| {
-            dialogue.continue_().map_err(|error| match error {
-                yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
-                    node_name,
-                    ..
-                } if remaining < per_call_budget => {
+            dialogue
+                .continue_with_function_handler(|name, args| {
+                    queries::evaluate(name, args, &query_state, persistent_only)
+                })
+                .map_err(|error| match error {
                     yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
                         node_name,
-                        budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
+                        ..
+                    } if remaining < per_call_budget => {
+                        yarnspinner_runtime::prelude::DialogueError::InstructionBudgetExceeded {
+                            node_name,
+                            budget: MAX_INSTRUCTIONS_BEFORE_BLOCKING,
+                        }
                     }
-                }
-                other => other,
-            })
+                    other => other,
+                })
         });
         self.dialogue.set_instruction_budget(per_call_budget);
         self.instructions_since_blocking += self.dialogue.last_instruction_count();
@@ -460,10 +645,9 @@ impl DialogueRunner {
         for event in events {
             match event {
                 yarnspinner_runtime::prelude::DialogueEvent::Line(line) => {
-                    self.queue.push_back(DialogueEvent::Line {
-                        character: line.character_name().map(str::to_string),
-                        text: line.text_without_character_name(),
-                    });
+                    self.queue.push_back(localization::QueuedEvent::Display(
+                        localization::Display::Line(line),
+                    ));
                 }
                 yarnspinner_runtime::prelude::DialogueEvent::Options(options) => {
                     let choices: Vec<Choice> = options
@@ -476,23 +660,31 @@ impl DialogueRunner {
                         .collect();
                     self.pending_choices =
                         Some(choices.iter().map(|c| (c.index, c.available)).collect());
-                    self.queue.push_back(DialogueEvent::Choices(choices));
+                    self.queue.push_back(localization::QueuedEvent::Display(
+                        localization::Display::Choices(options),
+                    ));
                 }
                 yarnspinner_runtime::prelude::DialogueEvent::Command(command) => {
                     let mut parts = split_command(&command.raw);
                     if parts.is_empty() {
                         continue;
                     }
-                    self.queue.push_back(DialogueEvent::Command(StoryCommand {
-                        name: parts.remove(0),
-                        args: parts,
-                    }));
+                    self.queue
+                        .push_back(localization::QueuedEvent::Event(DialogueEvent::Command(
+                            StoryCommand {
+                                name: parts.remove(0),
+                                args: parts,
+                            },
+                        )));
                 }
                 yarnspinner_runtime::prelude::DialogueEvent::DialogueComplete => {
                     self.ended = true;
-                    self.queue.push_back(DialogueEvent::End);
+                    self.queue
+                        .push_back(localization::QueuedEvent::Event(DialogueEvent::End));
                 }
                 yarnspinner_runtime::prelude::DialogueEvent::NodeStart(node) => {
+                    self.presentation_context = self.presentation_context.wrapping_add(1);
+                    self.previous_line = None;
                     self.current_node = node;
                 }
                 yarnspinner_runtime::prelude::DialogueEvent::NodeComplete(_)
@@ -520,6 +712,8 @@ impl DialogueRunner {
         self.capture = None;
         self.runtime_call(|dialogue| dialogue.set_selected_option(OptionId(index)).map(|_| ()))?;
         self.pending_choices = None;
+        self.display = None;
+        self.previous_line = None;
         Ok(())
     }
 
@@ -532,7 +726,30 @@ impl DialogueRunner {
         self.instructions_since_blocking = 0;
     }
 
-    fn return_event(&mut self, event: DialogueEvent) -> Result<DialogueEvent, DialogueError> {
+    fn return_event(
+        &mut self,
+        queued: localization::QueuedEvent,
+    ) -> Result<DialogueEvent, DialogueError> {
+        let event = match queued {
+            localization::QueuedEvent::Event(event) => {
+                if matches!(event, DialogueEvent::End) {
+                    self.display = None;
+                    self.previous_line = None;
+                }
+                event
+            }
+            localization::QueuedEvent::Display(display) => {
+                let event = match self.render_display(&display) {
+                    Ok(event) => event,
+                    Err(error) => return self.fail_with_context(error),
+                };
+                if let localization::Display::Line(line) = &display {
+                    self.previous_line = Some(line.clone());
+                }
+                self.display = Some(display);
+                event
+            }
+        };
         match &event {
             DialogueEvent::Command(_) => {
                 self.consecutive_commands += 1;
@@ -565,6 +782,8 @@ impl DialogueRunner {
         self.capture = None;
         self.failure = Some(error.to_string());
         self.queue.clear();
+        self.display = None;
+        self.previous_line = None;
         self.pending_choices = None;
         Err(error)
     }

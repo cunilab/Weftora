@@ -83,10 +83,11 @@ impl StringTableTextProvider {
             return;
         }
 
-        let (language, mut table) = self
+        let mut table = self
             .translation_table
             .take()
-            .unwrap_or_else(|| (language, StringTable::new()));
+            .map(|(_, table)| table)
+            .unwrap_or_default();
 
         table.clear();
         table.extend(string_table);

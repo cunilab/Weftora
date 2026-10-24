@@ -1,0 +1,17 @@
+{
+  "manifestSchema": 1,
+  "saveSchema": 1,
+  "id": "dev.weftora.random-demo",
+  "storyVersion": "0.1.0",
+  "title": "Seeded Random Demo",
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": ["dialogue.yarn/1", "rules.events/1", "rules.commands/1", "rules.rhai/1", "rules.random/1", "state.collections/1", "save/1", "ui.screens/1"]
+  },
+  "entrypoint": "Start",
+  "dialogue": ["main.yarn"],
+  "events": ["events.jsonc"],
+  "state": {"rng": {"default": 0}, "rolls": {"default": []}, "last": {"default": 0}},
+  "screens": ["screen.jsonc"],
+  "initialScreen": "dialogue"
+}

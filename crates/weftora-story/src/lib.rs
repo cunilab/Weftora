@@ -4,7 +4,9 @@
 
 pub mod compatibility;
 pub mod jsonc;
+pub mod localization;
 pub mod paths;
+pub mod rules;
 pub mod ui;
 
 use std::collections::BTreeMap;
@@ -37,6 +39,10 @@ pub struct Manifest {
     pub catalogs: BTreeMap<String, Vec<String>>,
     #[serde(default)]
     pub screens: Vec<String>,
+    #[serde(default)]
+    pub events: Vec<String>,
+    #[serde(default)]
+    pub localization: Option<localization::Definition>,
     pub initial_screen: Option<String>,
     /// Reverse-domain Story ID, e.g. `com.example.hello-story`.
     pub id: String,
@@ -98,6 +104,8 @@ pub struct Story {
     catalogs: BTreeMap<String, Catalog<serde_json::Value>>,
     assets: Catalog<Asset>,
     screens: Catalog<ui::ScreenDefinition>,
+    rules: rules::Rules,
+    localization: Option<localization::Catalogs>,
 }
 
 /// One Yarn source file read from the Story.
@@ -192,12 +200,14 @@ impl Story {
             || !manifest.state.is_empty()
             || !manifest.catalogs.is_empty()
             || !manifest.screens.is_empty()
+            || !manifest.events.is_empty()
             || manifest.initial_screen.is_some()
             || manifest.save_schema.is_some()
+            || manifest.localization.is_some()
         {
             diags.push(manifest_diag(
                 None,
-                "requires, state, catalogs and screens need manifestSchema 1".into(),
+                "requires, state, catalogs, screens, events, saves and localization need manifestSchema 1".into(),
             ));
         }
         if manifest
@@ -268,6 +278,23 @@ impl Story {
                     format!("dialogue[{index}]: duplicate source `{path}`"),
                 ));
             }
+        }
+        let collections = manifest
+            .state
+            .values()
+            .map(|d| &d.default)
+            .chain(manifest.initial_state.values())
+            .any(Value::is_collection);
+        if collections
+            && !manifest
+                .requires
+                .as_ref()
+                .is_some_and(|r| r.capabilities.iter().any(|c| c == "state.collections/1"))
+        {
+            diags.push(manifest_diag(
+                None,
+                "collection state requires state.collections/1".into(),
+            ));
         }
         let mut scratch = State::new();
         for (key, definition) in &manifest.state {
@@ -421,6 +448,20 @@ impl Story {
                 Catalog::default()
             }
         };
+        let rules = match rules::load(root, &manifest, &scratch) {
+            Ok(rules) => rules,
+            Err(errors) => {
+                diags.extend(errors);
+                rules::Rules::default()
+            }
+        };
+        let localization = match localization::load(root, &manifest) {
+            Ok(catalogs) => catalogs,
+            Err(errors) => {
+                diags.extend(errors);
+                None
+            }
+        };
         if !diags.is_empty() {
             return Err(diags);
         }
@@ -430,6 +471,8 @@ impl Story {
             catalogs,
             assets,
             screens,
+            rules,
+            localization,
         };
         let errors = ui::reference_errors(&story);
         if errors.is_empty() {
@@ -457,6 +500,15 @@ impl Story {
 
     pub fn manifest(&self) -> &Manifest {
         &self.manifest
+    }
+
+    pub fn rules(&self) -> &rules::Rules {
+        &self.rules
+    }
+
+    /// Loaded catalog data; adapters must also validate language identifiers and compiled dialogue.
+    pub fn localization(&self) -> Option<&localization::Catalogs> {
+        self.localization.as_ref()
     }
 
     /// Defaults and initial overrides are validated before the Story is returned.

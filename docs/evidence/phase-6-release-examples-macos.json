@@ -1,0 +1,126 @@
+{
+  "device": "Andress-MacBook-Air.local",
+  "baseCommit": "de570a75794c35c80638b770bcc0fa7d159822d9",
+  "workingTreeDirty": true,
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "cliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
+  "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+  "examples": [
+    {
+      "story": "hello-story",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "dc1dbacd621f2fcd144324ec7e3f512540b955379963871ee8719de4d1e91c14",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "presentation-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "f27b439df76b42659b34a3a16da75e04d1460ed61c00ce04ea57079ccccc1b2d",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "rules-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "aa281904ac9c846d2f4eda7c5b112d80927100bb2327d527b64b367eddd8e76c",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "commands-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "3f0fa4887528ba315fb476b2b4b9b487fe75094a1d9740aa3324020a78749813",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "collections-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "5e11face6690daf0771fa848299dd8650a990b3178c97f5e5aea056376ef1bdf",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "scripts-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "80abd20c5c99a12dc0c2ad153558228cca7c5803ce788824c60a576396f1e9a6",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "random-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "a4d84d9976f69c0050e44ee419a7478b8b3dfbe0f9339f7c26cf84d8a82c1156",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "queries-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "244f36b40b9dd84331e08d571a8fbc168138403ad5e984b6f35bad8212eb72b0",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "screens-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "50ae7f7b8e03abc0f48b6fac0fa403df4895d36e6ff3a34febd5fad61126342f",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "story-a",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "8cbe5b29e056435ce753b746a7f17066caa7885bb4fea8258bbbfeb6c6e54e82",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "life-sim",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "56e3b05cec452f0af32b00af8f7e6daaf2f941d8a6d6f66ffdbc008ef531108f",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    },
+    {
+      "story": "localization-demo",
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+      "dialogueSha256": "d54bdea092dd913b33317f39f0aab33ab8e23542d437fdb417d0643de64f83be",
+      "validationExitCode": 0,
+      "sourceUnchanged": true
+    }
+  ],
+  "scope": "Mac debug tools, baseline exports and compiler-free validation only; Windows release CI and edited/native proofs separate.",
+  "check": "P6-03 all-example baseline export/hash plumbing; local Mac debug proof only",
+  "validation": {
+    "examples": 12,
+    "compilerFreeValidationsPassed": 12,
+    "allSourceInventoriesUnchanged": true,
+    "inputToolsUnchanged": true,
+    "localReleaseBuild": false,
+    "rustTestsRerun": false
+  },
+  "ci": "Windows release CI will run this baseline against frozen release tools, enforce target/profile and exact maintained example list, and retain weftora-release-example-exports.json. This change requires its own head CI.",
+  "remaining": [
+    "Earlier isolated rule/command/collection/script/seed/query edit recipes need release-specific evidence beyond baseline exports.",
+    "Native Windows visual/input/performance/clean-machine acceptance stays in issue #5.",
+    "No new game download assets, tag, release or final acceptance."
+  ],
+  "review": "Claude Opus 5.5 medium read-only advisor/reviewer: PASS for workflow diff. Main verified assumed identity/export metadata fields and compiled dialogue paths through all 12 actual Mac exports; local debug proof is explicitly separate from macOS CI and Windows release results.",
+  "checks": [
+    "Workflow YAML parsed with Ruby standard-library YAML.",
+    "cargo xtask docs and final staged whitespace checks passed.",
+    "No Rust/Python implementation changes; existing unit suites not rerun. Actual all-example CLI/player proof passed."
+  ]
+}

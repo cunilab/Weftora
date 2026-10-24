@@ -1,0 +1,53 @@
+{
+  "rulesSchema": 1,
+  "commands": [
+    {
+      "id": "pack",
+      "actions": [
+        {
+          "do": "state.set",
+          "key": "items",
+          "value": {
+            "literal": [
+              "key",
+              "ticket"
+            ]
+          }
+        },
+        {
+          "do": "state.set",
+          "key": "schedule",
+          "value": {
+            "literal": {
+              "morning": "station",
+              "energy": 3,
+              "argument": "literal map entry"
+            }
+          }
+        },
+        {
+          "do": "state.set",
+          "key": "status",
+          "value": "Kit packed"
+        }
+      ]
+    },
+    {
+      "id": "unpack",
+      "actions": [
+        {
+          "do": "state.reset",
+          "key": "items"
+        },
+        {
+          "do": "state.reset",
+          "key": "schedule"
+        },
+        {
+          "do": "state.reset",
+          "key": "status"
+        }
+      ]
+    }
+  ]
+}

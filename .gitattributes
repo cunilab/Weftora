@@ -2,3 +2,9 @@
 *.png binary
 *.wav binary
 *.ogg binary
+# Preserve the pinned upstream licence text byte-for-byte, including its trailing space.
+examples/localization-demo/fonts/OFL.txt -text whitespace=-blank-at-eol
+third-party/notices/bevyengine-bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/assets/fonts/FiraMono-LICENSE -text whitespace=-blank-at-eol
+*.crate binary
+crates/weftora-render-bevy/assets/FiraSans-License.txt -text whitespace=-blank-at-eol
+third-party/notices/bevyengine-bevy/b3bdd75becaffe9a16677cf5bae5bd6d198f052b/crates/bevy_feathers/src/assets/fonts/FiraSans-License.txt -text whitespace=-blank-at-eol

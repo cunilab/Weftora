@@ -1,0 +1,15 @@
+{
+  "localizationSchema": 1,
+  "ui": {
+    "language": "Bahasa",
+    "continue": "Lanjutkan"
+  },
+  "dialogue": {
+    "line:greeting": "Mira: Hai, {0}. Kamu punya {1} koin.",
+    "line:visit": "Kunjungi pasar.",
+    "line:market": "Mira: Pasarnya buka.",
+    "line:wait": "Tunggu di sini.",
+    "line:rest": "Mira: Kita bisa bersantai.",
+    "line:goodbye": "Mira: Sampai jumpa."
+  }
+}

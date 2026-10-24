@@ -55,7 +55,7 @@ Story packages never load native code.
 
 - Headless crates must not depend, directly or transitively, on `bevy`, `yarnspinner`, `rhai`, any adapter, any app or any Story. CI enforces this from `cargo metadata`.
 - Adapters depend inward on headless crates, never the reverse.
-- Only the apps compose adapters.
+- Apps compose adapters, with one explicit exception: the shared Yarn DialogueRunner hosts the script adapter so play and checkpoint reconstruction share a boundary ([ADR 0010](./adr/0010-bounded-rhai-host.md)).
 - Public `weftora-api` types never expose Bevy, Yarn or Rhai types.
 - Ordering and semantics of narrative flow are defined and tested in headless code; never rely on Bevy system scheduling order for them.
 
@@ -143,7 +143,7 @@ The headless CLI registers one `story` service. It owns validated Story/dialogue
 One canonical game state. Keys are namespaced strings (`world.day`, `character.alice.affection`); the Engine never interprets them.
 
 - Phase 1 value types: `bool`, `int` (i64), `float` (finite f64), `string`.
-- Phase 4 adds `list` and `map` (string keys) of those values, required by Story B ([ADR 0003](./adr/0003-story-rules-language.md)).
+- Phase 4 adds flat `list` and `map` (string keys) of those scalar values, required by Story B ([ADR 0003](./adr/0003-story-rules-language.md)). The implemented bounds, encoding and scalar-only Yarn/UI boundaries are defined in [ADR 0009](./adr/0009-flat-collection-state.md); Rhai now provides bounded local entry operations ([ADR 0010](./adr/0010-bounded-rhai-host.md)).
 - Every key has a scope: `persistent` (saved), `session` (not saved) or `settings` (saved separately from progress).
 - `state` declares typed defaults and scopes; `initialState` applies overrides after defaults. Legacy initial keys and missing Yarn defaults infer a persistent declaration on their first write. Once declared, a key's type cannot change, including after removal. `reset` restores the default; `remove` returns `Result<Value, StateError>` and reports a missing key explicitly. JSON `2` and `2.0` infer distinct int and float declarations; `set` must preserve that type, while numeric `add` permits an int amount on a float key.
 - Mutations enqueue notifications in write order with key, scope, old value and new value; no-op and rejected writes emit nothing. Consumers drain the queue at their update boundary. State construction does not emit notifications. CLI validation and the dialogue runner preflight all Yarn declaration names and scalar defaults before initialization, because the upstream runtime only logs storage errors. Invalid declarations cannot partially populate canonical state. The headless runtime also clears valid Yarn default-fill notifications before entering play; it then drains changes at each dialogue event and emits `state.changed` signals with the changed key as their string payload. Scope snapshots and iteration have stable key order; the Phase 3 save container records Persistent entries, including explicit removals. Whole-State equality includes declarations and pending notifications; compare scope snapshots when only values matter.
@@ -180,21 +180,15 @@ input → screen button / Yarn choice → command → actions or Rhai
 - Fallback options, in order: patch or fork the Rust port; bundle the official Yarn Spinner command-line compiler with the CLI and run its compiled output on the Rust runtime (output compatibility must be verified first); switch dialogue language (new ADR).
 - Yarn variables are a view onto canonical state, not a separate store. Missing defaults and write timing are specified and tested.
 - Variable names (provisional, Phase 0): Yarn `$name` maps to state key `name`; `__` inside a Yarn name stands for `.` in the key, so `$world__day` is `world.day`.
-- Type mapping: Yarn (Rust port) has only `bool`, `string` and a 32-bit float `number`. `bool` and `string` map directly; `float` maps to `number`; `int` maps to `number` only within ±2^24 and reading a larger value from Yarn is a Story error, not silent rounding. Lists and maps are **not** exposed to Yarn; Stories expose scalar views of them through Yarn functions backed by declarative actions or Rhai.
+- Type mapping: Yarn (Rust port) has only `bool`, `string` and a 32-bit float `number`. `bool` and `string` map directly; `float` maps to `number`; `int` maps to `number` only within ±2^24 and reading a larger value from Yarn is a Story error, not silent rounding. Lists and maps are **not** exposed as Yarn variables. Read-only scalar length/membership helpers are implemented in [ADR 0012](./adr/0012-yarn-collection-queries.md); Stories can also maintain scalar state views through commands.
 - Before Phase 4, Yarn commands map to Engine primitive commands only. From Phase 4, Story-defined commands (declarative or Rhai) can also be called from Yarn.
 - `weftora check` compiles Yarn and reports errors with file and node. `weftora run` recompiles changed files. `weftora export` ships compiled dialogue with its own `dialogueArtifactFormat` version, compiler identity and content hash. The player never contains the compiler and refuses unknown artifact formats. Format 1 and its loading checks are defined in [ADR 0002](./adr/0002-versioning-compatibility.md#compiled-dialogue-format-1).
 
 ## 7. Rules scripting (Rhai)
 
-Rhai is embedded for rules too complex for declarative actions; the reasons are in [ADR 0003](./adr/0003-story-rules-language.md). This section is the host contract:
+Rhai is embedded for rules too complex for declarative actions. The implemented first slice is defined in [ADR 0010](./adr/0010-bounded-rhai-host.md): explicit state/signal permissions, a raw engine, shared dispatch operation/work limits, fresh per-call scope and source diagnostics. Typed commands are callable from Yarn, events and screen buttons, including isolated checkpoint replay. Scripts cannot access files, network, processes or clocks through this host.
 
-- **Allowlisted API only:** read and write state, execute commands, emit signals, and a deterministic random source whose seed is stored in canonical state.
-- **Nothing else reachable:** build the engine with `Engine::new_raw()` plus only the needed packages; no file module resolver and `set_max_modules(0)` (no `import`); `eval` disabled; the `no_time` feature enabled; no file, network, process or reflection access.
-- **Limits:** operations per call, call depth, string, array and map sizes. Exceeding a limit is a Story error, not a crash or hang.
-- **No hidden script state:** scripts keep nothing between calls; anything persistent lives in canonical state, so saves stay complete.
-- **Diagnostics:** `weftora check` compiles every script; syntax and runtime errors report Story file and line.
-
-This makes accidents safe; it is **not** a guarantee that hostile mods are safe.
+Canonical seeded integer randomness is implemented through a declared Persistent stream key ([ADR 0011](./adr/0011-canonical-seeded-randomness.md)); saves retain its exact position. Script-internal Engine command calls remain deferred. Persistent script state must live in canonical state. These limits prevent common accidents; they do not certify hostile mods as safe.
 
 ## 8. UI and presentation
 
@@ -252,7 +246,8 @@ Format 1 uses a bounded, checksummed envelope; its full contract is [ADR 0007](.
 
 - `#![forbid(unsafe_code)]` in headless crates. Any `unsafe` in adapters needs a reviewed, documented exception.
 - Pinned `rust-toolchain.toml` and committed `Cargo.lock`; licence and advisory checks (`cargo deny`) from Phase 0.
-- **Merge gate (the single list; other docs link here):** `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings`, `cargo test --workspace --locked`, `cargo deny check`, the dependency-direction check, and the docs link/header check.
+- **Merge gate (the single list; other docs link here):** `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets --locked -- -D warnings` in default and authored-Story feature configurations, `cargo test-all`, `cargo deny check`, the dependency-direction check, and the docs link/header check.
+- `cargo test-all` aliases `cargo test --workspace --locked --features weftora-cli/story-tests,weftora-render-bevy/story-tests`. The opt-in features guard only the authored-Story CLI targets and renderer replay/matrix tests. Default `cargo test --workspace --locked` runs the Engine suite without Story A/B. Required CI retains the full authored coverage and separately proves the default suite with those folders absent; no fixture-presence skip is allowed.
 - Headless golden tests: same Story input → same ordered events, state and render requests.
 - Negative fixtures for every loader, validator and save rule.
 - Contract changes need an ADR; see [standards](./standards.md#changing-documents).
@@ -263,7 +258,7 @@ Passing compilation never proves author-visible behaviour; the [success criteria
 
 1. ~~Authoring file format~~ — decided: JSONC ([ADR 0004](./adr/0004-story-authoring-format.md)).
 2. **UI implementation.** The Bevy UI choice is recorded in [ADR 0005](./adr/0005-declarative-ui-renderer.md); widget/binding/focus behavior still needs Phase 2 Windows evidence.
-3. **Release package container.** Folder vs. archive (Phase 6).
+3. ~~Release package container~~ — folder runtime packages ([ADR 0013](./adr/0013-folder-release-packages.md)); transport ZIP verification and release automation remain in the [release checklist](./releasing.md#release-checklist).
 4. **Yarn ↔ state mapping details**, including list/map values (Phases 2 and 4).
 5. **Licence**, after the dependency licence audit (Phase 6).
 6. **Exact dependency versions.** Phase 0 builds against Bevy 0.20.0 and `yarnspinner` 0.9.0 (crates.io, October 2026; `yarnspinner` has Bevy off by default). They are confirmed or replaced by the Phase 0 spikes and pinned in Phase 2 (P2-07).

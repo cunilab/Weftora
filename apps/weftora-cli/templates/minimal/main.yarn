@@ -1,0 +1,14 @@
+title: Start
+---
+<<declare $ready = false>>
+Guide: Welcome to your Story. Edit main.yarn to make it yours.
+-> Start exploring
+    <<set $ready = true>>
+-> Take your time
+    <<set $ready = false>>
+<<if $ready>>
+Guide: Your adventure begins here.
+<<else>>
+Guide: The world will be here when you are ready.
+<<endif>>
+===

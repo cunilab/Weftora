@@ -1,0 +1,154 @@
+{
+  "sourceCommit": "742f493d3668c9e016ed1832a7d3e9993db3fe24",
+  "workingTreeDirty": true,
+  "sourceInventorySha256": "177ed116af528a9ff902f886c4334a56c6d97c5f6c2663129daca1cd7c5a4f00",
+  "baselineCliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "retainedPlayerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "f7accf46a013482212cb5bdca26fcb3a57ff270cc56f8cbaf6fa30958ffa9305",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "changedCliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "d7874029ea67496d6a0f0e2325fa27f74f412ea0cdbedced5acf14dcf419cc29",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "baselineCliSha256": "12b0f1ee87396197363c183328ca413a6c355f272ebc30c8e0f98ebf5764e7fe",
+  "retainedPlayerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356",
+  "isolatedUnchangedCliSha256": "d46a27a9bbf27d0346fbea04ad97a5975b99598d5bdf3cb44018e2555e163c9c",
+  "changedCliSha256": "9bcd9dacd844799ed6594338d779f1dabf2b5838cbfdf6094cd9d537224fdd9d",
+  "controlledSource": "apps/weftora-cli/src/tool_identity.rs",
+  "controlledAppend": "\n// P6-02 isolated build-fingerprint negative fixture.\n",
+  "baselineSourceSha256": "9b8a79ee40535472969621dcd82dd129a2e003536aae630c22d9ab7c84c425ef",
+  "changedSourceSha256": "83e7ead757c424f54c2b78eae82dc559819484c4fb1d84ca09c0050d252ca759",
+  "matchingControls": [
+    {
+      "pair": "original",
+      "story": "story-a",
+      "exportAndValidationPassed": true,
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356"
+    },
+    {
+      "pair": "original",
+      "story": "life-sim",
+      "exportAndValidationPassed": true,
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356"
+    },
+    {
+      "pair": "isolated",
+      "story": "story-a",
+      "exportAndValidationPassed": true,
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356"
+    },
+    {
+      "pair": "isolated",
+      "story": "life-sim",
+      "exportAndValidationPassed": true,
+      "playerSha256": "8f8e0e51d24f916c9032965a94682d350ec00d2d539ef02f97e908c2be1f2356"
+    }
+  ],
+  "refusals": [
+    {
+      "story": "story-a",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "outputUnchanged": true
+    },
+    {
+      "story": "story-a",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "outputUnchanged": true
+    },
+    {
+      "story": "life-sim",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "outputUnchanged": true
+    },
+    {
+      "story": "life-sim",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "outputUnchanged": true
+    }
+  ],
+  "originalSourceAndToolsUnchanged": true,
+  "check": "P6-02/P6-03 real changed-build experiment, automated slice",
+  "device": "Andress-MacBook-Air.local",
+  "resetPathPackages": 13,
+  "isolatedPathArtifactsRebuilt": true,
+  "buildCommands": [
+    [
+      "cargo",
+      "build",
+      "--locked",
+      "-p",
+      "weftora-cli",
+      "--profile",
+      "dev",
+      "--message-format=json"
+    ],
+    [
+      "cargo",
+      "build",
+      "--locked",
+      "-p",
+      "weftora-cli",
+      "--profile",
+      "dev",
+      "--message-format=json"
+    ]
+  ],
+  "seededCacheDirectories": [
+    "debug/deps",
+    "debug/build",
+    "debug/.fingerprint"
+  ],
+  "pythonTests": {
+    "run": 70,
+    "passed": 67,
+    "skipped": 3,
+    "focusedPassed": 9
+  },
+  "review": "Claude Opus 5.5 medium found a stale path-crate replay risk; isolated cache reset and a fresh-artifact guard fixed it. Final read-only review PASS; strengthened actual Mac proof completed successfully. Main also added an exact export-player basename guard before cleanup, a malicious-metadata regression preserving the frozen player, and reran the full real proof successfully. Claude focused cleanup review confirmed the guard; its fake-validation handling note was corrected in the test.",
+  "scope": "Actual isolated builds on Mac debug tools, four matching controls and four actual changed-build refusals. Read-only original cache; no hardlinks. Not Windows release, native/clean-machine or historical-binary acceptance.",
+  "ci": "Windows release job invokes same helper with explicit Windows target and copied cache after candidate packaging, before Engine independence. Requires new head CI.",
+  "rustTests": "Not rerun; no Rust/dependency/fixture changes. Actual CLI was rebuilt twice from copied source only.",
+  "temporaryBuildTreesRemoved": true,
+  "precedingCi": {
+    "url": "https://github.com/cunilab/Weftora/actions/runs/39628959809",
+    "allFourJobsPassed": true
+  },
+  "checks": [
+    "Actual optimized final Mac build proof passed after isolated path-cache reset.",
+    "Full Python suite70 run67 pass3 native Windows junction skips; nine focused tests pass.",
+    "Workflow YAML, cargo xtask docs and final staged whitespace checks passed."
+  ]
+}

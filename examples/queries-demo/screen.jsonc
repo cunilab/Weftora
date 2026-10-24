@@ -1,0 +1,77 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "screen",
+    "id": "dialogue",
+    "children": [
+      {
+        "type": "text",
+        "text": "Collection Queries Demo"
+      },
+      {
+        "type": "text",
+        "bind": {
+          "dialogue": "text"
+        }
+      },
+      {
+        "type": "text",
+        "bind": {
+          "state": "status"
+        }
+      },
+      {
+        "type": "choiceList",
+        "id": "choices"
+      },
+      {
+        "type": "button",
+        "id": "pack",
+        "text": "Pack kit",
+        "action": {
+          "do": "command.call",
+          "command": "pack"
+        }
+      },
+      {
+        "type": "button",
+        "id": "unpack",
+        "text": "Empty kit",
+        "action": {
+          "do": "command.call",
+          "command": "unpack"
+        }
+      },
+      {
+        "type": "button",
+        "id": "save",
+        "text": "Save",
+        "action": {
+          "do": "save"
+        }
+      },
+      {
+        "type": "button",
+        "id": "load",
+        "text": "Load",
+        "action": {
+          "do": "load"
+        }
+      },
+      {
+        "type": "button",
+        "id": "next",
+        "text": "Next",
+        "action": {
+          "do": "dialogue.advance"
+        }
+      }
+    ],
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 24,
+      "gap": 10
+    }
+  }
+}

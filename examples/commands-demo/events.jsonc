@@ -1,0 +1,73 @@
+{
+  "rulesSchema": 1,
+  "events": [
+    {
+      "id": "award",
+      "trigger": "state.changed.input",
+      "condition": {
+        "op": "compare",
+        "operator": "==",
+        "left": {
+          "state": "input"
+        },
+        "right": {
+          "literal": true
+        }
+      },
+      "actions": [
+        {
+          "do": "command.call",
+          "command": "award",
+          "args": [
+            10
+          ]
+        }
+      ]
+    }
+  ],
+  "commands": [
+    {
+      "id": "award",
+      "parameters": [
+        {
+          "name": "amount",
+          "type": "int"
+        }
+      ],
+      "actions": [
+        {
+          "do": "command.call",
+          "command": "increment",
+          "args": [
+            {
+              "argument": "amount"
+            }
+          ]
+        },
+        {
+          "do": "state.set",
+          "key": "awarded",
+          "value": true
+        }
+      ]
+    },
+    {
+      "id": "increment",
+      "parameters": [
+        {
+          "name": "n",
+          "type": "int"
+        }
+      ],
+      "actions": [
+        {
+          "do": "state.add",
+          "key": "points",
+          "amount": {
+            "argument": "n"
+          }
+        }
+      ]
+    }
+  ]
+}

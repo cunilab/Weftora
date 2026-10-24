@@ -10,6 +10,7 @@ use crate::prelude::*;
 use crate::resource_limits::*;
 use core::fmt::Debug;
 use log::*;
+use yarnspinner_core::types::TypedValue;
 
 mod execution_state;
 mod state;
@@ -377,7 +378,11 @@ impl VirtualMachine {
     pub(crate) fn run_instruction(
         &mut self,
         instruction: &Instruction,
-        mut function_call_fn: impl FnMut(&dyn UntypedYarnFn, Vec<YarnValue>) -> YarnValue,
+        mut function_call_fn: impl FnMut(
+            &str,
+            &dyn UntypedYarnFn,
+            Vec<YarnValue>,
+        ) -> core::result::Result<YarnValue, String>,
     ) -> crate::Result<()> {
         let opcode: OpCode = instruction.opcode.try_into().unwrap();
         if matches!(
@@ -567,11 +572,17 @@ impl VirtualMachine {
                 parameters.reverse();
 
                 // Invoke the function
-                let return_value = function_call_fn(function, parameters);
+                let return_value = function_call_fn(&function_name, function, parameters)
+                    .map_err(|message| self.invalid_execution(message))?;
                 let return_type = function
                     .return_type()
                     .try_into()
                     .unwrap_or_else(|e| panic!("Failed to get Yarn type for return type id of function {function_name}: {e:?}"));
+                if return_type != Type::Any && return_value.r#type() != return_type {
+                    return Err(self.invalid_execution(format!(
+                        "function '{function_name}' returned the wrong type"
+                    )));
+                }
                 let typed_return_value = InternalValue {
                     raw_value: return_value,
                     r#type: return_type,
@@ -647,15 +658,12 @@ impl VirtualMachine {
         Ok(())
     }
 
-    fn prepare_line(&mut self, string_id: LineId, substitutions: &[String]) -> Result<Line> {
-        let line_text = self.text_provider.get_text(&string_id).ok_or_else(|| {
-            DialogueError::LineProviderError {
-                id: string_id.clone(),
-                language_code: self.language_code.clone(),
-            }
-        })?;
-        let substituted_text = expand_substitutions(&line_text, substitutions)
-            .map_err(|_| self.resource_error("string", MAX_STRING_BYTES))?;
+    pub(crate) fn prepare_line(
+        &mut self,
+        string_id: LineId,
+        substitutions: &[String],
+    ) -> Result<Line> {
+        let substituted_text = self.prepare_text(&string_id, substitutions)?;
         let markup = self
             .parse_markup(&substituted_text)
             .map_err(DialogueError::MarkupParseError)?;
@@ -664,10 +672,41 @@ impl VirtualMachine {
         }
         let line = Line {
             id: string_id,
+            substitutions: substitutions.to_vec(),
             text: markup.text,
             attributes: markup.attributes,
         };
         Ok(line)
+    }
+
+    fn prepare_text(&self, string_id: &LineId, substitutions: &[String]) -> Result<String> {
+        // Captured values must stay bounded even when a crafted template never references them.
+        if substitutions.len() > 64 {
+            return Err(self.resource_error("substitution count", 64));
+        }
+        if substitutions
+            .iter()
+            .try_fold(0usize, |bytes, value| bytes.checked_add(value.len()))
+            .is_none_or(|bytes| bytes > MAX_STRING_BYTES)
+        {
+            return Err(self.resource_error("captured substitution", MAX_STRING_BYTES));
+        }
+        let line_text = self.text_provider.get_text(string_id).ok_or_else(|| {
+            DialogueError::LineProviderError {
+                id: string_id.clone(),
+                language_code: self.language_code.clone(),
+            }
+        })?;
+        expand_substitutions(&line_text, substitutions)
+            .map_err(|_| self.resource_error("string", MAX_STRING_BYTES))
+    }
+
+    pub(crate) fn validate_line_syntax(&self, line: &Line) -> Result<()> {
+        let text = self.prepare_text(&line.id, &line.substitutions)?;
+        LineParser::new()
+            .parse_markup(&text)
+            .map_err(DialogueError::MarkupParseError)?;
+        Ok(())
     }
 
     /// Looks up the instruction number for a named label in the current node.

@@ -10,6 +10,7 @@ const OPCODE_RUN_COMMAND: i32 = yarnspinner_core::prelude::OpCode::RunCommand as
 /// Compiles Yarn sources. Errors carry the Story-relative file and line.
 pub fn compile(sources: &[DialogueSource]) -> Result<CompiledDialogue, Vec<Diagnostic>> {
     let mut compiler = Compiler::new();
+    compiler.extend_library(weftora_yarn::collection_query_library());
     for source in sources {
         compiler.add_file(YarnFile {
             file_name: source.file.clone(),
@@ -24,6 +25,7 @@ pub fn compile(sources: &[DialogueSource]) -> Result<CompiledDialogue, Vec<Diagn
         // Retry only to locate a parser panic; cross-file type failures are irrelevant here.
         for source in sources {
             let mut compiler = Compiler::new();
+            compiler.extend_library(weftora_yarn::collection_query_library());
             compiler.add_file(YarnFile {
                 file_name: source.file.clone(),
                 source: source.contents.clone(),

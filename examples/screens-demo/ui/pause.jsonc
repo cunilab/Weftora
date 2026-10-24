@@ -1,0 +1,80 @@
+{
+  "screenSchema": 1,
+  "root": {
+    "type": "overlay",
+    "id": "pause",
+    "background": "#060B14D9",
+    "layout": {
+      "width": "100%",
+      "height": "100%",
+      "padding": 48
+    },
+    "children": [
+      {
+        "type": "panel",
+        "background": "#152235",
+        "layout": {
+          "padding": 24,
+          "gap": 16
+        },
+        "children": [
+          {
+            "type": "text",
+            "text": "PAUSED",
+            "size": 32,
+            "color": "#EDF2F8"
+          },
+          {
+            "type": "text",
+            "text": "Dialogue and underlying buttons stay put. Resume returns to the previous screen.",
+            "size": 20,
+            "color": "#EDF2F8"
+          },
+          {
+            "type": "text",
+            "text": "Prepared:",
+            "size": 20,
+            "color": "#EDF2F8"
+          },
+          {
+            "type": "text",
+            "bind": {
+              "state": "prepared"
+            },
+            "size": 22,
+            "color": "#EDF2F8"
+          },
+          {
+            "type": "button",
+            "id": "resume",
+            "text": "Resume (Esc)",
+            "action": {
+              "do": "screen.close"
+            },
+            "size": 20,
+            "color": "#EDF2F8",
+            "background": "#24374A",
+            "layout": {
+              "padding": 12
+            }
+          },
+          {
+            "type": "button",
+            "id": "menu",
+            "text": "Return to menu",
+            "action": {
+              "do": "screen.open",
+              "screen": "menu"
+            },
+            "size": 20,
+            "color": "#EDF2F8",
+            "background": "#24374A",
+            "layout": {
+              "padding": 12
+            }
+          }
+        ]
+      }
+    ]
+  }
+}

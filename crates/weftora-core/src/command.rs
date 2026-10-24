@@ -6,7 +6,8 @@ use std::pin::Pin;
 use std::task::{Context, Poll};
 use weftora_api::Value;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, serde::Deserialize)]
+#[serde(rename_all = "lowercase")]
 pub enum ValueType {
     Bool,
     Int,
@@ -14,7 +15,7 @@ pub enum ValueType {
     String,
 }
 impl ValueType {
-    fn accepts(self, value: &Value) -> bool {
+    pub fn accepts(self, value: &Value) -> bool {
         matches!(
             (self, value),
             (Self::Bool, Value::Bool(_))

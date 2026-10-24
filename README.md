@@ -37,6 +37,7 @@ docs/       architecture, decisions, criteria
 
 - [Product requirements](./PRD.md): what Weftora must do and what it won't do.
 - [Roadmap](./ROADMAP.md): phases, starting with a playable skeleton.
+- [Release workflow](./docs/releasing.md): trunk-based development, version tags and GitHub Releases.
 - [Architecture](./docs/architecture.md): crates, boundaries and the Story package format.
 - [Success criteria](./docs/success-criteria.md): pass/fail checks for each phase.
 - [Decisions (ADRs)](./docs/adr/): why Rust, how versioning works, and the rules language.
@@ -44,7 +45,11 @@ docs/       architecture, decisions, criteria
 
 ## Preview and packaged dialogue
 
+Start with `weftora new my-story`, then `weftora check my-story` and `weftora run my-story`. The [getting-started guide](./docs/getting-started.md) covers editing and exporting the generated Story with prebuilt tools.
+
 `weftora check <story-dir>` compiles sources and validates the artifact. Use `weftora run <story-dir>` for previews: it compiles into a temporary folder, launches the player, and removes the artifact after the player exits. Editing dialogue still needs no player rebuild.
+
+`weftora export` requires a CLI/player pair from the same build; `--tool-identity` reports their source/configuration and compiler contract. Export refuses mismatches before creating output.
 
 `weftora export <story-dir> --out <empty-dir>` writes `story/`, `compiled/dialogue.json`, the player and `weftora-export.json`. The player loads the artifact without a compiler. Run an exported player without arguments; for validation without a window, use `weftora-player <export-dir>/story --validate`. A direct source-folder launch requires `--dialogue <artifact>`; otherwise use the CLI preview. Modified exported Yarn sources are rejected as stale until exported again.
 
@@ -72,3 +77,33 @@ Save stops at the eligible display and emits a saved record. Load validates and 
 [Story A](./examples/story-a/README.md) is a complete short example with a title menu, two routes, characters, CG, music, transitions, themed choices and checkpoint saves. Its CC0 rectangles and tones are prototype assets. Hello Story remains the unchanged earlier test fixture.
 
 Use the [author tutorial](./docs/story-a-tutorial.md) to edit dialogue, screens/theme and an image with prebuilt tools. Windows CI packages baseline and two edited variants with the same player hash. [Native Windows and independent-author steps](./docs/evidence/phase-3-windows.md) remain in issue #5 with blank results.
+
+The [commands demo](./examples/commands-demo/README.md) exercises typed Story commands from Yarn, events and screen buttons, including checkpoint save replay. Native Windows checks remain queued in issue #5.
+
+The [collections demo](./examples/collections-demo/README.md) stores a flat list inventory and map schedule, with whole-value command edits and checkpoint replay.
+
+The [scripts demo](./examples/scripts-demo/README.md) uses a bounded Rhai command for inventory/schedule edits, callable from Yarn, events and screen buttons.
+
+The [random demo](./examples/random-demo/README.md) keeps a seeded dice stream in canonical state and continues the same sequence after checkpoint load.
+
+The [queries demo](./examples/queries-demo/README.md) reads collection length and membership from Yarn through scalar-only helpers.
+
+The [screens demo](./examples/screens-demo/README.md) replaces layouts, colors and navigation using existing widgets, with a repeatable same-player UI edit proof.
+
+[Market Day (Story B)](./examples/life-sim/README.md) is a short life-sim with Home/Market, scheduled work, energy/coins, inventory and replayable seeded pay on the same Engine.
+
+## Engine and authored-Story tests
+
+`cargo test --workspace --locked` runs the default Engine suite, which can run with Story A/B removed. `cargo test-all` also enables the `story-tests` features on the CLI and renderer and runs the authored Story scenarios. Required CI runs the full suite; missing Story fixtures fail those tests rather than silently skipping them. These features guard test code only.
+
+To reproduce P5-03 without modifying this checkout:
+
+```sh
+python3 -B scripts/verify-engine-independence.py --out /tmp/weftora-engine-proof --reuse-target
+```
+
+Use `python` and a fresh output directory on Windows. The script copies nonignored working sources, omits only `examples/story-a/` and `examples/life-sim/`, builds/tests the remaining workspace, and captures missing-Story errors from the built player. `--reuse-target` reuses the target directory but cleans workspace-package artifacts before and after the proof so only dependency cache is retained; omit it for an isolated target directory. Neither mode claims a cold dependency build. Logs include intentional failing controls: explicitly enabling the Story suites in the stripped copy must fail on missing fixtures. [Phase 5 evidence](./docs/evidence/phase-5.md) records the suite boundary and results.
+
+## Licence
+
+Weftora's workspace is licensed under MIT OR Apache-2.0; see [LICENSE-MIT](./LICENSE-MIT) and [LICENSE-APACHE](./LICENSE-APACHE). Third-party components retain their own terms. The [release guide](./docs/releasing.md#stage-the-authoring-tools-candidate) explains the notice inventory and outstanding distribution audit.

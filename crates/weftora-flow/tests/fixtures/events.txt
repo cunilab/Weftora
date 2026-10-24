@@ -1,0 +1,23 @@
+signal start Bool(true)
+event high true
+action high 0
+event first true
+action first 0
+action first 1
+event second true
+action second 0
+action second 1
+event skipped false
+event low true
+action low 0
+signal nested.a Bool(true)
+event a true
+action a 0
+action a 1
+signal nested.b Bool(true)
+event b true
+action b 0
+signal finish Bool(true)
+event finish true
+action finish 0
+state {"count": Int(11113), "flag": Bool(true)}

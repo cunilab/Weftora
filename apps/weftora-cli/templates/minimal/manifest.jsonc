@@ -1,0 +1,12 @@
+{
+  "manifestSchema": 1,
+  "id": "dev.weftora.my-story",
+  "storyVersion": "0.1.0",
+  "title": "My Story",
+  "requires": {
+    "engineApi": ">=0.1.0 <0.2.0",
+    "capabilities": ["dialogue.yarn/1"]
+  },
+  "entrypoint": "Start",
+  "dialogue": ["main.yarn"]
+}

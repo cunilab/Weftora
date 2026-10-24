@@ -1,0 +1,293 @@
+{
+  "check": "P6-09 current-reader downgrade and compatible release rollback",
+  "sourceCommit": "f2f33ccb202e05dbd1d688caa432bab9e023e3cc",
+  "device": "MacBookAir",
+  "rustTests": {
+    "passed": 387,
+    "failed": 0,
+    "ignored": 0
+  },
+  "cliSha256": "391b9f2687ce8a5f69e408cb680b5ae7aa3b482bc4a6d2655c3db04db697a7b3",
+  "playerSha256": "bf2d8e7b60dd9feb34149ef4b387545b340b5cbb31c7e97fd43a995a57f2770e",
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "playerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "c5c629c308aba0b39b2ff9f137610076b52e0b700a50e8b32056b257dadc5ae7",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "newFailureMatrixRows": [
+    "PASS story-a/load/engine-api-downgrade: no output; slot and backup unchanged",
+    "PASS story-a/load/story-schema-downgrade: no output; slot and backup unchanged",
+    "PASS life-sim/load/engine-api-downgrade: no output; slot and backup unchanged",
+    "PASS life-sim/load/story-schema-downgrade: no output; slot and backup unchanged",
+    "PASS story-a/player/engine-api-downgrade: state, dialogue, overlay, media tokens and save files unchanged",
+    "PASS story-a/player/story-schema-downgrade: state, dialogue, overlay, media tokens and save files unchanged",
+    "PASS life-sim/player/engine-api-downgrade: state, dialogue, overlay, media tokens and save files unchanged",
+    "PASS life-sim/player/story-schema-downgrade: state, dialogue, overlay, media tokens and save files unchanged"
+  ],
+  "compatibleRollbackMatrixRows": [
+    "PASS story-a/compatibility/release-rollback: higher Story/Engine release metadata with unchanged API/schema loads; save directory unchanged",
+    "PASS life-sim/compatibility/release-rollback: higher Story/Engine release metadata with unchanged API/schema loads; save directory unchanged",
+    "PASS story-a/compatibility/player-release-rollback: higher Story/Engine release metadata with unchanged API/schema restores actual checkpoint; files unchanged",
+    "PASS life-sim/compatibility/player-release-rollback: higher Story/Engine release metadata with unchanged API/schema restores actual checkpoint; files unchanged"
+  ],
+  "retainedSaveFixtures": [
+    {
+      "story": "story-a",
+      "case": "engine-api-downgrade",
+      "writerMetadataPatch": {
+        "writerEngineApi": "0.1.1"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "2696ef33d2c942630781c6ebf6ff7b1c14f9ebdde40495a5583840d36c7ac275",
+      "checkpoint": "scene.repair"
+    },
+    {
+      "story": "story-a",
+      "case": "story-schema-downgrade",
+      "writerMetadataPatch": {
+        "saveSchema": 2,
+        "storyVersion": "0.2.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "3d6121e2f073a7967b81ca1d349c6c02e45c1bfad6178d82e7b186359160899f",
+      "checkpoint": "scene.repair"
+    },
+    {
+      "story": "story-a",
+      "case": "compatible-release-rollback",
+      "writerMetadataPatch": {
+        "storyVersion": "99.0.0",
+        "writerEngineRelease": "99.0.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 0,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "2a6794411012f8fe905b54c59adfe2eec3b5fb796810d54701572845dc5b7995",
+      "checkpoint": "scene.repair"
+    },
+    {
+      "story": "story-b",
+      "case": "engine-api-downgrade",
+      "writerMetadataPatch": {
+        "writerEngineApi": "0.1.1"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "6794e9d19e046bde49585228cdb9d3a29db05289b0b68cf79772b9c45dd03295",
+      "checkpoint": "day.shift"
+    },
+    {
+      "story": "story-b",
+      "case": "story-schema-downgrade",
+      "writerMetadataPatch": {
+        "saveSchema": 2,
+        "storyVersion": "0.2.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 1,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "1a89e0b55da64ea76ad3da0234e637cc9d93cd5b138cd03b1d18cfd538eb4578",
+      "checkpoint": "day.shift"
+    },
+    {
+      "story": "story-b",
+      "case": "compatible-release-rollback",
+      "writerMetadataPatch": {
+        "storyVersion": "99.0.0",
+        "writerEngineRelease": "99.0.0"
+      },
+      "writerMetadataModeled": true,
+      "readerEngineApi": "0.1.0",
+      "exitCode": 0,
+      "sourceAndSaveDirectoryUnchanged": true,
+      "saveBodySha256": "bd6cf174bf92d728ee58465d2996d85daad3045ca2914a092c5d986516ca0a19",
+      "checkpoint": "day.shift"
+    }
+  ],
+  "proofScriptSha256": "f982927856739432a0155c73d7e25dbcdc5ff506a8695baebce6d204afc557e6",
+  "checks": [
+    {
+      "check": "all-tests",
+      "command": [
+        "cargo",
+        "test-all",
+        "--",
+        "--test-threads=1",
+        "--nocapture"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "clippy-default",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "clippy-stories",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--features",
+        "weftora-cli/story-tests,weftora-render-bevy/story-tests",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "rustfmt",
+      "command": [
+        "rustfmt",
+        "--edition",
+        "2024",
+        "--check",
+        "tests/support/story_matrix.rs",
+        "crates/weftora-render-bevy/src/story_matrix.rs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "python-tests",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "deps",
+      "command": [
+        "cargo",
+        "xtask",
+        "deps"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "deny",
+      "command": [
+        "cargo",
+        "deny",
+        "--all-features",
+        "check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "docs",
+      "command": [
+        "cargo",
+        "xtask",
+        "docs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--locked"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "starter-proof",
+      "command": [
+        "python3",
+        "-B",
+        "-O",
+        "scripts/verify-new-story.py",
+        "--cli",
+        "target/debug/weftora",
+        "--player",
+        "target/debug/weftora-player",
+        "--out",
+        "/tmp/weftora-downgrade-proof-1792487083/starter"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "ab-proof",
+      "command": [
+        "python3",
+        "-B",
+        "-O",
+        "scripts/verify-life-sim.py",
+        "--cli",
+        "target/debug/weftora",
+        "--player",
+        "target/debug/weftora-player",
+        "--out",
+        "/tmp/weftora-downgrade-proof-1792487083/ab"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "scope": "Valid checksummed writer metadata is modeled around actual A/B checkpoint snapshots; current CLI and player model are exercised. No historical alternate executable, native window or release-profile acceptance. Refusal preserves save directories and current player state/UI/media; compatible release-number rollback remains eligible. Actual exported player preactivation and matching metadata are separately checked by the retained same-player proof.",
+  "windowsVerificationWhenRecorded": {
+    "runId": 39398030840,
+    "rustTestsAndMatrices": "success",
+    "starterAndPairedStoryProofs": "success",
+    "overall": "in_progress"
+  }
+}

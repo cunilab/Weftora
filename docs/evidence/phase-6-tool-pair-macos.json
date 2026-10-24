@@ -1,0 +1,262 @@
+{
+  "check": "P6-02 paired debug tools and export metadata",
+  "sourceCommit": "88c49359411d3d03b53a0ff9b3fd74fc7d0cb6c7",
+  "device": "MacBookAir",
+  "cliSha256": "7c21c99f54e40502c2e6513aaec7911f860b973e83ebf6f1f76fe6ba2bbe37c5",
+  "playerSha256": "f8feca2c7e9da0a2214b952ad1b11ba9ddfa6c865da98f143db00aeb34382df6",
+  "cliIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora",
+    "engineRelease": "0.0.1",
+    "buildId": "389875f7d01a4783624ff4f75072caff102edde7af349b99ed1bfbfec33a17a4",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "playerIdentity": {
+    "identityFormat": 1,
+    "tool": "weftora-player",
+    "engineRelease": "0.0.1",
+    "buildId": "389875f7d01a4783624ff4f75072caff102edde7af349b99ed1bfbfec33a17a4",
+    "target": "aarch64-apple-darwin",
+    "profile": "debug",
+    "dialogueArtifactFormat": 1,
+    "compilerId": "yarnspinner-rust",
+    "compilerVersion": "0.9.0"
+  },
+  "starter": {
+    "branches": [
+      {
+        "choice": 0,
+        "ready": true,
+        "completed": true
+      },
+      {
+        "choice": 1,
+        "ready": false,
+        "completed": true
+      }
+    ],
+    "existingProjectRefusedWithoutWrites": true,
+    "sourceUnchanged": true,
+    "exportedStoryMatchesSource": true,
+    "standaloneValidationPassed": true
+  },
+  "wrongToolRefusals": [
+    {
+      "story": "story-a",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    },
+    {
+      "story": "story-a",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    },
+    {
+      "story": "story-b",
+      "existingEmptyOutput": false,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    },
+    {
+      "story": "story-b",
+      "existingEmptyOutput": true,
+      "exitCode": 1,
+      "stdoutEmpty": true,
+      "sourceAndOutputUnchanged": true,
+      "actualTool": "weftora",
+      "expectedTool": "weftora-player"
+    }
+  ],
+  "exportsValidated": [
+    "starter",
+    "story-a",
+    "story-b",
+    "edit-pay",
+    "compatible-story-a",
+    "compatible-story-b"
+  ],
+  "rustTests": {
+    "passed": 385,
+    "failed": 0,
+    "ignored": 0
+  },
+  "checks": [
+    {
+      "check": "all-tests",
+      "command": [
+        "cargo",
+        "test-all",
+        "--",
+        "--test-threads=1"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "clippy-default",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "clippy-stories",
+      "command": [
+        "cargo",
+        "clippy",
+        "--workspace",
+        "--all-targets",
+        "--locked",
+        "--features",
+        "weftora-cli/story-tests,weftora-render-bevy/story-tests",
+        "--",
+        "-D",
+        "warnings"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "fmt",
+      "command": [
+        "cargo",
+        "fmt",
+        "--all",
+        "--",
+        "--check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "rustfmt",
+      "command": [
+        "rustfmt",
+        "--edition",
+        "2024",
+        "--check",
+        "tests/support/story_matrix.rs",
+        "crates/weftora-render-bevy/src/story_matrix.rs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "python-tests",
+      "command": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "scripts/tests",
+        "-p",
+        "test_*.py"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "deps",
+      "command": [
+        "cargo",
+        "xtask",
+        "deps"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "deny",
+      "command": [
+        "cargo",
+        "deny",
+        "--all-features",
+        "check"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "player-tree",
+      "command": [
+        "cargo",
+        "tree",
+        "--locked",
+        "-p",
+        "weftora-player",
+        "--edges",
+        "normal,build"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "docs",
+      "command": [
+        "cargo",
+        "xtask",
+        "docs"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "build",
+      "command": [
+        "cargo",
+        "build",
+        "--workspace",
+        "--locked"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "starter-proof",
+      "command": [
+        "python3",
+        "-B",
+        "-O",
+        "scripts/verify-new-story.py",
+        "--cli",
+        "target/debug/weftora",
+        "--player",
+        "target/debug/weftora-player",
+        "--out",
+        "/tmp/weftora-p602-final-proof-1792479307/starter"
+      ],
+      "exitCode": 0
+    },
+    {
+      "check": "ab-proof",
+      "command": [
+        "python3",
+        "-B",
+        "-O",
+        "scripts/verify-life-sim.py",
+        "--cli",
+        "target/debug/weftora",
+        "--player",
+        "target/debug/weftora-player",
+        "--out",
+        "/tmp/weftora-p602-final-proof-1792479307/ab"
+      ],
+      "exitCode": 0
+    }
+  ],
+  "scope": "Actual matching debug tools, frozen during exports. Metadata and preactivation validation plus shared CLI gameplay traces. Wrong-role mismatch uses actual CLI; changed-build mismatch recorded separately. No clean VM, native rendering/input, historical release, release-profile, signing or downgrade acceptance."
+}

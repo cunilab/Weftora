@@ -6,7 +6,7 @@ status: proposed
 
 # Phase 3 Windows Manual Verification
 
-All native results remain maintainer-owned in [issue #5](https://github.com/cunilab/Weftora/issues/5). This document provides steps and an empty record. Automated CI, headless state tests and package hashes do not prove Windows visuals, hearing, input timing or an independent author's walkthrough. No Phase 3 gate is claimed.
+All native results remain maintainer-owned in [issue #5](https://github.com/cunilab/Weftora/issues/5). This document provides the original steps, an empty record template and the historical 2026-10-16 results imported from [PR #21](https://github.com/cunilab/Weftora/pull/21). Automated CI, headless state tests and package hashes do not prove Windows visuals, hearing, input timing or an independent author's walkthrough. The [evidence reconciliation](phase-3.md#historical-windows-evidence-review) explains the supported scope and provenance gaps; P3-03 and P3-07 remain open in the roadmap.
 
 Use the Story A artifact from the exact PR/commit under test. Keep its baseline folder intact, including story and compiled dialogue. Launch baseline/weftora-player.exe; use the CLI beside it for content previews and re-exporting edited Yarn. The package also contains two edited content variants and same-player-proof.json. Record commit/profile/hashes and the actual device only after testing.
 
@@ -58,7 +58,7 @@ Someone other than the tutorial author should follow the [author tutorial](../st
 
 ## Empty result record
 
-Copy one record per check into issue #5 after testing. Every actual/device/result field below is intentionally blank.
+Copy one record per check into issue #5 after testing. Every actual/device/result field in this reusable template below is intentionally blank; completed historical records follow it.
 
     check:
     commit:
@@ -89,3 +89,352 @@ Copy one record per check into issue #5 after testing. Every actual/device/resul
     logs_or_artifacts:
     tested_by:
     tested_at:
+
+## Agent-run records (delegated)
+
+Machine-checkable Phase 3 checks run by the agent on the maintainer's machine under the 2026-10-16
+delegation ("test everything you can do without me"). Full method, frames and hashes:
+[phase-3-windows-agent.md](./phase-3-windows-agent.md). The native/human items above stay
+maintainer-owned; no Phase 3 gate is claimed here.
+
+```yaml
+check: P3-02 same-player edits (delegated)
+commit: 48a965b
+build_profile: release
+player_sha256: 0689bd5829b55c7d28aa53ce8003318c27e471ead53617df9b4b6e1b7521d26f
+cli_sha256: 4ee2954eb3e527102b4dbd45306ec7ec03c0e6d8e610737ddbe972e9fc76858d
+windows_build: 11 Pro 10.0.26300
+fixture: examples/story-a via scripts/verify-story-a-edits.py, baseline + edit-dialogue-screen + edit-theme-image
+steps: >-
+  run the proof script; hash all three exports; launch baseline player, save at first Arrival;
+  run baseline player against both variant story dirs; F9 the arrival save in the text-patched variant
+expected: >-
+  one player hash across exports; edited banner and sentence render; baseline save loads with edited
+  line and intact state; changed panel theme and day image visible; load does not change save bytes
+actual: >-
+  proof script exit 0: three validated exports, identical player 0689bd58…, dialogue/screen/image
+  hashes differ per variant, "baseline Arrival save created", text-patch load OK with save hash
+  unchanged. Real windows: banner "LAST SIGNAL / EDIT 1"; F9 -> "Loaded." with
+  "The ferry sails at sunrise. If the beacon stays dark, they will pass us." and
+  Route: undecided / Signal sent: false retained; theme variant shows recolored panel + replaced day image.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/edit1-menu-banner.png, edit1-loaded-sentence.png, edit2-theme-image.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-04 save/load behavior (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player, real %LOCALAPPDATA% slot
+steps: >-
+  F5 during a view transition, at first display after fades, at a later line, with an overlay open;
+  quit/relaunch/F9 at line, repair and menu checkpoints; F5 at menu then story progress; volume change
+  then load; F9 with overlay open; finish after load and inspect save bodies
+expected: >-
+  refusals with reasons outside the save point; restore returns the exact first display with scene and
+  state; attempts increments once; Settings survive load; overlay load returns to base; menu load
+  refreshes choice text
+actual: >-
+  messages observed verbatim: "Save/load: wait for the view/audio transition before saving" (mid 1000ms
+  move), "Save/load: save is available only at the first line or choice after a checkpoint",
+  "Save/load: close overlays and return to the initial screen before saving", "Saved.", "Loaded.".
+  Restore frames show the exact checkpoint first line with Route/Signal state rebuilt; save bodies:
+  repair attempts 0.0 (checkpoint-boundary), after load -> finish -> re-save attempts 1.0 (never 2.0);
+  master volume set 0 stayed 0 after F9 and reopened; F9 with Volume open returned to initial base with
+  focus reset; menu-checkpoint load rebuilt "1. Begin / 2. About".
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/f9-loaded-repair-restore.png, f5-refuse-mid-transition.png, f5-refuse-later-line.png, f5-refuse-overlay-open.png, master-0-retained-after-load.png, f9-menu-choice-refresh.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-05 user data and failure behavior (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+save_directory: C:\Users\andre\AppData\Local\Weftora\saves\dev.weftora.story-a
+fixture: real player saves plus agent-written corrupt bytes and a removed directory
+steps: >-
+  save twice across runs; hash slot and backup; replace save.json with invalid JSON, F9; restore bytes,
+  F9; move the directory away, F9; confirm no silent slot creation
+expected: >-
+  saves at the documented path; backup equals previous slot bytes; corrupt load is nonfatal and does
+  not rewrite the slot; restored file loads; missing slot reports clearly without creating a slot
+actual: >-
+  save.json/save.bak at the documented LOCALAPPDATA path; save.bak byte-equal to the previous slot
+  (verified twice: arrival -> repair, repair -> dawn); corrupt F9 ->
+  "Save/load: corrupt save: key must be a string at line 1 column 2", menu alive behind, slot hash
+  unchanged (526F50D0… before and after); restored file -> "Loaded." with unchanged bytes; missing
+  directory -> "Save/load: no save file exists", no save.json created.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/corrupt-save-nonfatal.png, restored-save-loads.png, missing-slot-message.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-06 compatibility refusals (delegated)
+commit: 48a965b
+build_profile: release
+cli_sha256: 4ee2954eb3e527102b4dbd45306ec7ec03c0e6d8e610737ddbe972e9fc76858d
+windows_build: 11 Pro 10.0.26300
+fixture: story-a copies with `<<checkpoint scene.arrival>>` removed, and with "saveSchema": 2
+steps: >-
+  check each fixture; load the baseline arrival save headlessly against each; verify exit codes and
+  slot bytes; load the baseline save into the text-patched variant (with P3-02)
+expected: valid fixtures check OK; loads refuse with reasons; slot bytes unchanged; patched variant loads
+actual: >-
+  removed checkpoint: check OK (7 nodes), load exit 1 "save checkpoint 'scene.arrival' is not
+  available"; saveSchema 2: check OK, load exit 1 "no save migration from schema 1 to 2"; slot hash
+  17379B0C… identical before and after both loads; text-patched variant loads the same save with the
+  edited line (P3-02 record); attempts chain stays 1.0 through load/finish/re-save.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/compat-refusals.txt
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-01 Story A walkthrough, visual/state parts (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline, keyboard-only drive with per-step PrintWindow frames
+steps: >-
+  title menu, About and Return, Begin, both decision branches to dawn and end; headless replay of both
+  routes for canonical state
+expected: menu offers Begin/About and returns; characters and backgrounds render per node; route and
+  signal bindings track choices; each route ends with its own reply
+actual: >-
+  all observed in frames and traces: About returns to the identical menu; Route flips undecided ->
+  repair/roof at the first route line; Signal sent flips true by dawn; distinct replies ("She says she
+  heard the whistle…" vs "She saw the rooftop flash…"); end frames show The End with Route/Signal set;
+  headless end states attempts=1.0, signal=true on both routes. Audio looping/tones NOT covered here.
+result: PARTIAL (audio audition stays with the maintainer)
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/menu-after-about-return.png, decision-choices.png, dawn-repair-reply.png, dawn-roof-reply.png, headless-route-roof.jsonl
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-03 input/focus/resize, keyboard parts (delegated)
+commit: 48a965b
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: >-
+  Tab/Enter through buttons and choices; digit selection; Volume overlay open/block/close; F5/F9 under
+  overlay; resize window to 900x600 and back
+expected: documented focus order; overlay blocks base input; buttons do not also advance; close restores
+  focus; resize reflows readably
+actual: >-
+  Tab order Continue -> Volume -> Save -> Load; Enter activates without advancing the line; digits
+  select choices; overlay focused its first button and blocked a digit probe; Close restored focus to
+  Volume (highlighted); load reset focus to Continue; 900x600 reflow kept text and buttons inside the
+  panel. Real-mouse completion, DPI scale and same-frame F5+Space/click NOT covered here.
+result: PARTIAL (mouse, DPI, combined same-frame input stay with the maintainer)
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/volume-overlay-open.png, close-focus-restore.png, resize-900x600.png, f9-base-after-overlay.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+## Maintainer records
+
+Filled by or for the maintainer during the paired verification session (2026-10-16), completing the
+human-observed halves of the delegated PARTIAL records above.
+
+```yaml
+check: P3-01 audio audition and full-route listen (maintainer)
+commit: 881b010
+build_profile: release
+player_sha256: 0689bd5829b55c7d28aa53ce8003318c27e471ead53617df9b4b6e1b7521d26f
+windows_build: 11 Pro 10.0.26300
+audio_device: Realtek High Definition Audio (default device; no-argument launch of the exported package)
+fixture: exported Story A baseline package
+steps: >-
+  no-argument launch; listen at the title menu; About and Return; Begin to the Decision screen
+  (audio intentionally silent there); repair route to The End; Esc; relaunch; roof route to The
+  End; Volume overlay: master Mute -> 50% -> 100% and the music row the same way while playing
+expected: >-
+  music and ambience loop without seams, gaps, stutters, pops or unintended volume jumps; a short
+  receiver effect tone in each route at its cue line; every volume change audible immediately
+actual: >-
+  maintainer walked both routes on the real audio device and reported (verbatim answers) "Q1 good"
+  and "Q2 doing good": no unexpected seam/gap/stutter/pop/volume jump beyond the intended fades,
+  decision silence and ambience end at dawn; the short tone heard in both routes at their cue
+  lines; each master/music Mute/50%/100% change took effect immediately on the playing audio.
+result: PASS
+logs_or_artifacts: docs/evidence/artifacts/phase-3-windows-agent/ (visual frames from the same routes, agent side)
+tested_by: maintainer (Andres-Holivin), agent-recorded
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-03 mouse activation, one-activation semantics, decorative clicks (maintainer)
+commit: 4982551
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player, real mouse
+steps: >-
+  mouse-only session: About, Return, Begin; Continue clicks; clicks on character art and empty
+  background; decision choice-row click; Volume overlay music 50% and Close; Save (F5) button at
+  the repair first line followed by exactly one Continue click; Esc
+expected: >-
+  every click activates exactly one thing; decorative media clicks are no-ops; Save shows Saved.
+  and does not also advance the line; overlay closes back to dialogue
+actual: >-
+  maintainer reports (verbatim) "everyting doing great": no misfires in either direction (no
+  double advance, no dead clicks); character-art and background clicks were clean no-ops; Save ->
+  Saved. then exactly one line advance per Continue click; Volume overlay operated and closed by
+  mouse.
+result: PASS
+tested_by: maintainer (Andres-Holivin), agent-recorded
+tested_at: 2026-10-16
+```
+
+## Agent-run records (paired session)
+
+Additional agent-run checks completed during the paired session after the maintainer
+directed the agent to finish the remaining P3-03 items directly instead of delegating them.
+
+```yaml
+check: P3-03 step 5, same-frame F5/F9 with Space (agent, paired session)
+commit: 71feafe
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player, raw keybd_event chord injection
+steps: >-
+  fresh player; warmup input; Begin; settle at the first Arrival display; chord with both
+  key-downs less than 1ms apart, held and released together: F5+Space gap 0ms twice, then a
+  positive control at gap 60ms; with the arrival save present, F9+Space gap 0ms twice and a
+  60ms control; PNG snapshot after every run; hash save.json after the first chord
+expected: >-
+  a simultaneous F5/F9 with Space never advances or skips the restored first display; the
+  60ms controls must show a normal advance so the gap-0 results are discriminating
+actual: >-
+  gap 0ms F5+Space: "Saved." with the line held at the first Arrival display (2/2 runs);
+  gap 0ms F9+Space: "Loaded." with the first display held (2/2 runs); gap 60ms controls:
+  status present and the line advanced to the next display in both variants, proving the
+  harness observes an advance when one happens; the chorded save.json matched the known
+  arrival hash 17379B0CE2FF7DBD44A8256D4B5C27148EA59A8FF7B379620A57C14857CAF00F
+  byte-for-byte (save determinism holds under chords)
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/c1-f5s-tight-s5.png, c2-f5s-tight2-s5.png,
+  c3-f5s-ctrl60-s5.png, c4-f9s-tight-s3.png, c5-f9s-tight2-s3.png, c6-f9s-ctrl60-s3.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: P3-03 step 1, Tab/Shift+Tab focus at the Story A menu (agent, paired session)
+commit: 71feafe
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: fresh menu; Tab once; Shift+Tab once; Tab once; PNG snapshot after each
+expected: Tab and Shift+Tab move focus with no keyboard trap; the menu stays operable
+actual: >-
+  Tab focused "1. Begin" (visible ring); Shift+Tab cleared the ring with no element
+  highlighted - backward navigation from the first element does not visibly wrap to the
+  last element; the next Tab re-focused "1. Begin". No trap: forward navigation resumes
+  from the first element and every control stays reachable. Observation recorded for the
+  reviewer; the delegated keyboard record already covers Tab/Enter/digits and overlay
+  focus at 100%.
+result: PASS (with observation: Shift+Tab from the first element clears focus instead of wrapping)
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/shifttab-s3.png, shifttab-s4.png,
+  shifttab-s5.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: >-
+  P3-03 step 4, DPI scale rendering at 150% and input after a synthetic scale change
+  (agent, paired session)
+commit: 71feafe
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: >-
+  measure the player window DPI (GetDpiForWindow = 96, Windows scale 100%); deliver a
+  synthetic WM_DPICHANGED with DPI 144 to the player window only (per-window message, no
+  system state changed); capture menu, arrival dialogue, choice rows, footer and status
+  before and after; resize the window while at 144; probe click, Tab, Enter and Esc after
+  the message; three system-level automation attempts (SPI_SETLOGICALDPIOVERRIDE with two
+  value encodings, then display-config enumeration) all failed on this build and each
+  verified the setting unchanged (GET still -1)
+expected: >-
+  title, dialogue, choices, buttons and status remain readable and reachable at the changed
+  scale; the check's letter requires the actual Windows DPI setting
+actual: >-
+  rendering PASSED: the window adopted DPI 144 (client 1280x720 -> 1920x1080, exactly
+  1.5x) and every element - header, hint line, speaker, dialogue line, both choice rows,
+  four footer buttons and the route status - stayed inside the panel with no clipping or
+  overlap; a resize at 144 reflowed the scaled menu correctly (event loop alive); pre-kick
+  frames at 96 are the paired controls. FINDING (method-limited): after the synthetic
+  message, keyboard and mouse input stopped reaching the app (Tab/Enter/click/Esc all
+  no-ops in frames) while rendering continued; cause unresolved and possibly an artifact
+  of the synthetic path, because the real monitor DPI stayed 96 (GetDpiForWindow still 96)
+  and winit may re-query it, conflicting with the message's 144. The actual-Settings flip
+  (100% -> 150%) stays with the maintainer to confirm live readability and input after a
+  real change. (The NVIDIA toast visible in some frames is a driver overlay, not app UI.)
+result: PARTIAL (rendering at 150% verified with frames; actual-setting flip pending)
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/dpi-kick-s4.png, dpi-kick-s6.png,
+  dpi-choice4-s14.png, dpi-choice4-s16.png, dpi-alive-s5.png, dpi-alive-s8.png,
+  dpi-input-s7.png, dpi-input-s11.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```
+
+```yaml
+check: >-
+  P3-03 step 4 (resolution), actual Windows DPI setting flip 100% -> 125%: readability
+  and input after a real scale change (agent, paired session)
+commit: b14b46f
+build_profile: release
+windows_build: 11 Pro 10.0.26300
+fixture: exported Story A baseline player
+steps: >-
+  enumerate the active display path (GetDisplayConfigBufferSizes + QueryDisplayConfig:
+  adapter LUID 64417, source id 0) and read the scale info the Settings app uses
+  (DisplayConfigGetDeviceInfo type -3: min=-1 cur=-1 max=2); SET type -4 to cur+1, one
+  standard step = 125%; three runs: (a) fresh launch already at 125% with keyboard and
+  click probes, (b) player running at 96, flip the scale live so the open window receives
+  a real WM_DPICHANGED, then probe space/click/Tab and capture full frames under a
+  per-thread DPI-aware capture context, (c) reach the Decision screen at 96, flip live,
+  capture the choice rows before and after; every run restores the scale in a finally
+  block and re-reads GET to confirm
+expected: >-
+  title, dialogue, choices, buttons and status readable and reachable at the actual
+  changed scale; input still delivered after the real change; original scale restored
+actual: >-
+  SET succeeded (cur -1 -> 0, hr=0) and GetDpiForWindow reported 120 on every probe frame
+  (96 -> 120 = 100% -> 125%); fresh-launch run at 125%: a click on Continue advanced the
+  line (clipped control frames real-flip-input-s4/s6); on the live flip the open window
+  client grew 1280x720 -> 1600x900 as Windows delivered the real WM_DPICHANGED, and
+  input after the change stayed alive - space advanced Mara ferry -> Ivo receiver, a
+  click on Continue advanced to the sister line, Tab showed the focus ring on Continue,
+  and four more spaces walked battery -> prompt -> Decision where the last space
+  confirmed the default choice (frame shows Route: repair; space acts as confirm on the
+  Decision screen at any DPI, an untested-before behavior, not a glitch) - so the earlier
+  no-input observation is an artifact of the synthetic message path, not a product bug;
+  full frames at 120 show header, hint, speaker, dialogue, both choice rows, all four
+  footer buttons and the route status readable with no clipping, window inside the
+  1920x1080 desktop; restore: hr=0 in all three runs, GET cur back to -1, and
+  GetDpiForWindow 96 re-verified after relaunch
+result: PASS
+logs_or_artifacts: >-
+  docs/evidence/artifacts/phase-3-windows-agent/real-flip-input-s4.png,
+  real-flip-input-s6.png, live-d1-dialogue.png, live-d2-after-space.png,
+  live-d3-after-click.png, live-d4-after-tab.png, live-d5-choices.png,
+  live-d6-pre-flip-decision.png, live-d6-choices-125.png
+tested_by: agent on maintainer's machine (delegated by Andres-Holivin)
+tested_at: 2026-10-16
+```

@@ -30,6 +30,7 @@ pub enum WidgetKind {
 #[derive(Debug, Clone, PartialEq, Deserialize)]
 #[serde(untagged, deny_unknown_fields)]
 pub enum Binding {
+    Localized { localized: String },
     State { state: String },
     Dialogue { dialogue: DialogueBinding },
 }
@@ -50,6 +51,12 @@ pub enum UiAction {
     Advance,
     #[serde(rename = "state.set")]
     SetState { key: String, value: Value },
+    #[serde(rename = "command.call")]
+    CallCommand {
+        command: String,
+        #[serde(default)]
+        args: Vec<Value>,
+    },
     #[serde(rename = "screen.open")]
     Open { screen: String },
     #[serde(rename = "screen.close")]
@@ -251,6 +258,11 @@ impl ScreenDefinition {
         {
             error("/bind/state", e.to_string());
         }
+        if let Some(Binding::Localized { localized }) = &w.bind
+            && !valid_id(localized)
+        {
+            error("/bind/localized", "invalid localization UI key".into());
+        }
         if (w.kind == WidgetKind::Image) != w.image.is_some() {
             error(
                 "/image",
@@ -326,8 +338,8 @@ impl ScreenDefinition {
             if matches!(value, Value::String(s) if s.len() > 4096) {
                 error("/action/value", "literal text exceeds 4096 bytes".into());
             }
-            if matches!(value, Value::Float(f) if !f.is_finite()) {
-                error("/action/value", "float value must be finite".into());
+            if let Err(e) = value.validate() {
+                error("/action/value", e.to_string());
             }
         }
         if w.kind == WidgetKind::ChoiceList {
@@ -362,14 +374,21 @@ impl ScreenDefinition {
     }
     pub fn state_errors(&self, state: &State) -> Vec<Diagnostic> {
         fn check(w: &Widget, path: &str, state: &State, file: &str, out: &mut Vec<Diagnostic>) {
-            if let Some(Binding::State { state: key }) = &w.bind
-                && let Err(e) = state.get(key)
-            {
-                out.push(Diagnostic::new(
-                    file,
-                    None,
-                    format!("{path}/bind/state: {e}"),
-                ));
+            if let Some(Binding::State { state: key }) = &w.bind {
+                let problem = match state.get(key) {
+                    Err(e) => Some(e.to_string()),
+                    Ok(value) if value.is_collection() => {
+                        Some("text bindings require scalar state; expose a scalar view".into())
+                    }
+                    _ => None,
+                };
+                if let Some(problem) = problem {
+                    out.push(Diagnostic::new(
+                        file,
+                        None,
+                        format!("{path}/bind/state: {problem}"),
+                    ));
+                }
             }
             if let Some(UiAction::SetState { key, value }) = &w.action {
                 match state.get(key) {
@@ -537,8 +556,38 @@ pub(crate) fn reference_errors(story: &crate::Story) -> Vec<Diagnostic> {
         },
         _ => {}
     }
+    if let Some(font) = story
+        .localization()
+        .and_then(|l| l.definition.font.as_ref())
+        && !matches!(story.asset_kind(font), Ok(Some(crate::AssetKind::Font)))
+    {
+        errors.push(Diagnostic::new(
+            crate::MANIFEST_FILE,
+            None,
+            "/localization/font must name a typed font catalog asset",
+        ));
+    }
     for (_, screen) in story.screens() {
         for (path, widget) in screen.widgets() {
+            if let Some(Binding::Localized { localized }) = &widget.bind {
+                match story.localization() {
+                    Some(catalogs) if catalogs.definition.state_key.is_some() && catalogs.languages.values().all(|c| c.ui.contains_key(localized)) => {}
+                    _ => errors.push(Diagnostic::new(&screen.file, None, format!("{path}/bind/localized: requires localization.text/1 and a UI key present in every language"))),
+                }
+            }
+            if let Some(UiAction::SetState { key, value }) = &widget.action
+                && let Some(catalogs) = story.localization()
+                && catalogs.definition.state_key.as_ref() == Some(key)
+                && !matches!(value, Value::String(language) if catalogs.languages.contains_key(language))
+            {
+                errors.push(Diagnostic::new(
+                    &screen.file,
+                    None,
+                    format!(
+                        "{path}/action/value: localization state must name a supported language"
+                    ),
+                ));
+            }
             for (field, id, kind) in [
                 ("image", &widget.image, crate::AssetKind::Image),
                 ("font", &widget.font, crate::AssetKind::Font),
@@ -564,6 +613,15 @@ pub(crate) fn reference_errors(story: &crate::Story) -> Vec<Diagnostic> {
                     &screen.file,
                     None,
                     format!("{path}/action: save/load requires saveSchema and save/1"),
+                ));
+            }
+            if let Some(UiAction::CallCommand { command, args }) = &widget.action
+                && let Err(error) = story.rules().validate_command(command, args)
+            {
+                errors.push(Diagnostic::new(
+                    &screen.file,
+                    None,
+                    format!("{path}/action: {error}"),
                 ));
             }
             if let Some(UiAction::Open { screen: id }) = &widget.action

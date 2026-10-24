@@ -1,0 +1,50 @@
+{
+  "check": "P6-01 automated starter workflow",
+  "platform": "macOS-27.0.1-arm64-arm-64bit",
+  "cliSha256": "4a6a135e56e97e01a5b92f5691802662cd6078710d5aa9e7b8e27a4ea66b3999",
+  "playerSha256": "24ed6fe9f9db8004a1781598879545b65445e0dfd6e09e35ffcf5d17a94731e2",
+  "generatedFiles": {
+    "README.md": "6dc99fa5e12e6e1750e69634899fe81f91446bb62214e0a8d38fc09212095cc1",
+    "main.yarn": "9725755b800ecfb9c3d76ac38dac49222053313efe11973fac929f06bb3497cb",
+    "manifest.jsonc": "5010f3f425b6219e4f52488ec082947c2884db1551d8b3851ee24961ec98744d"
+  },
+  "branches": [
+    {
+      "choice": 0,
+      "ready": true,
+      "completed": true
+    },
+    {
+      "choice": 1,
+      "ready": false,
+      "completed": true
+    }
+  ],
+  "existingProjectRefusedWithoutWrites": true,
+  "sourceUnchanged": true,
+  "exportedStoryMatchesSource": true,
+  "standaloneValidationPassed": true,
+  "scope": "Existing debug tools; no Rust build during the proof. Export plumbing and preactivation validation, not native preview or clean-machine/release/tool-identity acceptance.",
+  "sourceCommit": "1b1b5dc9428e47cb9b006c1cb02a96e53edd024c",
+  "device": "MacBookAir (development host)",
+  "commands": [
+    [
+      "cargo",
+      "build",
+      "--workspace",
+      "--locked"
+    ],
+    [
+      "python3",
+      "-B",
+      "-O",
+      "scripts/verify-new-story.py",
+      "--cli",
+      "target/debug/weftora",
+      "--player",
+      "target/debug/weftora-player",
+      "--out",
+      "/tmp/weftora-p601-frozen-proof-1792470925"
+    ]
+  ]
+}

@@ -34,6 +34,9 @@ use crate::prelude::*;
 pub struct Line {
     /// The ID of the line in the string table.
     pub id: LineId,
+    /// Evaluated expression values captured when this line was offered.
+    #[cfg_attr(feature = "serde", serde(default))]
+    pub substitutions: Vec<String>,
     /// The original text, with all parsed markers removed.
     pub text: String,
     /// The list of [`MarkupAttribute`] in this parse result.
@@ -59,6 +62,7 @@ impl Line {
     /// # use yarnspinner_runtime::markup::*;
     /// # use yarnspinner_runtime::prelude::*;
     /// # let line = Line {
+    /// #    substitutions: vec![],
     /// #    id: "line".into(),
     /// #    text: "Alice: Hello! How are you today?".to_owned(),
     /// #    attributes: vec![MarkupAttribute {
@@ -80,6 +84,7 @@ impl Line {
     /// # use yarnspinner_runtime::markup::*;
     /// # use yarnspinner_runtime::prelude::*;
     /// # let line = Line {
+    /// #    substitutions: vec![],
     /// #    id: "line".into(),
     /// #    text: "Great, thanks".to_owned(),
     /// #    attributes: vec![],
@@ -108,6 +113,7 @@ impl Line {
     /// # use yarnspinner_runtime::markup::*;
     /// # use yarnspinner_runtime::prelude::*;
     /// # let line = Line {
+    /// #    substitutions: vec![],
     /// #    id: "line".into(),
     /// #    text: "Alice: Hello! How are you today?".to_owned(),
     /// #    attributes: vec![MarkupAttribute {
@@ -129,6 +135,7 @@ impl Line {
     /// # use yarnspinner_runtime::markup::*;
     /// # use yarnspinner_runtime::prelude::*;
     /// # let line = Line {
+    /// #    substitutions: vec![],
     /// #    id: "line".into(),
     /// #    text: "Great, thanks".to_owned(),
     /// #    attributes: vec![],
@@ -196,6 +203,7 @@ impl Line {
                 .collect();
             return Line {
                 id: self.id.clone(),
+                substitutions: self.substitutions.clone(),
                 text: self.text.to_string(),
                 attributes,
             };
@@ -271,6 +279,7 @@ impl Line {
             .collect();
         Line {
             id: self.id.clone(),
+            substitutions: self.substitutions.clone(),
             text: edited_substring,
             attributes,
         }

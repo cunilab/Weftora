@@ -38,65 +38,82 @@ impl Store {
 
     pub fn write(&self, game: &SavedGame) -> Result<(), Error> {
         let bytes = game.to_bytes()?;
-        fs::create_dir_all(&self.directory).map_err(|source| io("create directory", source))?;
-        let lock_path = self.directory.join("save.lock");
-        reject_link(&lock_path)?;
-        // Keep the lock inode: deleting it would let another writer lock a different file.
-        let lock = OpenOptions::new()
-            .read(true)
-            .write(true)
-            .create(true)
-            .truncate(false)
-            .open(&lock_path)
-            .map_err(|source| io("open writer lock", source))?;
-        match lock.try_lock() {
-            Ok(()) => {}
-            Err(std::fs::TryLockError::WouldBlock) => return Err(Error::Busy),
-            Err(std::fs::TryLockError::Error(source)) => return Err(io("lock writer", source)),
-        }
-        let _guard = WriterLock(lock);
-        reject_link(&self.path())?;
-        reject_link(&self.backup_path())?;
-        let candidate = temporary(&self.directory, &bytes)?;
-        match File::open(self.path()) {
-            Ok(previous) => {
-                if previous
-                    .metadata()
-                    .map_err(|source| io("inspect previous slot", source))?
-                    .len()
-                    > MAX_BACKUP_BYTES
-                {
-                    return Err(Error::TooLarge {
-                        resource: "previous slot backup; preserve or move the existing slot before saving",
-                        limit: MAX_BACKUP_BYTES as usize,
-                    });
-                }
-                let mut backup = NamedTempFile::new_in(&self.directory)
-                    .map_err(|source| io("create backup", source))?;
-                let copied = std::io::copy(&mut previous.take(MAX_BACKUP_BYTES + 1), &mut backup)
-                    .map_err(|source| io("copy previous slot", source))?;
-                if copied > MAX_BACKUP_BYTES {
-                    return Err(Error::TooLarge {
-                        resource: "previous slot backup",
-                        limit: MAX_BACKUP_BYTES as usize,
-                    });
-                }
-                backup
-                    .as_file()
-                    .sync_all()
-                    .map_err(|source| io("flush backup", source))?;
-                backup
-                    .persist(self.backup_path())
-                    .map_err(|error| io("replace backup", error.error))?;
-            }
-            Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
-            Err(source) => return Err(io("open previous slot", source)),
-        }
-        candidate
-            .persist(self.path())
-            .map_err(|error| io("replace main slot", error.error))?;
-        Ok(())
+        write_atomic(
+            &self.directory,
+            "save.json",
+            "save.bak",
+            "save.lock",
+            &bytes,
+        )
     }
+}
+
+/// Saves and preferences share link checks, per-file locking, backup and atomic publication.
+pub(crate) fn write_atomic(
+    directory: &Path,
+    file_name: &str,
+    backup_name: &str,
+    lock_name: &str,
+    bytes: &[u8],
+) -> Result<(), Error> {
+    fs::create_dir_all(directory).map_err(|source| io("create directory", source))?;
+    let lock_path = directory.join(lock_name);
+    reject_link(&lock_path)?;
+    // Keep the lock inode: deleting it would let another writer lock a different file.
+    let lock = OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(&lock_path)
+        .map_err(|source| io("open writer lock", source))?;
+    match lock.try_lock() {
+        Ok(()) => {}
+        Err(std::fs::TryLockError::WouldBlock) => return Err(Error::Busy),
+        Err(std::fs::TryLockError::Error(source)) => return Err(io("lock writer", source)),
+    }
+    let _guard = WriterLock(lock);
+    reject_link(&directory.join(file_name))?;
+    reject_link(&directory.join(backup_name))?;
+    let candidate = temporary(directory, bytes)?;
+    match File::open(directory.join(file_name)) {
+        Ok(previous) => {
+            if previous
+                .metadata()
+                .map_err(|source| io("inspect previous slot", source))?
+                .len()
+                > MAX_BACKUP_BYTES
+            {
+                return Err(Error::TooLarge {
+                    resource: "previous slot backup; preserve or move the existing slot before saving",
+                    limit: MAX_BACKUP_BYTES as usize,
+                });
+            }
+            let mut backup =
+                NamedTempFile::new_in(directory).map_err(|source| io("create backup", source))?;
+            let copied = std::io::copy(&mut previous.take(MAX_BACKUP_BYTES + 1), &mut backup)
+                .map_err(|source| io("copy previous slot", source))?;
+            if copied > MAX_BACKUP_BYTES {
+                return Err(Error::TooLarge {
+                    resource: "previous slot backup",
+                    limit: MAX_BACKUP_BYTES as usize,
+                });
+            }
+            backup
+                .as_file()
+                .sync_all()
+                .map_err(|source| io("flush backup", source))?;
+            backup
+                .persist(directory.join(backup_name))
+                .map_err(|error| io("replace backup", error.error))?;
+        }
+        Err(error) if error.kind() == std::io::ErrorKind::NotFound => {}
+        Err(source) => return Err(io("open previous slot", source)),
+    }
+    candidate
+        .persist(directory.join(file_name))
+        .map_err(|error| io("replace main slot", error.error))?;
+    Ok(())
 }
 
 fn io(operation: &'static str, source: std::io::Error) -> Error {
@@ -145,6 +162,14 @@ fn reject_link(path: &Path) -> Result<(), Error> {
 }
 
 fn read(path: &Path) -> Result<Vec<u8>, Error> {
+    read_bounded(path, MAX_SAVE_BYTES, "save")
+}
+
+pub(crate) fn read_bounded(
+    path: &Path,
+    limit: usize,
+    resource: &'static str,
+) -> Result<Vec<u8>, Error> {
     reject_link(path)?;
     let file = File::open(path).map_err(|source| {
         if source.kind() == std::io::ErrorKind::NotFound {
@@ -154,14 +179,11 @@ fn read(path: &Path) -> Result<Vec<u8>, Error> {
         }
     })?;
     let mut bytes = Vec::new();
-    file.take(MAX_SAVE_BYTES as u64 + 1)
+    file.take(limit as u64 + 1)
         .read_to_end(&mut bytes)
         .map_err(|source| io("read slot", source))?;
-    if bytes.len() > MAX_SAVE_BYTES {
-        return Err(Error::TooLarge {
-            resource: "save",
-            limit: MAX_SAVE_BYTES,
-        });
+    if bytes.len() > limit {
+        return Err(Error::TooLarge { resource, limit });
     }
     Ok(bytes)
 }
