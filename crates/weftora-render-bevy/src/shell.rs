@@ -29,6 +29,11 @@ pub(super) enum Action {
     Confirm,
     Cancel,
     Controls,
+    Preferences,
+    Volume { index: u8, increase: bool },
+    Language(u8),
+    RetryPreferences,
+    ResetPreferences,
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -37,6 +42,7 @@ enum Page {
     Playing,
     Menu,
     Controls,
+    Preferences,
 }
 
 #[derive(Resource)]
@@ -52,6 +58,8 @@ pub(super) struct Shell {
     save_reason: Option<String>,
     settled: bool,
     return_to_menu_button: bool,
+    restore_action: Option<Action>,
+    quit_preferences_warning: bool,
 }
 impl Default for Shell {
     fn default() -> Self {
@@ -72,6 +80,8 @@ impl Shell {
             save_reason: None,
             settled: false,
             return_to_menu_button: false,
+            restore_action: None,
+            quit_preferences_warning: false,
         }
     }
     pub fn is_playing(&self) -> bool {
@@ -147,6 +157,7 @@ pub(super) struct Input<'w, 's> {
     pub shell: ResMut<'w, Shell>,
     mouse: Res<'w, ButtonInput<MouseButton>>,
     buttons: Query<'w, 's, &'static MenuButton>,
+    time: Res<'w, Time>,
     close: MessageReader<'w, 's, WindowCloseRequested>,
 }
 impl Input<'_, '_> {
@@ -176,15 +187,27 @@ impl Input<'_, '_> {
                 self.shell.open(focus);
             }
             self.shell.confirm = Some(Action::Quit);
+            self.shell.quit_preferences_warning = false;
             focus.clear();
             consumed = true;
         } else if !captured
             && (keys.just_pressed(KeyCode::Escape) || self.mouse.just_pressed(MouseButton::Right))
         {
             self.shell.actions.clear();
-            if self.shell.confirm.take().is_some() {
+            if let Some(operation) = self.shell.confirm.take() {
+                if operation == Action::ResetPreferences {
+                    self.shell.restore_action = Some(Action::ResetPreferences);
+                }
                 focus.clear();
-            } else if self.shell.page == Page::Controls {
+            } else if matches!(self.shell.page, Page::Controls | Page::Preferences) {
+                if self.shell.page == Page::Preferences {
+                    player.persist_preferences(self.time.elapsed(), true);
+                }
+                self.shell.restore_action = Some(if self.shell.page == Page::Preferences {
+                    Action::Preferences
+                } else {
+                    Action::Controls
+                });
                 self.shell.page = self.shell.controls_return;
                 focus.clear();
             } else if self.shell.is_playing() && ui.modal() {
@@ -204,6 +227,9 @@ impl Input<'_, '_> {
             consumed = true;
             if self.shell.confirm.is_some() {
                 if action == Action::Cancel {
+                    if self.shell.confirm == Some(Action::ResetPreferences) {
+                        self.shell.restore_action = Some(Action::ResetPreferences);
+                    }
                     self.shell.confirm = None;
                     focus.clear();
                 } else if action == Action::Confirm {
@@ -218,7 +244,21 @@ impl Input<'_, '_> {
                             confirmed = true;
                         }
                         Action::Quit => {
-                            exit.write(AppExit::Success);
+                            player.persist_preferences(self.time.elapsed(), true);
+                            if player.preferences_unsaved() && !self.shell.quit_preferences_warning
+                            {
+                                self.shell.confirm = Some(Action::Quit);
+                                self.shell.quit_preferences_warning = true;
+                            } else {
+                                exit.write(AppExit::Success);
+                            }
+                        }
+                        Action::ResetPreferences => {
+                            if let Err(error) = player.reset_preferences() {
+                                warn!("Could not reset preferences: {error}");
+                                player.preferences.status = "Preferences could not be reset. The file was preserved; storage needs attention before retrying.".into();
+                            }
+                            self.shell.invalidate_load();
                         }
                         Action::MainMenu => {
                             match player.fresh_candidate(false).and_then(|candidate| {
@@ -250,13 +290,50 @@ impl Input<'_, '_> {
                 match action {
                     Action::Menu if self.shell.is_playing() => self.shell.open(focus),
                     Action::Return if self.shell.page == Page::Menu => self.shell.resume(focus),
-                    Action::Controls if matches!(self.shell.page, Page::Title | Page::Menu) => {
+                    Action::Controls | Action::Preferences
+                        if matches!(self.shell.page, Page::Title | Page::Menu) =>
+                    {
                         self.shell.controls_return = self.shell.page;
-                        self.shell.page = Page::Controls;
+                        self.shell.page = if action == Action::Preferences {
+                            Page::Preferences
+                        } else {
+                            Page::Controls
+                        };
                         focus.clear();
                     }
-                    Action::Return if self.shell.page == Page::Controls => {
+                    Action::Return
+                        if matches!(self.shell.page, Page::Controls | Page::Preferences) =>
+                    {
+                        if self.shell.page == Page::Preferences {
+                            player.persist_preferences(self.time.elapsed(), true);
+                        }
+                        self.shell.restore_action = Some(if self.shell.page == Page::Preferences {
+                            Action::Preferences
+                        } else {
+                            Action::Controls
+                        });
                         self.shell.page = self.shell.controls_return;
+                        focus.clear();
+                    }
+                    Action::Volume { index, increase } if self.shell.page == Page::Preferences => {
+                        if let Err(error) = player.change_volume(usize::from(index), increase) {
+                            warn!("{error}");
+                        }
+                        self.shell.refresh_save = true;
+                    }
+                    Action::Language(index) if self.shell.page == Page::Preferences => {
+                        if let Err(error) = player.change_language(usize::from(index)) {
+                            warn!("{error}");
+                        }
+                        self.shell.refresh_save = true;
+                    }
+                    Action::RetryPreferences if self.shell.page == Page::Preferences => {
+                        player.retry_preferences(self.time.elapsed())
+                    }
+                    Action::ResetPreferences
+                        if self.shell.page == Page::Preferences && player.preferences.enabled() =>
+                    {
+                        self.shell.confirm = Some(Action::ResetPreferences);
                         focus.clear();
                     }
                     Action::NewGame
@@ -287,6 +364,7 @@ impl Input<'_, '_> {
                         self.shell.confirm_request(UiAction::Load, focus)
                     }
                     Action::MainMenu | Action::Quit if !self.shell.is_playing() => {
+                        self.shell.quit_preferences_warning = false;
                         self.shell.confirm = Some(action);
                         focus.clear();
                     }
@@ -319,10 +397,20 @@ pub(super) struct MenuButton(Action);
 pub(super) struct ButtonLabel(Action);
 #[derive(Component)]
 pub(super) struct Description;
+#[derive(Component)]
+pub(super) struct VolumeLabel(usize);
 #[derive(Resource, Default)]
 pub(super) struct Built(Option<View>);
 #[derive(Clone, PartialEq)]
 struct View {
+    volumes: [Option<u8>; 5],
+    languages: Vec<String>,
+    language: Option<String>,
+    preferences_status: String,
+    preferences_enabled: bool,
+    preferences_blocked: bool,
+    preferences_failed: bool,
+    quit_preferences_warning: bool,
     startup_error: Option<String>,
     page: Page,
     confirm: Option<Action>,
@@ -366,7 +454,14 @@ pub(super) fn refresh(
     mut focus: ResMut<InputFocus>,
     inspector: Res<crate::debug_tools::Inspector>,
     mut descriptions: Query<(&mut Text, &mut Node), With<Description>>,
-    mut labels: Query<(&ButtonLabel, &mut TextColor)>,
+    mut labels: Query<
+        (&ButtonLabel, &mut TextColor, &mut Text),
+        (Without<Description>, Without<VolumeLabel>),
+    >,
+    mut volume_labels: Query<
+        (&VolumeLabel, &mut Text),
+        (Without<Description>, Without<ButtonLabel>),
+    >,
 ) {
     for mut visibility in &mut story_roots {
         *visibility = if shell.is_playing() {
@@ -392,17 +487,40 @@ pub(super) fn refresh(
         shell.refresh_save = false;
     }
     shell.settled = settled;
+    let (languages, language) = if let Some(catalogs) = player.story.localization()
+        && catalogs.definition.state_key.is_some()
+        && catalogs.languages.len() > 1
+    {
+        let language = player
+            .state
+            .read()
+            .ok()
+            .and_then(|s| catalogs.language(&s).ok());
+        (catalogs.languages.keys().cloned().collect(), language)
+    } else {
+        (Vec::new(), None)
+    };
     let view = View {
+        volumes: std::array::from_fn(|index| player.volume_percent(index)),
+        languages,
+        language,
+        preferences_status: player.preferences.status.clone(),
+        preferences_enabled: player.preferences.enabled(),
+        preferences_blocked: player.preferences.blocked,
+        preferences_failed: player.preferences.failed,
+        quit_preferences_warning: shell.quit_preferences_warning,
         startup_error: player.startup_error.clone(),
         page: shell.page,
         confirm: shell.confirm,
         save_reason: shell.save_reason.clone(),
         load_reason: shell.load_reason.clone(),
     };
-    let same_page = built
-        .0
-        .as_ref()
-        .is_some_and(|old| old.page == view.page && old.confirm == view.confirm);
+    let same_page = built.0.as_ref().is_some_and(|old| {
+        old.page == view.page
+            && old.confirm == view.confirm
+            && old.quit_preferences_warning == view.quit_preferences_warning
+            && (view.page != Page::Preferences || old.preferences_failed == view.preferences_failed)
+    });
     if same_page {
         if built.0.as_ref() != Some(&view) && view.confirm.is_none() {
             for (entity, button, _) in &buttons {
@@ -418,15 +536,26 @@ pub(super) fn refresh(
                         .remove::<TabIndex>();
                 }
             }
-            for (button, mut color) in &mut labels {
+            for (button, mut color, mut text) in &mut labels {
+                if let Action::Language(index) = button.0 {
+                    text.0 = language_label(&view, usize::from(index));
+                }
                 color.0 = if enabled(&view, button.0) {
                     theme::TEXT
                 } else {
                     theme::MUTED
                 };
             }
+            for (binding, mut text) in &mut volume_labels {
+                if let Some(percent) = view.volumes[binding.0] {
+                    text.0 = format!(
+                        "{}  {percent}%",
+                        crate::preferences::VOLUME_LABELS[binding.0]
+                    );
+                }
+            }
             for (mut text, mut node) in &mut descriptions {
-                if !matches!(view.page, Page::Title | Page::Menu) {
+                if !matches!(view.page, Page::Title | Page::Menu | Page::Preferences) {
                     continue;
                 }
                 text.0 = details(&view);
@@ -437,6 +566,20 @@ pub(super) fn refresh(
                 };
             }
         }
+        let paired_volume =
+            focus
+                .get()
+                .and_then(|e| buttons.get(e).ok())
+                .and_then(|(_, button, _)| {
+                    if let Action::Volume { index, increase } = button.0 {
+                        Some(Action::Volume {
+                            index,
+                            increase: !increase,
+                        })
+                    } else {
+                        None
+                    }
+                });
         // Empty focus cannot enter a modal tab group, including after a background click.
         if !shell.is_playing()
             && !inspector.open
@@ -448,12 +591,18 @@ pub(super) fn refresh(
             && let Some((entity, _, _)) = buttons
                 .iter()
                 .filter(|(_, button, _)| enabled(&view, button.0))
-                .min_by_key(|(_, button, _)| match button.0 {
-                    Action::Cancel => 0,
-                    Action::Return => 1,
-                    Action::NewGame => 2,
-                    Action::Confirm => 4,
-                    _ => 3,
+                .min_by_key(|(_, button, _)| {
+                    if paired_volume == Some(button.0) {
+                        0
+                    } else {
+                        match button.0 {
+                            Action::Cancel => 1,
+                            Action::Return => 2,
+                            Action::NewGame => 3,
+                            Action::Confirm => 5,
+                            _ => 4,
+                        }
+                    }
                 })
         {
             focus.set(entity, FocusCause::Auto);
@@ -461,10 +610,12 @@ pub(super) fn refresh(
         built.0 = Some(view);
         return;
     }
-    let old_action = focus
-        .get()
-        .and_then(|e| buttons.get(e).ok())
-        .map(|(_, b, _)| b.0);
+    let old_action = shell.restore_action.take().or_else(|| {
+        focus
+            .get()
+            .and_then(|e| buttons.get(e).ok())
+            .map(|(_, b, _)| b.0)
+    });
     for root in &roots {
         commands.entity(root).despawn();
     }
@@ -505,46 +656,9 @@ pub(super) fn refresh(
             },
         ));
     }
-    let mut first = None;
-    let mut preferred = None;
+    let mut controls = Vec::new();
     let mut add = |action, title: &str, enabled: bool| {
-        let button = commands
-            .spawn((
-                Button,
-                MenuButton(action),
-                Hovered::default(),
-                theme::button_node(),
-                BackgroundColor(theme::BUTTON),
-                crate::declarative::ButtonBase(theme::BUTTON),
-                BorderColor::all(theme::BORDER),
-                Outline::default(),
-                observe(move |_: On<Activate>, mut shell: ResMut<Shell>| {
-                    shell.push(action);
-                }),
-            ))
-            .id();
-        if enabled {
-            commands.entity(button).insert(TabIndex(0));
-            first.get_or_insert(button);
-            if old_action == Some(action) {
-                preferred = Some(button);
-            }
-        } else {
-            commands
-                .entity(button)
-                .insert(bevy::ui::InteractionDisabled);
-        }
-        let text = commands
-            .spawn(crate::label_with_font(
-                title,
-                22.0,
-                if enabled { theme::TEXT } else { theme::MUTED },
-                ui.default_font.clone(),
-            ))
-            .id();
-        commands.entity(text).insert(ButtonLabel(action));
-        commands.entity(button).add_child(text);
-        commands.entity(root).add_child(button);
+        controls.push((action, title.to_owned(), enabled));
     };
     let (heading, description) = if let Some(operation) = view.confirm {
         // Cancel is first and focused by default, so an extra Enter cannot discard progress.
@@ -555,6 +669,8 @@ pub(super) fn refresh(
                 Action::Save => "Save checkpoint",
                 Action::Load => "Load save",
                 Action::MainMenu => "Return to title",
+                Action::ResetPreferences => "Reset saved preferences",
+                Action::Quit if view.quit_preferences_warning => "Quit without saving preferences",
                 _ => "Quit game",
             },
             true,
@@ -563,6 +679,8 @@ pub(super) fn refresh(
             Action::Save => "Save this checkpoint? This replaces the single existing save, if any. Progress after this checkpoint is not included.",
             Action::Load => "Load the saved checkpoint? Any unsaved progress in the current game will be lost.",
             Action::MainMenu => "Return to the title? Unsaved progress will be lost.",
+            Action::ResetPreferences => "Reset preferences to this Story's defaults? Game progress is unchanged. Any previous preferences file will be kept separately.",
+            Action::Quit if view.quit_preferences_warning => "Preferences could not be saved. Quit anyway? Those changes and any unsaved game progress will be lost.",
             _ => "Quit the game? Unsaved progress will be lost.",
         }.to_string())
     } else {
@@ -574,6 +692,7 @@ pub(super) fn refresh(
             Page::Title => {
                 add(Action::NewGame, "New Game", view.startup_error.is_none());
                 add(Action::Load, "Load checkpoint", view.load_reason.is_none());
+                add(Action::Preferences, "Preferences", true);
                 add(Action::Controls, "Controls", true);
                 add(Action::Quit, "Quit", true);
                 (player.story.manifest().title.clone(), details(&view))
@@ -582,6 +701,7 @@ pub(super) fn refresh(
                 add(Action::Return, "Return to game", true);
                 add(Action::Save, "Save checkpoint", view.save_reason.is_none());
                 add(Action::Load, "Load checkpoint", view.load_reason.is_none());
+                add(Action::Preferences, "Preferences", true);
                 add(Action::Controls, "Controls", true);
                 add(Action::MainMenu, "Main Menu", true);
                 add(Action::Quit, "Quit", true);
@@ -601,6 +721,20 @@ pub(super) fn refresh(
                     .join("\n"),
                 )
             }
+            Page::Preferences => {
+                add(Action::Return, "Back", true);
+                if view.preferences_failed {
+                    add(
+                        Action::RetryPreferences,
+                        "Retry saving",
+                        view.preferences_enabled && !view.preferences_blocked,
+                    );
+                }
+                if view.preferences_enabled {
+                    add(Action::ResetPreferences, "Reset preferences", true);
+                }
+                ("Preferences".into(), details(&view))
+            }
             Page::Controls => {
                 add(Action::Return, "Back", true);
                 ("Controls".into(), "Click / Space / Enter — continue dialogue\n1–9 — choose an option\nTab / Shift+Tab — navigate controls\nEscape / right-click — game menu or back\nF5 — save checkpoint   F9 — load checkpoint\nSaving is available only at safe checkpoints after transitions settle.".into())
@@ -614,7 +748,7 @@ pub(super) fn refresh(
                 Node::default(),
             ))
             .id();
-        commands.entity(root).insert_children(0, &[heading]);
+        commands.entity(root).add_child(heading);
     }
     if !shell.is_playing() {
         let description_display = if description.is_empty() {
@@ -633,7 +767,120 @@ pub(super) fn refresh(
                 },
             ))
             .id();
-        commands.entity(root).insert_children(1, &[description]);
+        commands.entity(root).add_child(description);
+    }
+    let mut first = None;
+    let mut preferred = None;
+    let mut spawned = Vec::new();
+    if view.page == Page::Preferences && view.confirm.is_none() {
+        for (index, percent) in view.volumes.iter().enumerate() {
+            let Some(percent) = percent else {
+                continue;
+            };
+            let row = commands
+                .spawn(Node {
+                    width: Val::Percent(100.0),
+                    max_width: px(420),
+                    flex_direction: FlexDirection::Row,
+                    align_items: AlignItems::Center,
+                    justify_content: JustifyContent::SpaceBetween,
+                    column_gap: px(12),
+                    ..default()
+                })
+                .id();
+            commands.entity(root).add_child(row);
+            let minus = Action::Volume {
+                index: index as u8,
+                increase: false,
+            };
+            let plus = Action::Volume {
+                index: index as u8,
+                increase: true,
+            };
+            spawned.push((
+                spawn_button(&mut commands, &ui, row, minus, "−", enabled(&view, minus)),
+                minus,
+                enabled(&view, minus),
+            ));
+            let label = commands
+                .spawn((
+                    VolumeLabel(index),
+                    crate::label_with_font(
+                        format!("{}  {percent}%", crate::preferences::VOLUME_LABELS[index]),
+                        20.0,
+                        theme::TEXT,
+                        ui.default_font.clone(),
+                    ),
+                ))
+                .id();
+            commands.entity(row).add_child(label);
+            spawned.push((
+                spawn_button(&mut commands, &ui, row, plus, "+", enabled(&view, plus)),
+                plus,
+                enabled(&view, plus),
+            ));
+        }
+        if !view.languages.is_empty() {
+            let row = commands
+                .spawn(Node {
+                    max_width: px(700),
+                    flex_direction: FlexDirection::Row,
+                    flex_wrap: FlexWrap::Wrap,
+                    justify_content: JustifyContent::Center,
+                    column_gap: px(8),
+                    row_gap: px(8),
+                    ..default()
+                })
+                .id();
+            commands.entity(root).add_child(row);
+            for index in 0..view.languages.len() {
+                let action = Action::Language(index as u8);
+                spawned.push((
+                    spawn_button(
+                        &mut commands,
+                        &ui,
+                        row,
+                        action,
+                        &language_label(&view, index),
+                        enabled(&view, action),
+                    ),
+                    action,
+                    enabled(&view, action),
+                ));
+            }
+        }
+    }
+    let footer = if view.page == Page::Preferences && view.confirm.is_none() {
+        let row = commands
+            .spawn(Node {
+                flex_direction: FlexDirection::Row,
+                flex_wrap: FlexWrap::Wrap,
+                justify_content: JustifyContent::Center,
+                column_gap: px(8),
+                row_gap: px(8),
+                margin: UiRect::top(px(8)),
+                ..default()
+            })
+            .id();
+        commands.entity(root).add_child(row);
+        row
+    } else {
+        root
+    };
+    for (action, title, enabled) in controls {
+        spawned.push((
+            spawn_button(&mut commands, &ui, footer, action, &title, enabled),
+            action,
+            enabled,
+        ));
+    }
+    for (entity, action, enabled) in spawned {
+        if enabled {
+            first.get_or_insert(entity);
+            if old_action == Some(action) {
+                preferred = Some(entity);
+            }
+        }
     }
     if !shell.is_playing() && !inspector.open {
         focus.clear();
@@ -650,9 +897,92 @@ pub(super) fn refresh(
     built.0 = Some(view);
 }
 
+fn spawn_button(
+    commands: &mut Commands,
+    ui: &Ui,
+    parent: Entity,
+    action: Action,
+    title: &str,
+    enabled: bool,
+) -> Entity {
+    let button = commands
+        .spawn((
+            Button,
+            MenuButton(action),
+            Hovered::default(),
+            theme::button_node(),
+            BackgroundColor(theme::BUTTON),
+            crate::declarative::ButtonBase(theme::BUTTON),
+            BorderColor::all(theme::BORDER),
+            Outline::default(),
+            observe(move |_: On<Activate>, mut shell: ResMut<Shell>| {
+                shell.push(action);
+            }),
+        ))
+        .id();
+    if enabled {
+        commands.entity(button).insert(TabIndex(0));
+    } else {
+        commands
+            .entity(button)
+            .insert(bevy::ui::InteractionDisabled);
+    }
+    if let Action::Volume { index, increase } = action {
+        let label = format!(
+            "{} {} volume",
+            if increase { "Increase" } else { "Decrease" },
+            crate::preferences::VOLUME_LABELS[usize::from(index)]
+        );
+        commands.queue(move |world: &mut World| {
+            if let Some(mut node) = world.get_mut::<bevy::a11y::AccessibilityNode>(button) {
+                node.set_label(label);
+            }
+        });
+    }
+    let text = commands
+        .spawn((
+            ButtonLabel(action),
+            crate::label_with_font(
+                title,
+                22.0,
+                if enabled { theme::TEXT } else { theme::MUTED },
+                ui.default_font.clone(),
+            ),
+        ))
+        .id();
+    commands.entity(button).add_child(text);
+    commands.entity(parent).add_child(button);
+    button
+}
+fn language_label(view: &View, index: usize) -> String {
+    let language = &view.languages[index];
+    let label = match language.as_str() {
+        "en" => "English",
+        "id" => "Bahasa Indonesia",
+        "ja" => "日本語",
+        _ => language,
+    };
+    format!(
+        "{label}{}",
+        if view.language.as_ref() == Some(language) {
+            " (selected)"
+        } else {
+            ""
+        }
+    )
+}
+
 fn enabled(view: &View, action: Action) -> bool {
     match action {
         Action::NewGame => view.startup_error.is_none(),
+        Action::Volume { index, increase } => view
+            .volumes
+            .get(usize::from(index))
+            .and_then(|p| *p)
+            .is_some_and(|p| if increase { p < 100 } else { p > 0 }),
+        Action::Language(index) => view.languages.get(usize::from(index)).is_some(),
+        Action::RetryPreferences => view.preferences_enabled && !view.preferences_blocked,
+        Action::ResetPreferences => view.preferences_enabled,
         Action::Save => view.save_reason.is_none(),
         Action::Load => view.load_reason.is_none(),
         _ => true,
@@ -662,7 +992,16 @@ fn details(view: &View) -> String {
     if let Some(error) = &view.startup_error {
         return format!("Story could not start: {error}");
     }
-    match view.page {
+    let mut text = match view.page {
+        Page::Preferences => {
+            let controls = if view.volumes.iter().all(Option::is_none) && view.languages.is_empty()
+            {
+                "This Story does not expose audio or language controls. "
+            } else {
+                "Volume changes in 10% steps. "
+            };
+            format!("{controls}{}", view.preferences_status)
+        }
         Page::Title => view
             .load_reason
             .as_ref()
@@ -681,7 +1020,13 @@ fn details(view: &View) -> String {
         .collect::<Vec<_>>()
         .join("\n"),
         _ => String::new(),
+    };
+    if matches!(view.page, Page::Title | Page::Menu)
+        && (view.preferences_blocked || view.preferences_failed)
+    {
+        text.push_str("\nSaved preferences need attention. Open Preferences to review them.");
     }
+    text
 }
 
 #[cfg(test)]
@@ -1150,5 +1495,281 @@ mod tests {
         act(&mut app, Action::Quit);
         act(&mut app, Action::Confirm);
         assert_eq!(app.world().resource::<Messages<AppExit>>().len(), 1);
+    }
+    #[test]
+    fn preference_buttons_update_in_place_and_back_restores_origin_focus() {
+        let (temp, mut app) = crate::preferences::tests::fixture();
+        app.add_systems(Update, refresh.after(crate::drive));
+        press(&mut app, KeyCode::Escape);
+        act(&mut app, Action::Preferences);
+        assert_eq!(app.world().resource::<Shell>().page, Page::Preferences);
+        let minus = Action::Volume {
+            index: 0,
+            increase: false,
+        };
+        let button = {
+            let world = app.world_mut();
+            world
+                .query::<(Entity, &MenuButton)>()
+                .iter(world)
+                .find(|(_, b)| b.0 == minus)
+                .unwrap()
+                .0
+        };
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(button, FocusCause::Navigated);
+        act(&mut app, minus);
+        assert_eq!(app.world().non_send::<Player>().volume_percent(0), Some(40));
+        assert!(app.world().get::<MenuButton>(button).is_some());
+        assert_eq!(
+            app.world()
+                .get::<bevy::a11y::AccessibilityNode>(button)
+                .unwrap()
+                .label(),
+            Some("Decrease Master volume")
+        );
+        assert_eq!(app.world().resource::<InputFocus>().get(), Some(button));
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<(&VolumeLabel, &Text)>()
+                .iter(world)
+                .any(|(label, text)| label.0 == 0 && text.0.contains("40%"))
+        );
+        act(&mut app, Action::Language(2));
+        assert!(matches!(display(&app), Screen::Line { text, .. } if text == "こんにちは 1"));
+        assert_eq!(
+            app.world()
+                .non_send::<Player>()
+                .state
+                .read()
+                .unwrap()
+                .get("n"),
+            Ok(&weftora_api::Value::Float(1.0))
+        );
+        act(&mut app, Action::Return);
+        assert_eq!(app.world().resource::<Shell>().page, Page::Menu);
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<MenuButton>(focus).unwrap().0,
+            Action::Preferences
+        );
+        assert_eq!(
+            weftora_save::preferences::load(&temp.path().join("data"), "test.preferences").unwrap()
+                ["locale"],
+            weftora_api::Value::String("ja".into())
+        );
+        // Preferences opened from Title must return to Title without starting a Story.
+        app.world_mut().resource_mut::<Shell>().page = Page::Title;
+        app.update();
+        act(&mut app, Action::Preferences);
+        press(&mut app, KeyCode::Escape);
+        assert_eq!(app.world().resource::<Shell>().page, Page::Title);
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<MenuButton>(focus).unwrap().0,
+            Action::Preferences
+        );
+    }
+
+    #[test]
+    fn preference_bounds_and_confirmed_reset_leave_progress_unchanged() {
+        let (temp, mut app) = crate::preferences::tests::fixture();
+        app.add_systems(Update, refresh.after(crate::drive));
+        press(&mut app, KeyCode::Escape);
+        act(&mut app, Action::Preferences);
+        let plus = Action::Volume {
+            index: 0,
+            increase: true,
+        };
+        let plus_button = {
+            let world = app.world_mut();
+            world
+                .query::<(Entity, &MenuButton)>()
+                .iter(world)
+                .find(|(_, b)| b.0 == plus)
+                .unwrap()
+                .0
+        };
+        app.world_mut()
+            .resource_mut::<InputFocus>()
+            .set(plus_button, FocusCause::Navigated);
+        for _ in 0..5 {
+            act(&mut app, plus);
+        }
+        assert_eq!(
+            app.world().non_send::<Player>().volume_percent(0),
+            Some(100)
+        );
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<MenuButton>(focus).unwrap().0,
+            Action::Volume {
+                index: 0,
+                increase: false
+            }
+        );
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<(
+                    &MenuButton,
+                    Has<bevy::ui::InteractionDisabled>,
+                    Has<TabIndex>
+                )>()
+                .iter(world)
+                .any(|(button, disabled, tab)| button.0 == plus && disabled && !tab)
+        );
+        act(&mut app, Action::ResetPreferences);
+        assert_eq!(
+            app.world().resource::<Shell>().confirm,
+            Some(Action::ResetPreferences)
+        );
+        act(&mut app, Action::Cancel);
+        assert_eq!(
+            app.world().non_send::<Player>().volume_percent(0),
+            Some(100)
+        );
+        let focus = app.world().resource::<InputFocus>().get().unwrap();
+        assert_eq!(
+            app.world().get::<MenuButton>(focus).unwrap().0,
+            Action::ResetPreferences
+        );
+        act(&mut app, Action::ResetPreferences);
+        act(&mut app, Action::Confirm);
+        assert_eq!(app.world().non_send::<Player>().volume_percent(0), Some(50));
+        assert_eq!(
+            app.world()
+                .non_send::<Player>()
+                .state
+                .read()
+                .unwrap()
+                .get("n"),
+            Ok(&weftora_api::Value::Float(1.0))
+        );
+        assert!(
+            weftora_save::preferences::load(&temp.path().join("data"), "test.preferences")
+                .unwrap()
+                .is_empty()
+        );
+    }
+
+    #[test]
+    fn quit_flushes_the_latest_preference_change_during_write_cooldown() {
+        let (temp, mut app) = crate::preferences::tests::fixture();
+        press(&mut app, KeyCode::Escape);
+        act(&mut app, Action::Preferences);
+        let plus = Action::Volume {
+            index: 0,
+            increase: true,
+        };
+        act(&mut app, plus); // First automatic write.
+        act(&mut app, plus); // Within cooldown: remains dirty until Back/Quit.
+        let window = app.world_mut().spawn_empty().id();
+        app.world_mut()
+            .write_message(WindowCloseRequested { window });
+        app.update();
+        act(&mut app, Action::Confirm);
+        assert_eq!(
+            weftora_save::preferences::load(&temp.path().join("data"), "test.preferences").unwrap()
+                ["settings.audio.master"],
+            weftora_api::Value::Float(0.7)
+        );
+    }
+    #[test]
+    fn retry_appears_after_failure_on_the_open_preferences_page() {
+        let (temp, mut app) = crate::preferences::tests::fixture();
+        app.add_systems(Update, refresh.after(crate::drive));
+        press(&mut app, KeyCode::Escape);
+        act(&mut app, Action::Preferences);
+        let data = temp.path().join("data");
+        std::fs::create_dir_all(&data).unwrap();
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(data.join("preferences.lock"))
+            .unwrap();
+        lock.lock().unwrap();
+        act(
+            &mut app,
+            Action::Volume {
+                index: 0,
+                increase: true,
+            },
+        );
+        app.world_mut()
+            .non_send_mut::<Player>()
+            .persist_preferences(std::time::Duration::from_secs(1), true);
+        app.update();
+        assert!(app.world().non_send::<Player>().preferences.failed);
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<&MenuButton>()
+                .iter(world)
+                .any(|button| button.0 == Action::RetryPreferences)
+        );
+        {
+            let mut player = app.world_mut().non_send_mut::<Player>();
+            player.save_status = player.preferences.status.clone();
+        }
+        lock.unlock().unwrap();
+        act(&mut app, Action::RetryPreferences);
+        assert!(app.world().non_send::<Player>().save_status.is_empty());
+        assert!(!app.world().non_send::<Player>().preferences.failed);
+        assert_eq!(
+            weftora_save::preferences::load(&data, "test.preferences").unwrap()["settings.audio.master"],
+            weftora_api::Value::Float(0.6)
+        );
+    }
+    #[test]
+    fn quit_write_failure_requires_explicit_discard_confirmation() {
+        let (temp, mut app) = crate::preferences::tests::fixture();
+        app.add_systems(Update, refresh.after(crate::drive));
+        press(&mut app, KeyCode::Escape);
+        act(&mut app, Action::Preferences);
+        let data = temp.path().join("data");
+        std::fs::create_dir_all(&data).unwrap();
+        let lock = std::fs::OpenOptions::new()
+            .read(true)
+            .write(true)
+            .create(true)
+            .truncate(false)
+            .open(data.join("preferences.lock"))
+            .unwrap();
+        lock.lock().unwrap();
+        act(
+            &mut app,
+            Action::Volume {
+                index: 0,
+                increase: true,
+            },
+        );
+        let window = app.world_mut().spawn_empty().id();
+        app.world_mut()
+            .write_message(WindowCloseRequested { window });
+        app.update();
+        act(&mut app, Action::Confirm);
+        assert!(app.world().resource::<Messages<AppExit>>().is_empty());
+        assert!(app.world().resource::<Shell>().quit_preferences_warning);
+        let world = app.world_mut();
+        assert!(
+            world
+                .query::<&Text>()
+                .iter(world)
+                .any(|text| text.0 == "Quit without saving preferences")
+        );
+        // A successful forced retry should still save before the second confirmation exits.
+        lock.unlock().unwrap();
+        act(&mut app, Action::Confirm);
+        assert_eq!(app.world().resource::<Messages<AppExit>>().len(), 1);
+        assert!(!app.world().non_send::<Player>().preferences.failed);
+        assert_eq!(
+            weftora_save::preferences::load(&data, "test.preferences").unwrap()["settings.audio.master"],
+            weftora_api::Value::Float(0.6)
+        );
     }
 }

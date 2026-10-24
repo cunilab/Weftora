@@ -170,7 +170,7 @@ fn every_checkpoint_replays_actions_rng_and_collections_once() {
 fn story_a_and_b_reject_each_others_saves_without_output_or_file_changes() {
     let story_a = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../examples/story-a");
     for (source, checkpoint, target) in [
-        (story_a.as_path(), "scene.menu", story()),
+        (story_a.as_path(), "scene.arrival", story()),
         (story().as_path(), "day.home", story_a.clone()),
     ] {
         let saves = tempfile::tempdir().unwrap();

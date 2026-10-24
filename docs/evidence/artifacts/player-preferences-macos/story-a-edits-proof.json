@@ -1,0 +1,41 @@
+{
+  "check": "P3-02",
+  "cliSha256": "411fb8faade14568f6677d9a5a075b8d2b7d6d271aacdb553686a6632cc51d6e",
+  "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+  "variants": [
+    {
+      "variant": "baseline",
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "dialogueSha256": "d9895e175a2bd6f8166f6ac59d33110986dc958bf8e669e7ef33a1e96229d02e",
+      "screenSha256": "5d3ea4796d6884239169949929612c02eec63674a0fb3618768e110667750911",
+      "imageSha256": "80f40dfb7e91a43ddbf214fb3eb6b7e69400ab0281b84cff6e670a222fc523f4",
+      "export": "exported dev.weftora.story-a v0.1.0 to /private/tmp/weftora-preferences-final-story-a-edits-20261024/baseline (15 story files)",
+      "validation": "OK: compiled dialogue validated for dev.weftora.story-a",
+      "checkpointCompatibility": "baseline Arrival save created",
+      "baselineSaveSha256": "17379b0ce2ff7dbd44a8256d4b5c27148ea59a8ff7b379620a57c14857caf00f"
+    },
+    {
+      "variant": "edit-dialogue-screen",
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "dialogueSha256": "7d30261fdfc781dc3a5d5e5d25c92a3723d9b495e53a2c5bfe2f43242c3961e3",
+      "screenSha256": "5eaa65a2158a042540d48fef02b7f2da7702d68d244ce94e1c275431cc4628ed",
+      "imageSha256": "80f40dfb7e91a43ddbf214fb3eb6b7e69400ab0281b84cff6e670a222fc523f4",
+      "export": "exported dev.weftora.story-a v0.1.0 to /private/tmp/weftora-preferences-final-story-a-edits-20261024/edit-dialogue-screen (15 story files)",
+      "validation": "OK: compiled dialogue validated for dev.weftora.story-a",
+      "checkpointCompatibility": "The ferry sails at sunrise. If the beacon stays dark, they will pass us.",
+      "baselineSaveSha256": "17379b0ce2ff7dbd44a8256d4b5c27148ea59a8ff7b379620a57c14857caf00f"
+    },
+    {
+      "variant": "edit-theme-image",
+      "playerSha256": "1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c",
+      "dialogueSha256": "7d30261fdfc781dc3a5d5e5d25c92a3723d9b495e53a2c5bfe2f43242c3961e3",
+      "screenSha256": "7dca0d3370ec75de7d8c1d595b47c8343cb2c55c99b044be53efd9fa4f192599",
+      "imageSha256": "21dd4e3e7b4d34d379b5f2bf4ce9309fac7bb697e3ef189ff245cb2796dda3aa",
+      "export": "exported dev.weftora.story-a v0.1.0 to /private/tmp/weftora-preferences-final-story-a-edits-20261024/edit-theme-image (15 story files)",
+      "validation": "OK: compiled dialogue validated for dev.weftora.story-a",
+      "checkpointCompatibility": "The ferry sails at sunrise. If the beacon stays dark, they will pass us.",
+      "baselineSaveSha256": "17379b0ce2ff7dbd44a8256d4b5c27148ea59a8ff7b379620a57c14857caf00f"
+    }
+  ],
+  "nativeVisualVerification": "pending maintainer in issue #5"
+}

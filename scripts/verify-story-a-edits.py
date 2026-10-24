@@ -64,7 +64,7 @@ def main():
         if actual_hash != player_hash or digest(player) != player_hash:
             raise SystemExit("player changed during content-only export")
         if name == "baseline":
-            run(cli, "run", work, "--headless", "--choices", "0", "--save-at", "scene.arrival", "--save-dir", test_saves)
+            run(cli, "run", work, "--headless", "--save-at", "scene.arrival", "--save-dir", test_saves)
             save_hash = digest(test_saves / "save.json")
             compatibility = "baseline Arrival save created"
         else:

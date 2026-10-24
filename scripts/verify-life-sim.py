@@ -82,7 +82,7 @@ def main():
     work = output / "working-edit-pay"
     shutil.copytree(repository / "examples" / "life-sim", work)
     records = []
-    for name, source, choices in [("story-a", repository / "examples" / "story-a", "0,0"),
+    for name, source, choices in [("story-a", repository / "examples" / "story-a", "0"),
                                   ("story-b", repository / "examples" / "life-sim", "0,0,0,0"), ("edit-pay", work, "0,0,0,0")]:
         if name == "edit-pay":
             path = work / "mechanics.rhai"
@@ -121,7 +121,7 @@ def main():
     # Refusals must publish no candidate output and preserve both good slot and backup.
     refusals = []
     for name, source, checkpoint, choices, target in [
-        ("a-in-b", "story-a", "scene.menu", None, "story-b"),
+        ("a-in-b", "story-a", "scene.arrival", None, "story-b"),
         ("b-in-a", "story-b", "day.shift", "0,0", "story-a"),
         ("old-schema", "story-b", "day.shift", "0,0", "edit-pay"),
     ]:
@@ -148,7 +148,7 @@ def main():
     ]:
         source = output / name / "story"
         saves = output / (name + "-compatible-saves")
-        save_command = [cli, "run", source, "--headless", "--choices", "0,0", "--save-at", checkpoint, "--save-dir", saves]
+        save_command = [cli, "run", source, "--headless", "--choices", "0" if name == "story-a" else "0,0", "--save-at", checkpoint, "--save-dir", saves]
         for _ in range(2):
             saved = [json.loads(line) for line in run(*save_command).splitlines()]
             require(saved[-1]["event"] == "saved", f"{name}: baseline checkpoint was not saved")

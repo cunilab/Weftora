@@ -9,6 +9,7 @@ mod declarative;
 #[cfg(test)]
 mod localization_tests;
 mod media;
+mod preferences;
 pub mod presenter;
 mod saves;
 mod shell;
@@ -81,7 +82,10 @@ fn run_player(
     } else {
         title
     };
-    let player = prepare_player(story, dialogue, state, debug_tools, node)?;
+    let mut player = prepare_player(story, dialogue, state, debug_tools, node)?;
+    if node.is_none() {
+        preferences::initialize(&mut player);
+    }
 
     let failure = RuntimeFailure::default();
     let outcome = failure.0.clone();
@@ -186,6 +190,7 @@ fn prepare_player(
         compiled: dialogue,
         save_status: String::new(),
         startup_error: None,
+        preferences: preferences::Preferences::temporary(),
         story,
         pending: actions,
         dirty: true,
@@ -210,6 +215,7 @@ struct Player {
     save_store: Option<Result<weftora_save::storage::Store, String>>,
     save_status: String,
     startup_error: Option<String>,
+    preferences: preferences::Preferences,
 }
 
 #[derive(Component)]
@@ -521,6 +527,13 @@ fn drive(
     }
     if let Ok(mut state) = player.state.write() {
         state.drain_changes();
+    }
+    let was_failed = player.preferences.failed;
+    player.persist_preferences(time.elapsed(), false);
+    if player.preferences.failed && !was_failed {
+        player.save_status = player.preferences.status.clone();
+        feedback.failed = true;
+        feedback.until = None;
     }
     if player.presenter.revision() != before_revision || player.presenter.screen() != &before {
         player.dirty = true;

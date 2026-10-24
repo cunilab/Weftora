@@ -25,7 +25,7 @@ Reference: [special screens](https://www.renpy.org/doc/html/screen_special.html)
 
 Ren'Py maps Escape/right-click to the game menu, and Enter/Space/left-click to dismissal. We should adopt the familiar menu behavior while preserving keyboard focus navigation; copying its Tab-to-skip binding would conflict with Weftora's current Tab behavior. See the [official keymap](https://www.renpy.org/doc/html/keymap.html).
 
-## Local evidence and limits
+## Baseline evidence before the lifecycle changes
 
 - [Player preparation](../crates/weftora-render-bevy/src/lib.rs) calls `Presenter::new`, which starts the runner immediately. [Story A](../examples/story-a/main.yarn) implements its Begin/About menu in Yarn.
 - [Presenter](../crates/weftora-render-bevy/src/presenter.rs) replaces `Line` with `Choices`; [dialogue bindings](../crates/weftora-render-bevy/src/declarative.rs) clear speaker/text for choices. End text currently directs the player to double-Escape quit.
@@ -51,7 +51,7 @@ stateDiagram-v2
     Confirm --> [*]: Quit
 ```
 
-This is a target, not implemented behavior. The menu belongs outside the Story overlay stack: opening it must not invalidate an otherwise valid checkpoint. Suspend story input and progression while it is open; preserve the current line, choices, focus and pending command semantics on return. Define audio/transition suspension explicitly rather than assuming every clock can safely freeze.
+This target is now implemented for the engine shell; native interaction acceptance remains open. The menu belongs outside the Story overlay stack: opening it must not invalidate an otherwise valid checkpoint. Suspend story input and progression while it is open; preserve the current line, choices, focus and pending command semantics on return. Define audio/transition suspension explicitly rather than assuming every clock can safely freeze.
 
 Include honest save availability in this first slice. Disabled Save must explain the actual reason, and enabled Save must still validate at execution time. Do not silently rewind and call it saving the current position. Confirm before overwriting an existing save, loading over a session, returning to the title or quitting. Explain that unsaved progress will be lost; only name a last saved checkpoint when that information is known.
 
@@ -69,15 +69,19 @@ Acceptance checks:
 
 The engine-default title and game menu now exist without a schema change. Normal launch defers entrypoint execution; New Game retains Settings while creating fresh Story progress. Return preserves the current offer/focus, Escape/right-click never quits, and destructive operations require confirmation. Menu Save shows checkpoint eligibility; the existing single-slot restore remains transactional. Relevant choice context now survives language switching through source-line retranslation. Story A's diagnostic Route/Signal row has been removed from reading chrome.
 
-This is partial acceptance: preferences/history, title-menu migration, final visual composition, actual pointer/keyboard feel and performance evidence remain. Existing authored title choices deliberately remain after New Game; the shipped title exposes only working New Game, Load checkpoint, Controls and Quit actions. No Continue alias, file-slot browser, rollback or placeholder controls are shown. Fades/music continue while the menu suspends Story input. See [implementation evidence](./evidence/phase-6.md#player-title-and-game-menu).
+This first checkpoint was partial acceptance; the subsequent preferences slice below supersedes its title-menu and preferences gaps. History, final visual composition, actual pointer/keyboard feel and performance evidence remain. No Continue alias, file-slot browser, rollback or placeholder controls are shown. Fades/music continue while the menu suspends Story input. See [implementation evidence](./evidence/phase-6.md#player-title-and-game-menu).
 
 ## Following slices and verification
 
 1. Complete the lifecycle/menu slice above, including save availability and choice context. Keep the existing single-slot storage until a separate slot design is implemented.
-2. Add read-only history, then real preferences with durable settings. Do not show nonfunctional History/Skip/Auto controls as placeholders.
+2. Add read-only history; persistent volume/language preferences are now implemented. Do not show nonfunctional History/Skip/Auto controls as placeholders.
 3. Refine the modern visual system against the working flow: title composition, dialogue hierarchy, choice spacing, menu navigation, responsive layouts and focus/hover states. Review English, Indonesian and Japanese content.
 4. Consider rollback, skip and auto only with explicit side-effect and timing rules. Treat a graphical author launcher as its own scope; reuse CLI operations if pursued.
 
 Before and after implementation, record the same task walkthrough: launch, begin, choose, open menu, return, attempt save, quit/cancel, load/resume, change volume and recover a missed line. Record failures and unavailable tasks rather than inventing success. Use native macOS input now; queue Windows pointer/DPI/audio checks in [issue #5](https://github.com/cunilab/Weftora/issues/5) without blocking portable work. Recheck the existing performance budget when lifecycle changes land.
 
 Claude Opus 5.5 at medium effort reviewed the supplied source findings without tool access. Its useful challenges were to combine menu work with save availability, bring choice context forward, and keep opening a menu free of Story side effects. This advisory is not independent code verification or native usability evidence.
+
+## Preferences checkpoint — 2026-10-24
+
+[Persistent per-Story preferences](./preferences.md) are available from title and game menus. Only supported volume/language controls appear; overrides survive restart independently of progress saves. Corrupt/newer profiles remain untouched until explicit Reset, and failed writes have Retry and an explicit quit-without-saving confirmation. Story A now enters Arrival directly and retains Start/About solely for legacy checkpoint reconstruction. Its dialogue toolbar contains Continue only. Claude Opus 5.5 at medium effort challenged storage compatibility and reviewed supplied implementation; the identified write-failure, ignored-entry retention and Reset-cleanup issues have regression coverage. This is implementation evidence, not native interaction acceptance.

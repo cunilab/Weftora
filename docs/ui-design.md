@@ -6,7 +6,7 @@ status: proposed
 
 # Player interface design
 
-The visual pass and first engine title/game-menu slice are implemented; overall player UX remains unaccepted. The [Ren'Py workflow review](./renpy-ux-review.md) identifies the missing title/game-menu lifecycle, decision context and progress-safety flows, and defines the next behavioral acceptance checks. The implemented lifecycle and its remaining limits are described in [Declarative UI](./ui.md#player-lifecycle).
+The visual pass and first engine title/game-menu slice are implemented; overall player UX remains unaccepted. The [Ren'Py workflow review](./renpy-ux-review.md) tracks lifecycle, decision context and progress-safety flows, and defines behavioral acceptance checks. The implemented lifecycle and its remaining limits are described in [Declarative UI](./ui.md#player-lifecycle).
 
 The player uses a modern game interface: deep navy surfaces, warm gold accents, proportional dialogue text and bordered controls. The story remains the visual focus. The examples share these defaults while keeping their authored layouts, state bindings and navigation.
 
@@ -30,3 +30,7 @@ This pass changes the interface rather than Story artwork. Existing colored char
 Automated renderer tests cover dormant startup, menu suspend/resume, focus recovery, confirmations, overlay dismissal, unavailable Continue focus, tool-tab switching and existing save/modal/localisation behavior. The embedded Fira Sans bytes and release notice are pinned and checked. Rendering captures and platform limits are recorded in [Phase 6 evidence](./evidence/phase-6.md#player-ui-and-interaction-redesign).
 
 Windows pointer picking, keyboard feel, resizing, DPI and readability remain queued in [issue #5](https://github.com/cunilab/Weftora/issues/5). Native acceptance must be checked again against the redesigned player; older screenshots describe the old interface.
+
+## Persistent preferences and simpler start
+
+[Preferences](./preferences.md) now separates volume and language controls from reading. It preserves settings between launches, exposes storage failures and confirmation-based recovery, and returns focus to its originating menu. Story A starts at Arrival without a second Begin/About step; its reading toolbar now contains only Continue. Legacy menu saves remain reconstructible. History, further composition work and native interaction acceptance remain open.

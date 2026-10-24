@@ -38,15 +38,15 @@ Change the ferry sentence, leaving the Mara prefix and the literal checkpoint co
     .\baseline\weftora.exe check .\my-story
     .\baseline\weftora.exe run .\my-story
 
-Choose Begin and confirm the new line. Keep scene.arrival and saveSchema 1 for this compatible text edit.
+Choose New Game and confirm the new line at Arrival. Keep scene.arrival and saveSchema 1 for this compatible text edit.
 
 Yarn nodes use title, ---, body and ===. Choices begin with -> and their bodies are indented. Variables such as $story__route map to canonical story.route. Declarations set defaults; assignments change state. Random functions and Session reads are refused in checkpoint nodes.
 
 ## Change the screen and theme
 
-Open my-story/ui/dialogue.jsonc. The first root child is the LAST SIGNAL title. Change its text or color. The next child is the dialogue panel; change its background, for example from #101D2EF0 to #322033F0. You may also change the choiceList color or size. Preview and confirm both the title and panel changed.
+Open my-story/ui/dialogue.jsonc. The first root child is the LAST SIGNAL title. Change its text or color. The next child is the dialogue panel; change its background, for example from #0B1220F2 to #322033F0. You may also change the choiceList color or size. Preview and confirm both the title and panel changed.
 
-Keep screen IDs, choiceList IDs and action names intact for this first exercise. A screen needs exactly one choiceList. Save/load buttons use actions {"do":"save"} and {"do":"load"}; Volume opens a modal overlay. See the [UI contract](./ui.md) for supported properties. Structural mistakes are reported with the file and JSON pointer by check.
+Keep screen IDs, choiceList IDs and action names intact for this first exercise. A screen needs exactly one choiceList. The engine game menu provides Save/Load and Preferences; keep the reading screen focused on dialogue, choices and Continue. See the [UI contract](./ui.md) for supported properties. Structural mistakes are reported with the file and JSON pointer by check.
 
 ## Replace an image
 
@@ -57,11 +57,11 @@ For a deterministic test without an image editor, copy the included night image 
     Copy-Item .\my-story\assets\night.png .\my-story\assets\day.png
     .\baseline\weftora.exe run .\my-story
 
-Begin should now use the night-colored image where the day background appeared. Keep media inside the Story. Use a small PNG; images must fit the [decoder and memory bounds](./presentation.md). Replacing the file does not require changing Yarn or the player.
+New Game should now use the night-colored image where the day background appeared. Keep media inside the Story. Use a small PNG; images must fit the [decoder and memory bounds](./presentation.md). Replacing the file does not require changing Yarn or the player.
 
 ## Save, relaunch and export
 
-On the first Arrival line, wait for the half-second fades to finish, then click Save or press F5. Continue a few lines, quit with Esc, preview again and press F9. The Arrival display and Persistent state should return; a baseline Arrival save should also show the compatible edited sentence. Current Settings remain and Session resets. A later line is outside that save point. Load errors appear in the status line without replacing the live game.
+On the first Arrival line, wait for the half-second fades to finish, then open the game menu with Escape/right-click and choose Save (or press F5), confirming the operation. Return to the story, continue a few lines, then choose Quit from the game menu and confirm. Preview again and choose Load from the title menu. The Arrival display and Persistent state should return; a baseline Arrival save should also show the compatible edited sentence. Loading preserves current Settings and resets Session. A later line is outside that save point. Load errors appear in the status line without replacing the live game.
 
 Export to a new empty destination:
 

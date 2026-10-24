@@ -1212,6 +1212,18 @@ mod tests {
             let compiled =
                 weftora_yarn_compiler::compile(&story.dialogue_sources().unwrap()).unwrap();
             let mut app = crate::tests::app_for(story.clone(), compiled);
+            if target == "scene.menu" {
+                // Legacy menu saves still reconstruct at Start after New Game migrates to Arrival.
+                let mut player = app.world_mut().non_send_mut::<Player>();
+                let state = Arc::new(RwLock::new(story.initial_state().unwrap()));
+                let (presenter, pending) = Presenter::new(
+                    DialogueRunner::for_story(&player.compiled, state.clone(), &story),
+                    "Start",
+                );
+                player.state = state;
+                player.presenter = presenter;
+                player.pending = pending;
+            }
             app.world_mut().non_send_mut::<Player>().save_store =
                 Some(Ok(Store::new(directory.path().to_path_buf())));
             app.world_mut()

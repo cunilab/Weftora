@@ -1,7 +1,7 @@
 use serde_json::{Value, json};
 use std::{fs, path::Path};
 
-pub const STORIES: [(&str, &str); 2] = [("story-a", "scene.menu"), ("life-sim", "day.home")];
+pub const STORIES: [(&str, &str); 2] = [("story-a", "scene.arrival"), ("life-sim", "day.home")];
 pub const SAVE_CASES: [(&str, &str); 8] = [
     ("corrupt-save", "corrupt save"),
     ("save-format", "unsupported saveFormat 999"),

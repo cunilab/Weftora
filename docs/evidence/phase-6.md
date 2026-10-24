@@ -475,3 +475,29 @@ Native macOS Metal rendering captures were generated after a 20-second capture-o
 | 800 × 600 logical-pixel window | [Minimum-size menu](./artifacts/player-shell-macos/07-menu-800.png) |
 
 The full-size captures are 2560 × 1440 physical pixels for a 1280 × 720 logical window; the minimum-size capture is 1600 × 1200 physical pixels. These establish rendered layout on this Mac, not native interaction feel, Windows DPI behavior or final UX acceptance.
+
+## Persistent preferences and Story A start flow
+
+The next Ren'Py-informed slice adds working Preferences to title/game menus, with only the current Story's supported volume and language controls. Settings restore before native title display and survive New Game and checkpoint loading. A bounded, versioned per-Story profile is independent of progress saves. Unknown/incompatible entries are retained without entering live state; unchanged defaults are not frozen. See [preferences behavior and recovery](../preferences.md).
+
+Failed writes expose Retry and preserve session changes. Back/Escape and Quit attempt a forced flush; a failed Quit flush requires an explicit second confirmation before discarding preferences. Reset is confirmed, publishes defaults before live mutation, and retains an existing original under a unique name. Corrupt/newer profiles never silently overwrite themselves. Explicit start-node previews and ordinary unit-test preparation never access the normal profile.
+
+Story A's New Game now starts at Arrival, with a Continue-only reading toolbar. Start/About nodes and `scene.menu` remain unchanged so legacy title saves reconstruct and resave identically, then complete either route. CLI fixtures and content-edit proof scripts use the new direct route choices. Earlier captures of Begin/About above document the prior build and are superseded for new games.
+
+Claude Opus 5.5 at medium effort supplied closed-book architecture advice and an actual-code review. Its confirmed forced-write, ignored-entry retention and Reset-reservation findings were addressed with regression coverage. A separate Sol read-only follow-up found no remaining blocker in those paths; neither review establishes native interaction acceptance.
+
+Local validation for this slice: 113 renderer tests, eight save unit tests and 16 save integration tests passed; the storage child-process test also reports a nested result and is not counted twice. CLI migration targets passed 11 tests across Story A, life-sim and Story-matrix suites. Renderer/save Clippy across all targets with Story tests and warnings denied passed. Prior workspace totals above belong to earlier changes and are not a new full-workspace run.
+
+Native macOS Metal captures below were rendered and inspected with an isolated temporary preferences directory. The in-process driver opened Preferences, changed master volume from 50% to 40%, returned to title, started Arrival and opened the game menu. The resulting isolated profile contained only the master-volume override; it was removed with the temporary directory. No real progress slot was written. A 20-second capture-only warm-up avoids black pipeline-initialization frames; these are not cold-start measurements or OS pointer/keyboard acceptance. Capture-only source was removed before rebuilding ordinary tools.
+
+| Rendered state | Capture |
+| --- | --- |
+| Title with Preferences | [Title](./artifacts/player-preferences-macos/01-title.png) |
+| Supported channel controls | [Preferences](./artifacts/player-preferences-macos/02-preferences.png) |
+| Changed value at 800 × 600 logical pixels | [Minimum-size preferences](./artifacts/player-preferences-macos/03-preferences-800.png) |
+| New Game directly at Arrival | [Continue-only reading](./artifacts/player-preferences-macos/04-direct-arrival.png) |
+| Resumable game menu | [Game menu](./artifacts/player-preferences-macos/05-game-menu.png) |
+
+Full-size captures are 2560 × 1440 physical pixels for 1280 × 720 logical pixels; the minimum-size capture is 1600 × 1200 physical pixels. English/Indonesian/Japanese language switching and focus have automated coverage; these particular captures use Story A, which does not declare localisation. Hands-on native input, Windows DPI/audio, read-only history and final UX acceptance remain open in issue #5/the UX plan.
+
+Final ordinary CLI/player rebuilds share debug/aarch64-apple-darwin build ID `ceea7d9686c041bb374a5985eae38b3e7cc9f8255bbcc91b15b6e57977345c5f`. All 12 example Stories passed `check`. Both updated content-edit scripts passed again with the final player, SHA-256 `1f9b6cf8c94b36f1eaa23dc3bcc9e3204a8669eb1b5ae9384630b6d9ab53db0c`: [Story A exports](./artifacts/player-preferences-macos/story-a-edits-proof.json) and [Story A/life-sim compatible revisions](./artifacts/player-preferences-macos/life-sim-proof.json). The final 113-test renderer rerun also checks that successful retry clears its stale failure notification. Formatting, documentation headers/links and whitespace checks passed. These debug host proofs do not replace release-profile or Windows acceptance.

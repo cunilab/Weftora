@@ -76,43 +76,6 @@
                 "size": 20,
                 "background": "#F2BF6D",
                 "color": "#101723"
-              },
-              {
-                "type": "button",
-                "id": "volume",
-                "text": "Volume",
-                "action": {
-                  "do": "screen.open",
-                  "screen": "volume"
-                },
-                "layout": {
-                  "padding": 12
-                },
-                "size": 16
-              },
-              {
-                "type": "button",
-                "id": "save",
-                "text": "Save (F5)",
-                "action": {
-                  "do": "save"
-                },
-                "layout": {
-                  "padding": 12
-                },
-                "size": 16
-              },
-              {
-                "type": "button",
-                "id": "load",
-                "text": "Load (F9)",
-                "action": {
-                  "do": "load"
-                },
-                "layout": {
-                  "padding": 12
-                },
-                "size": 16
               }
             ]
           }

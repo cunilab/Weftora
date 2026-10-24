@@ -210,7 +210,7 @@ fn story_matrix_compatible_revisions_keep_old_saves_and_enforce_version_boundari
         eprintln!(
             "PASS {name}/compatibility/dialogue-format: valid artifact accepts; future format refuses specifically"
         );
-        let full_choices = if name == "story-a" { "0,0" } else { "0,0,0,0" };
+        let full_choices = if name == "story-a" { "0" } else { "0,0,0,0" };
         let baseline = success(cli(
             "run",
             &root,
@@ -223,7 +223,7 @@ fn story_matrix_compatible_revisions_keep_old_saves_and_enforce_version_boundari
                 &[
                     "--headless",
                     "--choices",
-                    "0,0",
+                    if name == "story-a" { "0" } else { "0,0" },
                     "--save-at",
                     checkpoint,
                     "--save-dir",
